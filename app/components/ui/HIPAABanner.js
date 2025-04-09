@@ -1,4 +1,4 @@
-// File: /components/ui/HIPAABanner.js
+// components/ui/HIPAABanner.js
 import { format } from 'date-fns';
 import { FaLock, FaUserShield, FaFileAlt, FaHeartbeat } from 'react-icons/fa';
 
