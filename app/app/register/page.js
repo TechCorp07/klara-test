@@ -1,36 +1,36 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { toast } from 'react-toastify';
-import { useAuth } from '../../contexts/AuthContext';
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { toast } from "react-toastify"
+import { useAuth } from "../../contexts/AuthContext"
 
 export default function RegisterPage() {
-  const { register: authRegister } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState('patient');
-  const router = useRouter();
-  
+  const { register: authRegister } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [role, setRole] = useState("patient")
+  const router = useRouter()
+
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm();
-  
-  const password = watch('password', '');
-  
+  } = useForm()
+
+  const password = watch("password", "")
+
   const onSubmit = async (data) => {
     // Ensure password confirmation matches
     if (data.password !== data.password_confirm) {
-      toast.error('Passwords do not match');
-      return;
+      toast.error("Passwords do not match")
+      return
     }
-    
-    setLoading(true);
-    
+
+    setLoading(true)
+
     try {
       // Prepare registration data
       const registrationData = {
@@ -44,45 +44,45 @@ export default function RegisterPage() {
         phone_number: data.phone_number,
         date_of_birth: data.date_of_birth,
         terms_accepted: data.terms_accepted,
-      };
-      
-      const result = await authRegister(registrationData);
-      
+      }
+
+      const result = await authRegister(registrationData)
+
       if (result.success) {
-        toast.success('Registration successful! Please log in.');
-        router.push('/login');
+        toast.success("Registration successful! Please log in.")
+        router.push("/login")
       }
     } catch (error) {
-      let errorMessage = 'Registration failed. Please try again.';
-      
+      let errorMessage = "Registration failed. Please try again."
+
       if (error.response) {
         // Handle specific validation errors
-        const responseData = error.response.data;
-        
+        const responseData = error.response.data
+
         if (responseData.username) {
-          errorMessage = `Username: ${responseData.username[0]}`;
+          errorMessage = `Username: ${responseData.username[0]}`
         } else if (responseData.email) {
-          errorMessage = `Email: ${responseData.email[0]}`;
+          errorMessage = `Email: ${responseData.email[0]}`
         } else if (responseData.password) {
-          errorMessage = `Password: ${responseData.password[0]}`;
+          errorMessage = `Password: ${responseData.password[0]}`
         } else if (responseData.non_field_errors) {
-          errorMessage = responseData.non_field_errors[0];
+          errorMessage = responseData.non_field_errors[0]
         }
       }
-      
-      toast.error(errorMessage);
+
+      toast.error(errorMessage)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-  
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h1 className="text-center text-3xl font-extrabold text-blue-600">Klararety Health</h1>
         <h2 className="mt-2 text-center text-2xl font-bold text-gray-900">Create your account</h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
             Sign in
           </Link>
@@ -98,22 +98,18 @@ export default function RegisterPage() {
               <div className="mt-1 grid grid-cols-2 gap-3">
                 <div
                   className={`border rounded-md p-3 cursor-pointer ${
-                    role === 'patient'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-blue-300'
+                    role === "patient" ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-300"
                   }`}
-                  onClick={() => setRole('patient')}
+                  onClick={() => setRole("patient")}
                 >
                   <span className="block text-sm font-medium">Patient</span>
                   <span className="block text-xs text-gray-500">Individual seeking care</span>
                 </div>
                 <div
                   className={`border rounded-md p-3 cursor-pointer ${
-                    role === 'provider'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-blue-300'
+                    role === "provider" ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-300"
                   }`}
-                  onClick={() => setRole('provider')}
+                  onClick={() => setRole("provider")}
                 >
                   <span className="block text-sm font-medium">Provider</span>
                   <span className="block text-xs text-gray-500">Healthcare professional</span>
@@ -135,11 +131,9 @@ export default function RegisterPage() {
                     autoComplete="given-name"
                     required
                     className="input-field"
-                    {...register('first_name', { required: 'First name is required' })}
+                    {...register("first_name", { required: "First name is required" })}
                   />
-                  {errors.first_name && (
-                    <p className="error-text">{errors.first_name.message}</p>
-                  )}
+                  {errors.first_name && <p className="error-text">{errors.first_name.message}</p>}
                 </div>
               </div>
 
@@ -155,11 +149,9 @@ export default function RegisterPage() {
                     autoComplete="family-name"
                     required
                     className="input-field"
-                    {...register('last_name', { required: 'Last name is required' })}
+                    {...register("last_name", { required: "Last name is required" })}
                   />
-                  {errors.last_name && (
-                    <p className="error-text">{errors.last_name.message}</p>
-                  )}
+                  {errors.last_name && <p className="error-text">{errors.last_name.message}</p>}
                 </div>
               </div>
             </div>
@@ -177,14 +169,12 @@ export default function RegisterPage() {
                   autoComplete="username"
                   required
                   className="input-field"
-                  {...register('username', {
-                    required: 'Username is required',
-                    minLength: { value: 4, message: 'Username must be at least 4 characters' },
+                  {...register("username", {
+                    required: "Username is required",
+                    minLength: { value: 4, message: "Username must be at least 4 characters" },
                   })}
                 />
-                {errors.username && (
-                  <p className="error-text">{errors.username.message}</p>
-                )}
+                {errors.username && <p className="error-text">{errors.username.message}</p>}
               </div>
             </div>
 
@@ -201,17 +191,15 @@ export default function RegisterPage() {
                   autoComplete="email"
                   required
                   className="input-field"
-                  {...register('email', {
-                    required: 'Email is required',
+                  {...register("email", {
+                    required: "Email is required",
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i,
-                      message: 'Invalid email address',
+                      message: "Invalid email address",
                     },
                   })}
                 />
-                {errors.email && (
-                  <p className="error-text">{errors.email.message}</p>
-                )}
+                {errors.email && <p className="error-text">{errors.email.message}</p>}
               </div>
             </div>
 
@@ -228,13 +216,11 @@ export default function RegisterPage() {
                   autoComplete="tel"
                   required
                   className="input-field"
-                  {...register('phone_number', {
-                    required: 'Phone number is required',
+                  {...register("phone_number", {
+                    required: "Phone number is required",
                   })}
                 />
-                {errors.phone_number && (
-                  <p className="error-text">{errors.phone_number.message}</p>
-                )}
+                {errors.phone_number && <p className="error-text">{errors.phone_number.message}</p>}
               </div>
             </div>
 
@@ -250,13 +236,11 @@ export default function RegisterPage() {
                   type="date"
                   required
                   className="input-field"
-                  {...register('date_of_birth', {
-                    required: 'Date of birth is required',
+                  {...register("date_of_birth", {
+                    required: "Date of birth is required",
                   })}
                 />
-                {errors.date_of_birth && (
-                  <p className="error-text">{errors.date_of_birth.message}</p>
-                )}
+                {errors.date_of_birth && <p className="error-text">{errors.date_of_birth.message}</p>}
               </div>
             </div>
 
@@ -273,14 +257,12 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   required
                   className="input-field"
-                  {...register('password', {
-                    required: 'Password is required',
-                    minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                  {...register("password", {
+                    required: "Password is required",
+                    minLength: { value: 8, message: "Password must be at least 8 characters" },
                   })}
                 />
-                {errors.password && (
-                  <p className="error-text">{errors.password.message}</p>
-                )}
+                {errors.password && <p className="error-text">{errors.password.message}</p>}
               </div>
             </div>
 
@@ -297,15 +279,12 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   required
                   className="input-field"
-                  {...register('password_confirm', {
-                    required: 'Please confirm your password',
-                    validate: value =>
-                      value === password || 'The passwords do not match',
+                  {...register("password_confirm", {
+                    required: "Please confirm your password",
+                    validate: (value) => value === password || "The passwords do not match",
                   })}
                 />
-                {errors.password_confirm && (
-                  <p className="error-text">{errors.password_confirm.message}</p>
-                )}
+                {errors.password_confirm && <p className="error-text">{errors.password_confirm.message}</p>}
               </div>
             </div>
 
@@ -318,25 +297,23 @@ export default function RegisterPage() {
                   type="checkbox"
                   required
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  {...register('terms_accepted', {
-                    required: 'You must agree to the terms and conditions',
+                  {...register("terms_accepted", {
+                    required: "You must agree to the terms and conditions",
                   })}
                 />
               </div>
               <div className="ml-3 text-sm">
                 <label htmlFor="terms_accepted" className="font-medium text-gray-700">
-                  I agree to the{' '}
+                  I agree to the{" "}
                   <Link href="/terms" className="text-blue-600 hover:text-blue-500">
                     terms and conditions
-                  </Link>{' '}
-                  and{' '}
+                  </Link>{" "}
+                  and{" "}
                   <Link href="/privacy" className="text-blue-600 hover:text-blue-500">
                     privacy policy
                   </Link>
                 </label>
-                {errors.terms_accepted && (
-                  <p className="error-text">{errors.terms_accepted.message}</p>
-                )}
+                {errors.terms_accepted && <p className="error-text">{errors.terms_accepted.message}</p>}
               </div>
             </div>
 
@@ -348,14 +325,30 @@ export default function RegisterPage() {
               >
                 {loading ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Creating account...
                   </span>
                 ) : (
-                  'Create account'
+                  "Create account"
                 )}
               </button>
             </div>
@@ -363,5 +356,5 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

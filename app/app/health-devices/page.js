@@ -1,420 +1,321 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../../contexts/AuthContext';
-import { wearables, healthcare } from '../../lib/api';
-import AuthenticatedLayout from '../../components/layout/AuthenticatedLayout';
-import { format, subDays } from 'date-fns';
-import {
-  FaHeartbeat,
-  FaLink,
-  FaUnlink,
-  FaSyncAlt,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaWeight,
-  FaRunning,
-  FaBed,
-  FaPlus,
-} from 'react-icons/fa';
+import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { wearables } from "@/lib/services/wearablesService"
+import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "react-toastify"
 
-// Measurement card component
-const MeasurementCard = ({ title, icon: Icon, value, unit, date, trend }) => {
-  let trendColor = 'text-gray-500';
-  let TrendIcon = null;
-  
-  if (trend) {
-    if (trend === 'up') {
-      trendColor = 'text-red-500';
-      TrendIcon = () => (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
-      );
-    } else if (trend === 'down') {
-      trendColor = 'text-green-500';
-      TrendIcon = () => (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      );
-    }
+export default function HealthDevicesPage() {
+  const { user } = useAuth()
+  const [selectedDevice, setSelectedDevice] = useState(null)
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30 days ago
+    endDate: new Date().toISOString().split("T")[0], // today
+  })
+  const queryClient = useQueryClient()
+
+  // Fetch wearable devices
+  const {
+    data: devices,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["wearableDevices", user?.id],
+    queryFn: () => wearables.getWearableDevices(user?.id),
+    enabled: !!user,
+    onError: (error) => {
+      toast.error("Failed to load connected devices")
+      console.error("Error fetching devices:", error)
+    },
+  })
+
+  // Fetch Withings profile
+  const { data: withingsProfile } = useQuery({
+    queryKey: ["withingsProfile"],
+    queryFn: () => wearables.getWithingsProfile(),
+    enabled: !!user,
+    onError: (error) => {
+      console.error("Error fetching Withings profile:", error)
+      // Don't show error toast as this might be a normal state (not connected yet)
+    },
+  })
+
+  // Fetch wearable data for selected device
+  const { data: deviceData, isLoading: isDataLoading } = useQuery({
+    queryKey: ["wearableData", selectedDevice?.id, dateRange],
+    queryFn: () =>
+      wearables.getWearableData(user?.id, selectedDevice?.data_type, dateRange.startDate, dateRange.endDate),
+    enabled: !!selectedDevice && !!user,
+    onError: (error) => {
+      toast.error("Failed to load device data")
+      console.error("Error fetching device data:", error)
+    },
+  })
+
+  // Mutation for connecting Withings
+  const connectWithingsMutation = useMutation({
+    mutationFn: () => wearables.connectWithings(),
+    onSuccess: (data) => {
+      // Redirect to Withings authorization page
+      window.location.href = data.authorization_url
+    },
+    onError: (error) => {
+      toast.error("Failed to connect to Withings")
+      console.error("Error connecting to Withings:", error)
+    },
+  })
+
+  const handleDeviceSelect = (device) => {
+    setSelectedDevice(device)
   }
-  
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="rounded-full p-3 bg-blue-100 text-blue-500">
-            <Icon className="h-5 w-5" />
-          </div>
-          <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
-        </div>
-        
-        {trend && TrendIcon && (
-          <div className={`flex items-center ${trendColor}`}>
-            <TrendIcon />
-          </div>
-        )}
-      </div>
-      
-      <div className="mt-4">
-        <div className="flex items-end">
-          <p className="text-3xl font-semibold text-gray-900">{value}</p>
-          {unit && <p className="ml-1 text-xl text-gray-500">{unit}</p>}
-        </div>
-        
-        {date && (
-          <p className="mt-1 text-xs text-gray-500">
-            Measured on {format(new Date(date), 'MMM d, yyyy')} at {format(new Date(date), 'h:mm a')}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-};
 
-// Device connection card component
-const DeviceConnectionCard = ({ connected, onConnect, onSync, onDisconnect, lastSync, loading }) => {
-  return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <div className="flex items-center">
-          <img 
-            src="/images/withings-logo.png" 
-            alt="Withings" 
-            className="h-8 w-auto"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.style.display = 'none';
-            }} 
-          />
-          <h3 className="ml-3 text-lg font-medium text-gray-900">Withings Health Devices</h3>
+  const handleConnectWithings = () => {
+    connectWithingsMutation.mutate()
+  }
+
+  const handleDateRangeChange = (e, field) => {
+    setDateRange({
+      ...dateRange,
+      [field]: e.target.value,
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Health Devices</h1>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
-        
-        {connected ? (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-            <FaCheckCircle className="mr-1 h-3 w-3" />
-            Connected
-          </span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Health Devices</h1>
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <p>Error loading health devices. Please try again later.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Health Devices</h1>
+
+      {/* Withings Connection Status */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Withings Integration</h2>
+
+        {withingsProfile ? (
+          <div>
+            <div className="flex items-center mb-4">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              <p className="text-green-600 font-medium">Connected</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-600">Account</p>
+                <p className="font-medium">{withingsProfile.user_email}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Connected Since</p>
+                <p className="font-medium">{new Date(withingsProfile.connected_at).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Last Sync</p>
+                <p className="font-medium">{new Date(withingsProfile.last_sync).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Status</p>
+                <p className="font-medium">{withingsProfile.status}</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <button
+                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg mr-4"
+                onClick={() => wearables.fetchWithingsData(dateRange.startDate, dateRange.endDate)}
+              >
+                Sync Data
+              </button>
+              <button className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">Disconnect</button>
+            </div>
+          </div>
         ) : (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-            <FaExclamationTriangle className="mr-1 h-3 w-3" />
-            Not Connected
-          </span>
+          <div>
+            <p className="mb-4">Connect your Withings account to sync your health data.</p>
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg"
+              onClick={handleConnectWithings}
+              disabled={connectWithingsMutation.isPending}
+            >
+              {connectWithingsMutation.isPending ? "Connecting..." : "Connect Withings"}
+            </button>
+          </div>
         )}
       </div>
-      
-      <div className="px-6 py-4">
-        <p className="text-sm text-gray-600">
-          {connected 
-            ? 'Your Withings account is connected and syncing data automatically.' 
-            : 'Connect your Withings account to automatically sync your health data.'}
-        </p>
-        
-        {connected && lastSync && (
-          <p className="mt-1 text-xs text-gray-500">
-            Last synced: {format(new Date(lastSync), 'MMMM d, yyyy h:mm a')}
-          </p>
-        )}
-        
-        <div className="mt-4 flex space-x-3">
-          {connected ? (
-            <>
-              <button
-                onClick={onSync}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <FaSyncAlt className="mr-2 h-4 w-4" />
-                    Sync Now
-                  </>
-                )}
-              </button>
-              
-              <button
-                onClick={onDisconnect}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                <FaUnlink className="mr-2 h-4 w-4" />
-                Disconnect
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={onConnect}
-              disabled={loading}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Connecting...
-                </>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Devices List */}
+        <div className="md:col-span-1">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Connected Devices</h2>
+
+            {devices && devices.results && devices.results.length > 0 ? (
+              <div className="space-y-4">
+                {devices.results.map((device) => (
+                  <div
+                    key={device.id}
+                    className={`p-4 rounded-lg cursor-pointer transition-colors ${
+                      selectedDevice?.id === device.id
+                        ? "bg-blue-100 border border-blue-300"
+                        : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
+                    }`}
+                    onClick={() => handleDeviceSelect(device)}
+                  >
+                    <p className="font-medium">{device.name}</p>
+                    <p className="text-sm text-gray-600">{device.device_type}</p>
+                    <div className="flex items-center mt-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      <p className="text-xs text-gray-500">Connected</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No devices connected yet.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Device Data */}
+        <div className="md:col-span-2">
+          {selectedDevice ? (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">{selectedDevice.name} Data</h2>
+
+              {/* Date range selector */}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    id="startDate"
+                    value={dateRange.startDate}
+                    onChange={(e) => handleDateRangeChange(e, "startDate")}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    id="endDate"
+                    value={dateRange.endDate}
+                    onChange={(e) => handleDateRangeChange(e, "endDate")}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg"
+                    onClick={() => queryClient.invalidateQueries(["wearableData", selectedDevice.id, dateRange])}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+
+              {isDataLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : deviceData && deviceData.results && deviceData.results.length > 0 ? (
+                <div>
+                  {/* Data visualization would go here */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="font-medium mb-2">Data Summary</p>
+                    <p className="text-sm text-gray-600">
+                      {deviceData.results.length} data points collected between {dateRange.startDate} and{" "}
+                      {dateRange.endDate}
+                    </p>
+                  </div>
+
+                  {/* Data table */}
+                  <div className="mt-6 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Date
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Metric
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Value
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Unit
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {deviceData.results.slice(0, 10).map((dataPoint, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(dataPoint.timestamp).toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {dataPoint.metric_type}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dataPoint.value}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dataPoint.unit}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {deviceData.results.length > 10 && (
+                      <div className="py-3 flex items-center justify-center">
+                        <p className="text-sm text-gray-500">Showing 10 of {deviceData.results.length} records</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <>
-                  <FaLink className="mr-2 h-4 w-4" />
-                  Connect Withings
-                </>
+                <p className="text-gray-500">No data available for the selected date range.</p>
               )}
-            </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-center h-full">
+              <p className="text-gray-500">Select a device to view data.</p>
+            </div>
           )}
         </div>
       </div>
-      
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <h4 className="text-sm font-medium text-gray-700">Supported Devices</h4>
-        <ul className="mt-2 text-sm text-gray-600 space-y-1">
-          <li>Body+ Scale</li>
-          <li>BPM Connect Blood Pressure Monitor</li>
-          <li>Sleep Tracking Mat</li>
-          <li>ScanWatch</li>
-          <li>And other Withings devices</li>
-        </ul>
-      </div>
     </div>
-  );
-};
-
-export default function HealthDevicesPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [withingsConnected, setWithingsConnected] = useState(false);
-  const [withingsProfile, setWithingsProfile] = useState(null);
-  const [measurements, setMeasurements] = useState({
-    weight: null,
-    bloodPressure: null,
-    heartRate: null,
-    sleep: null,
-    steps: null,
-  });
-  
-  // Check if Withings is connected
-  useEffect(() => {
-    const checkWithingsConnection = async () => {
-      try {
-        const profile = await wearables.getWithingsProfile();
-        setWithingsConnected(!!profile);
-        setWithingsProfile(profile);
-        
-        if (profile) {
-          // Automatically fetch recent data
-          fetchWithingsData();
-        }
-      } catch (error) {
-        console.error('Error checking Withings connection:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    checkWithingsConnection();
-  }, []);
-  
-  // Connect Withings
-  const handleConnectWithings = async () => {
-    setConnecting(true);
-    
-    try {
-      const response = await wearables.connectWithings();
-      
-      if (response && response.authorize_url) {
-        // Redirect to Withings authorization page
-        window.location.href = response.authorize_url;
-      }
-    } catch (error) {
-      console.error('Error connecting Withings:', error);
-    } finally {
-      setConnecting(false);
-    }
-  };
-  
-  // Fetch Withings data
-  const fetchWithingsData = async () => {
-    setSyncing(true);
-    
-    try {
-      // Fetch data for the last 30 days
-      const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-      const endDate = format(new Date(), 'yyyy-MM-dd');
-      
-      const response = await wearables.fetchWithingsData(startDate, endDate);
-      
-      if (response && response.saved_entries_ids && response.saved_entries_ids.length > 0) {
-        // Get the actual measurements
-        const vitalSigns = await healthcare.getVitalSigns(null, { measurement_ids: response.saved_entries_ids.join(',') });
-        
-        // Process measurements
-        const weightMeasurements = vitalSigns.filter(v => v.measurement_type === 'weight');
-        const bpMeasurements = vitalSigns.filter(v => v.measurement_type === 'blood_pressure');
-        const hrMeasurements = vitalSigns.filter(v => v.measurement_type === 'heart_rate');
-        const sleepMeasurements = vitalSigns.filter(v => v.measurement_type === 'sleep');
-        const stepMeasurements = vitalSigns.filter(v => v.measurement_type === 'steps');
-        
-        setMeasurements({
-          weight: weightMeasurements.length > 0 
-            ? weightMeasurements.sort((a, b) => new Date(b.measured_at) - new Date(a.measured_at))[0] 
-            : null,
-          bloodPressure: bpMeasurements.length > 0 
-            ? bpMeasurements.sort((a, b) => new Date(b.measured_at) - new Date(a.measured_at))[0] 
-            : null,
-          heartRate: hrMeasurements.length > 0 
-            ? hrMeasurements.sort((a, b) => new Date(b.measured_at) - new Date(a.measured_at))[0] 
-            : null,
-          sleep: sleepMeasurements.length > 0 
-            ? sleepMeasurements.sort((a, b) => new Date(b.measured_at) - new Date(a.measured_at))[0] 
-            : null,
-          steps: stepMeasurements.length > 0 
-            ? stepMeasurements.sort((a, b) => new Date(b.measured_at) - new Date(a.measured_at))[0] 
-            : null,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching Withings data:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  // Disconnect Withings
-  const handleDisconnectWithings = async () => {
-    // This would be implemented if the backend supports it
-    console.log('Disconnect Withings clicked');
-  };
-  
-  return (
-    <AuthenticatedLayout>
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Health Devices</h1>
-        
-        {/* Withings connection */}
-        <div className="mb-8">
-          <DeviceConnectionCard
-            connected={withingsConnected}
-            onConnect={handleConnectWithings}
-            onSync={fetchWithingsData}
-            onDisconnect={handleDisconnectWithings}
-            lastSync={withingsProfile?.updated_at}
-            loading={loading || connecting || syncing}
-          />
-        </div>
-        
-        {/* Measurement data */}
-        {withingsConnected && (
-          <>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Measurements</h2>
-            
-            {Object.values(measurements).every(m => m === null) ? (
-              <div className="bg-white rounded-lg shadow p-8 text-center">
-                <FaSyncAlt className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No measurements found</h3>
-                <p className="mt-1 text-gray-500">Sync your Withings devices to see your health data.</p>
-                <button
-                  onClick={fetchWithingsData}
-                  disabled={syncing}
-                  className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  {syncing ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <FaSyncAlt className="mr-2 h-4 w-4" />
-                      Sync Now
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {measurements.weight && (
-                  <MeasurementCard
-                    title="Weight"
-                    icon={FaWeight}
-                    value={measurements.weight.value}
-                    unit="kg"
-                    date={measurements.weight.measured_at}
-                  />
-                )}
-                
-                {measurements.bloodPressure && (
-                  <MeasurementCard
-                    title="Blood Pressure"
-                    icon={FaHeartbeat}
-                    value={measurements.bloodPressure.value}
-                    unit="mmHg"
-                    date={measurements.bloodPressure.measured_at}
-                  />
-                )}
-                
-                {measurements.heartRate && (
-                  <MeasurementCard
-                    title="Heart Rate"
-                    icon={FaHeartbeat}
-                    value={measurements.heartRate.value}
-                    unit="bpm"
-                    date={measurements.heartRate.measured_at}
-                  />
-                )}
-                
-                {measurements.sleep && (
-                  <MeasurementCard
-                    title="Sleep Duration"
-                    icon={FaBed}
-                    value={`${Math.floor(measurements.sleep.value / 60)}h ${measurements.sleep.value % 60}m`}
-                    date={measurements.sleep.measured_at}
-                  />
-                )}
-                
-                {measurements.steps && (
-                  <MeasurementCard
-                    title="Daily Steps"
-                    icon={FaRunning}
-                    value={measurements.steps.value.toLocaleString()}
-                    unit="steps"
-                    date={measurements.steps.measured_at}
-                  />
-                )}
-              </div>
-            )}
-          </>
-        )}
-        
-        {/* Connect more devices section */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect More Devices</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg shadow p-6 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center">
-              <FaPlus className="h-10 w-10 text-gray-400" />
-              <h3 className="mt-2 text-lg font-medium text-gray-900">Coming Soon</h3>
-              <p className="mt-1 text-sm text-gray-500">Support for more health devices is coming soon.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </AuthenticatedLayout>
-  );
+  )
 }

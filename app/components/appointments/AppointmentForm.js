@@ -1,8 +1,10 @@
+"use client"
+
 // components/appointments/AppointmentForm.js
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { format, addDays, isBefore, startOfDay, parse, set } from 'date-fns';
-import { FaCalendarAlt, FaClock, FaUserMd, FaVideo, FaPhoneAlt, FaHospital, FaInfoCircle } from 'react-icons/fa';
+import { useState, useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { format, addDays, isBefore, startOfDay, parse } from "date-fns"
+import { FaCalendarAlt, FaClock, FaVideo, FaPhoneAlt, FaHospital, FaInfoCircle } from "react-icons/fa"
 
 /**
  * Form for creating or editing appointments
@@ -15,81 +17,80 @@ import { FaCalendarAlt, FaClock, FaUserMd, FaVideo, FaPhoneAlt, FaHospital, FaIn
  * @param {boolean} props.isLoading - Loading state
  * @param {boolean} props.isEditing - Whether we're editing an existing appointment
  */
-const AppointmentForm = ({ 
+const AppointmentForm = ({
   appointment = null,
   providers = [],
   availableSlots = [],
   onSubmit,
   onCancel,
   isLoading = false,
-  isEditing = false
+  isEditing = false,
 }) => {
-  const [appointmentType, setAppointmentType] = useState(appointment?.appointment_type || 'video_consultation');
-  const [selectedDate, setSelectedDate] = useState(appointment?.scheduled_time 
-    ? new Date(appointment.scheduled_time) 
-    : addDays(new Date(), 1));
-  const [selectedProvider, setSelectedProvider] = useState(appointment?.provider_id || '');
-  const [filteredSlots, setFilteredSlots] = useState([]);
-  
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
+  const [appointmentType, setAppointmentType] = useState(appointment?.appointment_type || "video_consultation")
+  const [selectedDate, setSelectedDate] = useState(
+    appointment?.scheduled_time ? new Date(appointment.scheduled_time) : addDays(new Date(), 1),
+  )
+  const [selectedProvider, setSelectedProvider] = useState(appointment?.provider_id || "")
+  const [filteredSlots, setFilteredSlots] = useState([])
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
     defaultValues: {
-      provider_id: appointment?.provider_id || '',
-      appointment_date: appointment?.scheduled_time 
-        ? format(new Date(appointment.scheduled_time), 'yyyy-MM-dd')
-        : format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-      appointment_time: appointment?.scheduled_time 
-        ? format(new Date(appointment.scheduled_time), 'HH:mm')
-        : '09:00',
-      appointment_type: appointment?.appointment_type || 'video_consultation',
-      reason: appointment?.reason || '',
-      notes: appointment?.notes || '',
-    }
-  });
-  
-  const appointmentDate = watch('appointment_date');
-  const appointmentTime = watch('appointment_time');
-  
+      provider_id: appointment?.provider_id || "",
+      appointment_date: appointment?.scheduled_time
+        ? format(new Date(appointment.scheduled_time), "yyyy-MM-dd")
+        : format(addDays(new Date(), 1), "yyyy-MM-dd"),
+      appointment_time: appointment?.scheduled_time ? format(new Date(appointment.scheduled_time), "HH:mm") : "09:00",
+      appointment_type: appointment?.appointment_type || "video_consultation",
+      reason: appointment?.reason || "",
+      notes: appointment?.notes || "",
+    },
+  })
+
+  const appointmentDate = watch("appointment_date")
+  const appointmentTime = watch("appointment_time")
+
   // Update filtered time slots when date or provider changes
   useEffect(() => {
     if (appointmentDate && selectedProvider) {
-      const date = parse(appointmentDate, 'yyyy-MM-dd', new Date());
-      const providerSlots = availableSlots.filter(slot => 
-        slot.provider_id === selectedProvider && 
-        isBefore(startOfDay(date), new Date(slot.start_time))
-      );
-      setFilteredSlots(providerSlots);
+      const date = parse(appointmentDate, "yyyy-MM-dd", new Date())
+      const providerSlots = availableSlots.filter(
+        (slot) => slot.provider_id === selectedProvider && isBefore(startOfDay(date), new Date(slot.start_time)),
+      )
+      setFilteredSlots(providerSlots)
     } else {
-      setFilteredSlots([]);
+      setFilteredSlots([])
     }
-  }, [appointmentDate, selectedProvider, availableSlots]);
-  
+  }, [appointmentDate, selectedProvider, availableSlots])
+
   // Update form values when appointment type changes
   useEffect(() => {
-    setValue('appointment_type', appointmentType);
-  }, [appointmentType, setValue]);
-  
+    setValue("appointment_type", appointmentType)
+  }, [appointmentType, setValue])
+
   // Handle provider selection
   const handleProviderChange = (e) => {
-    setSelectedProvider(e.target.value);
-    setValue('provider_id', e.target.value);
-  };
-  
+    setSelectedProvider(e.target.value)
+    setValue("provider_id", e.target.value)
+  }
+
   // Handle date selection
   const handleDateChange = (e) => {
-    const date = e.target.value;
-    setSelectedDate(parse(date, 'yyyy-MM-dd', new Date()));
-    setValue('appointment_date', date);
-  };
-  
+    const date = e.target.value
+    setSelectedDate(parse(date, "yyyy-MM-dd", new Date()))
+    setValue("appointment_date", date)
+  }
+
   // Handle form submission
   const handleFormSubmit = (data) => {
     // Convert date and time to ISO format
-    const dateTime = parse(
-      `${data.appointment_date} ${data.appointment_time}`, 
-      'yyyy-MM-dd HH:mm', 
-      new Date()
-    );
-    
+    const dateTime = parse(`${data.appointment_date} ${data.appointment_time}`, "yyyy-MM-dd HH:mm", new Date())
+
     // Prepare data for submission
     const appointmentData = {
       provider_id: data.provider_id,
@@ -97,38 +98,36 @@ const AppointmentForm = ({
       appointment_type: data.appointment_type,
       reason: data.reason,
       notes: data.notes,
-    };
-    
+    }
+
     // If editing, include the appointment ID
     if (isEditing && appointment?.id) {
-      appointmentData.id = appointment.id;
+      appointmentData.id = appointment.id
     }
-    
-    onSubmit(appointmentData);
-  };
-  
+
+    onSubmit(appointmentData)
+  }
+
   // Format available time slots for display
   const formatTimeSlot = (slot) => {
-    const startTime = new Date(slot.start_time);
-    const endTime = new Date(slot.end_time);
-    return `${format(startTime, 'h:mm a')} - ${format(endTime, 'h:mm a')}`;
-  };
-  
+    const startTime = new Date(slot.start_time)
+    const endTime = new Date(slot.end_time)
+    return `${format(startTime, "h:mm a")} - ${format(endTime, "h:mm a")}`
+  }
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {/* Appointment Type Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Appointment Type
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Appointment Type</label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div
             className={`border rounded-md p-3 cursor-pointer ${
-              appointmentType === 'video_consultation'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300 hover:border-blue-300'
+              appointmentType === "video_consultation"
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-blue-300"
             }`}
-            onClick={() => setAppointmentType('video_consultation')}
+            onClick={() => setAppointmentType("video_consultation")}
           >
             <div className="flex items-center">
               <FaVideo className="h-5 w-5 text-blue-500 mr-2" />
@@ -136,14 +135,14 @@ const AppointmentForm = ({
             </div>
             <span className="block text-xs text-gray-500 mt-1">Meet with your provider online</span>
           </div>
-          
+
           <div
             className={`border rounded-md p-3 cursor-pointer ${
-              appointmentType === 'phone_consultation'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300 hover:border-blue-300'
+              appointmentType === "phone_consultation"
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-blue-300"
             }`}
-            onClick={() => setAppointmentType('phone_consultation')}
+            onClick={() => setAppointmentType("phone_consultation")}
           >
             <div className="flex items-center">
               <FaPhoneAlt className="h-5 w-5 text-green-500 mr-2" />
@@ -151,14 +150,12 @@ const AppointmentForm = ({
             </div>
             <span className="block text-xs text-gray-500 mt-1">Speak with your provider by phone</span>
           </div>
-          
+
           <div
             className={`border rounded-md p-3 cursor-pointer ${
-              appointmentType === 'in_person'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300 hover:border-blue-300'
+              appointmentType === "in_person" ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-300"
             }`}
-            onClick={() => setAppointmentType('in_person')}
+            onClick={() => setAppointmentType("in_person")}
           >
             <div className="flex items-center">
               <FaHospital className="h-5 w-5 text-purple-500 mr-2" />
@@ -167,10 +164,7 @@ const AppointmentForm = ({
             <span className="block text-xs text-gray-500 mt-1">Visit your provider's office</span>
           </div>
         </div>
-        <input
-          type="hidden"
-          {...register('appointment_type', { required: true })}
-        />
+        <input type="hidden" {...register("appointment_type", { required: true })} />
       </div>
 
       {/* Provider Selection */}
@@ -180,7 +174,7 @@ const AppointmentForm = ({
         </label>
         <select
           id="provider_id"
-          {...register('provider_id', { required: 'Please select a provider' })}
+          {...register("provider_id", { required: "Please select a provider" })}
           onChange={handleProviderChange}
           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         >
@@ -191,9 +185,7 @@ const AppointmentForm = ({
             </option>
           ))}
         </select>
-        {errors.provider_id && (
-          <p className="mt-1 text-sm text-red-600">{errors.provider_id.message}</p>
-        )}
+        {errors.provider_id && <p className="mt-1 text-sm text-red-600">{errors.provider_id.message}</p>}
       </div>
 
       {/* Date and Time Selection */}
@@ -205,29 +197,27 @@ const AppointmentForm = ({
           <input
             type="date"
             id="appointment_date"
-            {...register('appointment_date', { required: 'Date is required' })}
+            {...register("appointment_date", { required: "Date is required" })}
             onChange={handleDateChange}
-            min={format(addDays(new Date(), 1), 'yyyy-MM-dd')}
+            min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           />
-          {errors.appointment_date && (
-            <p className="mt-1 text-sm text-red-600">{errors.appointment_date.message}</p>
-          )}
+          {errors.appointment_date && <p className="mt-1 text-sm text-red-600">{errors.appointment_date.message}</p>}
         </div>
-        
+
         <div>
           <label htmlFor="appointment_time" className="block text-sm font-medium text-gray-700 mb-1">
             <FaClock className="inline-block mr-1 h-4 w-4" /> Time
           </label>
           <select
             id="appointment_time"
-            {...register('appointment_time', { required: 'Time is required' })}
+            {...register("appointment_time", { required: "Time is required" })}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           >
             <option value="">-- Select a time --</option>
             {filteredSlots.length > 0 ? (
               filteredSlots.map((slot, index) => (
-                <option key={index} value={format(new Date(slot.start_time), 'HH:mm')}>
+                <option key={index} value={format(new Date(slot.start_time), "HH:mm")}>
                   {formatTimeSlot(slot)}
                 </option>
               ))
@@ -248,9 +238,7 @@ const AppointmentForm = ({
               </>
             )}
           </select>
-          {errors.appointment_time && (
-            <p className="mt-1 text-sm text-red-600">{errors.appointment_time.message}</p>
-          )}
+          {errors.appointment_time && <p className="mt-1 text-sm text-red-600">{errors.appointment_time.message}</p>}
         </div>
       </div>
 
@@ -262,13 +250,11 @@ const AppointmentForm = ({
         <input
           type="text"
           id="reason"
-          {...register('reason', { required: 'Please provide a reason for your visit' })}
+          {...register("reason", { required: "Please provide a reason for your visit" })}
           placeholder="e.g., Annual checkup, Follow-up, Headache"
           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
-        {errors.reason && (
-          <p className="mt-1 text-sm text-red-600">{errors.reason.message}</p>
-        )}
+        {errors.reason && <p className="mt-1 text-sm text-red-600">{errors.reason.message}</p>}
       </div>
 
       {/* Additional Notes */}
@@ -279,7 +265,7 @@ const AppointmentForm = ({
         <textarea
           id="notes"
           rows="3"
-          {...register('notes')}
+          {...register("notes")}
           placeholder="Any additional information for your provider"
           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         ></textarea>
@@ -293,8 +279,8 @@ const AppointmentForm = ({
           </div>
           <div className="ml-3">
             <p className="text-sm text-blue-700">
-              This appointment and the information you provide are protected under HIPAA regulations.
-              Your health information will only be shared with your healthcare provider.
+              This appointment and the information you provide are protected under HIPAA regulations. Your health
+              information will only be shared with your healthcare provider.
             </p>
           </div>
         </div>
@@ -316,19 +302,30 @@ const AppointmentForm = ({
         >
           {isLoading ? (
             <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
-              {isEditing ? 'Updating...' : 'Scheduling...'}
+              {isEditing ? "Updating..." : "Scheduling..."}
             </>
+          ) : isEditing ? (
+            "Update Appointment"
           ) : (
-            isEditing ? 'Update Appointment' : 'Schedule Appointment'
+            "Schedule Appointment"
           )}
         </button>
       </div>
     </form>
-  );
-};
+  )
+}
 
-export default AppointmentForm;
+export default AppointmentForm

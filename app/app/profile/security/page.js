@@ -1,398 +1,373 @@
-// File: /app/profile/security/page.js
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { security } from '../../../lib/api';
-import AuthenticatedLayout from '../../../components/layout/AuthenticatedLayout';
-import { format, parseISO, subDays } from 'date-fns';
-import {
-  FaLock,
-  FaUserShield,
-  FaExclamationTriangle,
-  FaCheck,
-  FaTimes,
-  FaInfoCircle,
-  FaKey,
-  FaMobileAlt,
-  FaHistory,
-  FaGlobe,
-  FaShieldAlt,
-  FaFingerprint
-} from 'react-icons/fa';
-import Link from 'next/link';
+import { useState, useEffect } from "react"
+import { useAuth } from "../../../contexts/AuthContext"
+import { security } from "../../../lib/api"
+import AuthenticatedLayout from "../../../components/layout/AuthenticatedLayout"
+import { FaShieldAlt, FaHistory, FaMobileAlt, FaExclamationTriangle } from "react-icons/fa"
 
-// HIPAA compliance banner component
-const HIPAABanner = () => {
-  return (
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-md">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <FaLock className="h-5 w-5 text-blue-500" />
-        </div>
-        <div className="ml-3">
-          <h3 className="text-sm font-medium text-blue-800">HIPAA Security Compliance</h3>
-          <div className="mt-2 text-sm text-blue-700">
-            <p>
-              This page contains security settings required for HIPAA compliance.
-              All security changes are logged for compliance purposes.
-            </p>
-          </div>
-          <div className="mt-2">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              Last accessed: {format(new Date(), 'MMM d, yyyy h:mm a')}
-            </span>
-          </div>
-        </div>
+export default function SecurityPage() {
+  const { user } = useAuth()
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [showQRCode, setShowQRCode] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [securityError, setSecurityError] = useState(null)
+  const [securitySuccess, setSecuritySuccess] = useState(null)
+  const [loginHistory, setLoginHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+
+    // Initialize 2FA state from user data
+    setTwoFactorEnabled(user.two_factor_enabled || false)
+
+    // Fetch login history
+    const fetchLoginHistory = async () => {
+      try {
+        setLoadingHistory(true)
+        const response = await security.getLoginHistory()
+        setLoginHistory(response.history || [])
+      } catch (err) {
+        console.error("Error fetching login history:", err)
+        setSecurityError("Failed to load login history. Please try again later.")
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+
+    fetchLoginHistory()
+  }, [user])
+
+  const handleEnable2FA = async () => {
+    try {
+      setIsSubmitting(true)
+      setSecurityError(null)
+
+      // Request 2FA setup
+      const response = await security.setup2FA()
+
+      if (response.qr_code_url) {
+        setQrCodeUrl(response.qr_code_url)
+        setShowQRCode(true)
+      } else {
+        throw new Error("Failed to generate QR code for 2FA setup")
+      }
+    } catch (error) {
+      console.error("Error setting up 2FA:", error)
+      setSecurityError(error.message || "Failed to set up two-factor authentication. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleVerify2FA = async () => {
+    try {
+      setIsSubmitting(true)
+      setSecurityError(null)
+
+      // Verify 2FA setup
+      await security.verify2FA(verificationCode)
+
+      setTwoFactorEnabled(true)
+      setShowQRCode(false)
+      setVerificationCode("")
+      setSecuritySuccess("Two-factor authentication has been enabled successfully.")
+
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setSecuritySuccess(null)
+      }, 5000)
+    } catch (error) {
+      console.error("Error verifying 2FA:", error)
+      setSecurityError(
+        error.message || "Failed to verify two-factor authentication. Please check your code and try again.",
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    try {
+      setIsSubmitting(true)
+      setSecurityError(null)
+
+      // Disable 2FA
+      await security.disable2FA()
+
+      setTwoFactorEnabled(false)
+      setSecuritySuccess("Two-factor authentication has been disabled.")
+
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setSecuritySuccess(null)
+      }, 5000)
+    } catch (error) {
+      console.error("Error disabling 2FA:", error)
+      setSecurityError(error.message || "Failed to disable two-factor authentication. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-gray-500">Loading...</p>
       </div>
-    </div>
-  );
-};
+    )
+  }
 
-// Security status card component
-const SecurityStatusCard = ({ title, status, description, icon: Icon, actionText, actionLink }) => {
-  const getStatusColor = () => {
-    switch (status) {
-      case 'secure':
-        return 'bg-green-100 text-green-800';
-      case 'warning':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'danger':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'secure':
-        return <FaCheck className="h-4 w-4 text-green-500" />;
-      case 'warning':
-        return <FaExclamationTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'danger':
-        return <FaTimes className="h-4 w-4 text-red-500" />;
-      default:
-        return <FaInfoCircle className="h-4 w-4 text-gray-500" />;
-    }
-  };
-  
-  const getStatusText = () => {
-    switch (status) {
-      case 'secure':
-        return 'Secure';
-      case 'warning':
-        return 'Warning';
-      case 'danger':
-        return 'Action Required';
-      default:
-        return 'Unknown';
-    }
-  };
-  
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center">
-          <div className="rounded-full p-2 bg-blue-100 text-blue-600">
-            <Icon className="h-5 w-5" />
-          </div>
-          <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
-        </div>
-      </div>
-      
-      <div className="px-6 py-4">
-        <div className="flex items-center mb-2">
-          {getStatusIcon()}
-          <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor()}`}>
-            {getStatusText()}
-          </span>
-        </div>
-        
-        <p className="text-sm text-gray-600">{description}</p>
-      </div>
-      
-      {actionText && actionLink && (
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <Link
-            href={actionLink}
-            className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            {actionText}
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-};
+    <AuthenticatedLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6">Account Security</h1>
 
-// Recent activity item component
-const ActivityItem = ({ activity }) => {
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'login':
-        return <FaKey className="h-4 w-4 text-blue-500" />;
-      case 'password_change':
-        return <FaLock className="h-4 w-4 text-green-500" />;
-      case 'two_factor_update':
-        return <FaMobileAlt className="h-4 w-4 text-purple-500" />;
-      case 'security_setting_change':
-        return <FaUserShield className="h-4 w-4 text-yellow-500" />;
-      case 'logout':
-        return <FaKey className="h-4 w-4 text-gray-500" />;
-      default:
-        return <FaHistory className="h-4 w-4 text-gray-500" />;
-    }
-  };
-  
-  return (
-    <div className="border-b border-gray-200 pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0">
-      <div className="flex justify-between items-start">
-        <div className="flex items-start">
-          <div className="flex-shrink-0 mt-1">
-            {getActivityIcon(activity.type)}
+          {securitySuccess && (
+            <div
+              className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6"
+              role="alert"
+            >
+              <span className="block sm:inline">{securitySuccess}</span>
+            </div>
+          )}
+
+          {securityError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+              <span className="block sm:inline">{securityError}</span>
+            </div>
+          )}
+
+          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                    <svg
+                      className="h-6 w-6"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h2 className="text-lg font-semibold">Password Management</h2>
+                    <p className="text-gray-600">Update your password regularly to keep your account secure</p>
+                  </div>
+                </div>
+
+                <a
+                  href="/profile/change-password"
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Change Password
+                </a>
+              </div>
+            </div>
           </div>
-          <div className="ml-3">
-            <h3 className="text-md font-medium text-gray-900">{activity.description}</h3>
-            <div className="mt-1 flex items-center text-sm text-gray-500">
-              <FaGlobe className="h-4 w-4 mr-1" />
-              <span>{activity.ip_address}</span>
-              {activity.location && (
-                <>
-                  <span className="mx-1">•</span>
-                  <span>{activity.location}</span>
-                </>
+
+          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                    <FaShieldAlt className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4">
+                    <h2 className="text-lg font-semibold">Two-Factor Authentication</h2>
+                    <p className="text-gray-600">Add an extra layer of security to your account</p>
+                  </div>
+                </div>
+
+                {twoFactorEnabled ? (
+                  <button
+                    onClick={handleDisable2FA}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? "Disabling..." : "Disable 2FA"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleEnable2FA}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? "Enabling..." : "Enable 2FA"}
+                  </button>
+                )}
+              </div>
+
+              {showQRCode && (
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex flex-col items-center">
+                    <h3 className="text-lg font-medium mb-4">Set Up Two-Factor Authentication</h3>
+
+                    <div className="mb-4">
+                      <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
+                        <li>Download an authenticator app like Google Authenticator or Authy</li>
+                        <li>Scan the QR code below with the app</li>
+                        <li>Enter the 6-digit verification code from the app</li>
+                      </ol>
+                    </div>
+
+                    <div className="border border-gray-300 rounded-md p-4 mb-6">
+                      <img src={qrCodeUrl} alt="QR Code for 2FA setup" className="h-48 w-48" />
+                    </div>
+
+                    <div className="w-full max-w-xs">
+                      <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-1">
+                        Verification Code
+                      </label>
+                      <div className="flex">
+                        <input
+                          type="text"
+                          id="verificationCode"
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          placeholder="Enter 6-digit code"
+                          className="flex-1 block w-full px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerify2FA}
+                          disabled={isSubmitting || verificationCode.length !== 6}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSubmitting ? "Verifying..." : "Verify"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {twoFactorEnabled && !showQRCode && (
+                <div className="bg-green-50 border-l-4 border-green-400 p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <FaShieldAlt className="h-5 w-5 text-green-400" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-green-700">
+                        Two-factor authentication is enabled. Your account has an extra layer of security.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!twoFactorEnabled && !showQRCode && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <FaExclamationTriangle className="h-5 w-5 text-yellow-400" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        Two-factor authentication is not enabled. We strongly recommend enabling this feature to protect
+                        your account.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
-        </div>
-        <div className="text-sm text-gray-500">
-          {format(parseISO(activity.timestamp), 'MMM d, yyyy h:mm a')}
-        </div>
-      </div>
-    </div>
-  );
-};
 
-export default function SecurityPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [securityStatus, setSecurityStatus] = useState({});
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [error, setError] = useState(null);
-  
-  useEffect(() => {
-    const fetchSecurityData = async () => {
-      try {
-        // Fetch security status
-        const statusData = await security.getSecurityStatus();
-        setSecurityStatus(statusData);
-        
-        // Fetch recent activity
-        const activityData = await security.getRecentActivity();
-        setRecentActivity(activityData);
-      } catch (error) {
-        console.error('Error fetching security data:', error);
-        setError('Failed to load security data. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchSecurityData();
-  }, []);
-  
-  if (loading) {
-    return (
-      <AuthenticatedLayout>
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500"></div>
-        </div>
-      </AuthenticatedLayout>
-    );
-  }
-  
-  return (
-    <AuthenticatedLayout>
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Security Settings</h1>
-        </div>
-        
-        {/* HIPAA Compliance Banner */}
-        <HIPAABanner />
-        
-        {error && (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <FaExclamationTriangle className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Security Status */}
-        <div className="mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Security Status</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <SecurityStatusCard
-              title="Password"
-              status={securityStatus.password_status || 'warning'}
-              description={securityStatus.password_description || "Your password was last changed more than 90 days ago. Consider updating it for better security."}
-              icon={FaKey}
-              actionText="Change Password"
-              actionLink="/profile/change-password"
-            />
-            
-            <SecurityStatusCard
-              title="Two-Factor Authentication"
-              status={securityStatus.two_factor_status || 'danger'}
-              description={securityStatus.two_factor_description || "Two-factor authentication is not enabled. Enable it to add an extra layer of security."}
-              icon={FaMobileAlt}
-              actionText="Set Up 2FA"
-              actionLink="/profile/two-factor-setup"
-            />
-            
-            <SecurityStatusCard
-              title="Account Activity"
-              status={securityStatus.account_activity_status || 'secure'}
-              description={securityStatus.account_activity_description || "No suspicious activity detected in your recent account history."}
-              icon={FaHistory}
-              actionText="View Full Activity"
-              actionLink="/profile/activity"
-            />
-          </div>
-        </div>
-        
-        {/* Security Recommendations */}
-        <div className="mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Security Recommendations</h2>
-          
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center">
-                <div className="rounded-full p-2 bg-blue-100 text-blue-600">
-                  <FaShieldAlt className="h-5 w-5" />
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center mb-6">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                  <FaHistory className="h-6 w-6" />
                 </div>
-                <h3 className="ml-3 text-lg font-medium text-gray-900">Enhance Your Account Security</h3>
+                <div className="ml-4">
+                  <h2 className="text-lg font-semibold">Login History</h2>
+                  <p className="text-gray-600">Recent account activity</p>
+                </div>
               </div>
-            </div>
-            
-            <div className="px-6 py-4">
-              <ul className="space-y-4">
-                {!securityStatus.two_factor_enabled && (
-                  <li className="flex items-start">
-                    <FaExclamationTriangle className="h-5 w-5 text-yellow-500 mt-0.5 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">Enable Two-Factor Authentication</h4>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Two-factor authentication adds an extra layer of security to your account by requiring a second verification step when logging in.
-                      </p>
-                      <div className="mt-2">
-                        <Link
-                          href="/profile/two-factor-setup"
-                          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+
+              {loadingHistory ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : loginHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          Set up now
-                        </Link>
-                      </div>
-                    </div>
-                  </li>
-                )}
-                
-                {securityStatus.password_last_changed && 
-                 new Date(securityStatus.password_last_changed) < subDays(new Date(), 90) && (
-                  <li className="flex items-start">
-                    <FaExclamationTriangle className="h-5 w-5 text-yellow-500 mt-0.5 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">Update Your Password</h4>
-                      <p className="mt-1 text-sm text-gray-600">
-                        It's been over 90 days since you last changed your password. Regular password updates help keep your account secure.
-                      </p>
-                      <div className="mt-2">
-                        <Link
-                          href="/profile/change-password"
-                          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                          Date & Time
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          Change password
-                        </Link>
-                      </div>
-                    </div>
-                  </li>
-                )}
-                
-                <li className="flex items-start">
-                  <FaInfoCircle className="h-5 w-5 text-blue-500 mt-0.5 mr-3" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Review Recent Activity</h4>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Regularly check your account activity to ensure there are no unauthorized access attempts.
-                    </p>
-                    <div className="mt-2">
-                      <Link
-                        href="/profile/activity"
-                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                      >
-                        View activity
-                      </Link>
-                    </div>
-                  </div>
-                </li>
-                
-                <li className="flex items-start">
-                  <FaInfoCircle className="h-5 w-5 text-blue-500 mt-0.5 mr-3" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Use a Strong, Unique Password</h4>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Ensure your password is strong and not used for any other accounts. A strong password includes a mix of uppercase and lowercase letters, numbers, and special characters.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        
-        {/* Recent Activity */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-            
-            <Link
-              href="/profile/activity"
-              className="text-sm font-medium text-blue-600 hover:text-blue-500"
-            >
-              View All Activity
-            </Link>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Activity Log</h3>
-            </div>
-            
-            <div className="px-6 py-4">
-              {recentActivity.length === 0 ? (
-                <div className="text-center py-6">
-                  <FaHistory className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No recent activity</h3>
-                  <p className="mt-1 text-sm text-gray-500">No activity has been recorded for your account recently.</p>
+                          IP Address
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Device
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {loginHistory.map((login) => (
+                        <tr key={login.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(login.timestamp).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{login.ip_address}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <FaMobileAlt className="mr-2 text-gray-400" />
+                              {login.device}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                login.status === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {login.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <ActivityItem key={activity.id} activity={activity} />
-                  ))}
-                </div>
+                <p className="text-gray-500 text-center py-6">No login history available.</p>
               )}
             </div>
           </div>
         </div>
       </div>
     </AuthenticatedLayout>
-  );
+  )
 }

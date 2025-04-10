@@ -1,9 +1,11 @@
 "use client"
+
 import { createContext, useState, useEffect, useContext } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
-import { auth } from "../lib/api"
-import { setAuthData, getCurrentUser, isAuthenticated, initIdleTimer, logout } from "../lib/auth"
+import { auth } from "../lib/services/authService"
+import { isAuthenticated, initIdleTimer, logout } from "../lib/auth"
+import { useQuery } from "@tanstack/react-query"
 
 // Create context
 export const AuthContext = createContext()
@@ -16,29 +18,34 @@ export const AuthProvider = ({ children }) => {
   const [twoFactorUserId, setTwoFactorUserId] = useState(null)
   const router = useRouter()
 
-  // Load user on mount
+  // Use React Query to fetch current user
+  const {
+    data: currentUser,
+    isLoading: isUserLoading,
+    error: userError,
+  } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => auth.getCurrentUser(),
+    enabled: isAuthenticated(),
+    retry: false,
+    onSuccess: (data) => {
+      setUser(data)
+    },
+    onError: () => {
+      // If error fetching user, log out
+      logout()
+      setUser(null)
+    },
+  })
+
+  // Set loading state based on user query
   useEffect(() => {
-    const checkUser = async () => {
-      if (isAuthenticated()) {
-        try {
-          // Get current user from cookie
-          const cookieUser = getCurrentUser()
-          setUser(cookieUser)
-
-          // Optionally verify with server
-          const currentUser = await auth.getCurrentUser()
-          setUser(currentUser)
-        } catch (error) {
-          console.error("Error fetching current user:", error)
-          logout()
-        }
-      }
-
+    if (!isAuthenticated()) {
       setLoading(false)
+    } else {
+      setLoading(isUserLoading)
     }
-
-    checkUser()
-  }, [])
+  }, [isUserLoading])
 
   // Set up idle timer for session management
   useEffect(() => {
@@ -51,14 +58,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await auth.login(credentials)
 
-      if (response.requires_2fa) {
+      if (response.requires2FA) {
         // 2FA required
         setRequiresTwoFactor(true)
         setTwoFactorUserId(response.user_id)
         return { requires2FA: true }
       } else {
-        // Standard login
-        setAuthData(response.token, response.user)
+        // Standard login - cookies are set by the API route
         setUser(response.user)
         setRequiresTwoFactor(false)
         setTwoFactorUserId(null)
@@ -74,7 +80,6 @@ export const AuthProvider = ({ children }) => {
   const verify2FA = async (token) => {
     try {
       const response = await auth.verify2FA(twoFactorUserId, token)
-      setAuthData(response.token, response.user)
       setUser(response.user)
       setRequiresTwoFactor(false)
       setTwoFactorUserId(null)
@@ -116,11 +121,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const updatedUser = await auth.updateProfile(userData)
       setUser(updatedUser)
-
-      // Update stored user data
-      const token = getCurrentUser().token
-      setAuthData(token, updatedUser)
-
       toast.success("Profile updated successfully")
       return updatedUser
     } catch (error) {
@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Setup 2FA
-  const setup2FA = async () => {
+  const setupTwoFactor = async () => {
     try {
       return await auth.setup2FA()
     } catch (error) {
@@ -140,17 +140,12 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Confirm 2FA setup
-  const confirm2FA = async (token) => {
+  const confirmTwoFactor = async (token) => {
     try {
       const response = await auth.confirm2FA(token)
 
       // Update user with 2FA enabled
       setUser({ ...user, two_factor_enabled: true })
-
-      // Update stored user data
-      const currentToken = getCurrentUser().token
-      setAuthData(currentToken, { ...user, two_factor_enabled: true })
-
       toast.success("Two-factor authentication enabled")
       return response
     } catch (error) {
@@ -160,21 +155,48 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Disable 2FA
-  const disable2FA = async (password) => {
+  const disableTwoFactor = async (password) => {
     try {
       await auth.disable2FA(password)
 
       // Update user with 2FA disabled
       setUser({ ...user, two_factor_enabled: false })
-
-      // Update stored user data
-      const currentToken = getCurrentUser().token
-      setAuthData(currentToken, { ...user, two_factor_enabled: false })
-
       toast.success("Two-factor authentication disabled")
       return true
     } catch (error) {
       console.error("Disable 2FA error:", error)
+      throw error
+    }
+  }
+
+  // Update consent
+  const updateConsent = async (consentType, consented) => {
+    try {
+      await auth.updateConsent(consentType, consented)
+
+      // Update user with new consent setting
+      const updatedUser = { ...user }
+
+      switch (consentType) {
+        case "DATA_SHARING":
+          updatedUser.data_sharing_consent = consented
+          break
+        case "MEDICATION_ADHERENCE":
+          updatedUser.medication_adherence_monitoring_consent = consented
+          break
+        case "VITALS_MONITORING":
+          updatedUser.vitals_monitoring_consent = consented
+          break
+        case "RESEARCH":
+          updatedUser.research_consent = consented
+          break
+      }
+
+      setUser(updatedUser)
+      toast.success("Consent settings updated")
+      return true
+    } catch (error) {
+      console.error("Update consent error:", error)
       throw error
     }
   }
@@ -191,9 +213,10 @@ export const AuthProvider = ({ children }) => {
     register,
     logout: handleLogout,
     updateProfile,
-    setup2FA,
-    confirm2FA,
-    disable2FA,
+    setup2FA: setupTwoFactor,
+    confirm2FA: confirmTwoFactor,
+    disable2FA: disableTwoFactor,
+    updateConsent,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

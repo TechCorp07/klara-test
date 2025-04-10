@@ -1,561 +1,296 @@
-// File: /app/compliance/dashboard/page.js
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { audit } from '../../lib/api';
-import AuthenticatedLayout from '../../components/layout/AuthenticatedLayout';
-import { format, parseISO, subDays } from 'date-fns';
-import {
-  FaLock,
-  FaUserShield,
-  FaExclamationTriangle,
-  FaFileAlt,
-  FaDownload,
-  FaFilter,
-  FaSearch,
-  FaCalendarAlt,
-  FaUserCog,
-  FaDatabase,
-  FaEye,
-  FaEdit,
-  FaTrash,
-  FaSignInAlt,
-  FaSignOutAlt,
-  FaShareAlt,
-  FaExclamationCircle
-} from 'react-icons/fa';
+import { useState, useEffect } from "react"
+import { useAuth } from "../../../contexts/AuthContext"
+import { audit } from "../../../lib/api"
+import AuthenticatedLayout from "../../../components/layout/AuthenticatedLayout"
 
-// HIPAA compliance banner component
-const HIPAABanner = () => {
-  return (
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-md">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <FaLock className="h-5 w-5 text-blue-500" />
-        </div>
-        <div className="ml-3">
-          <h3 className="text-sm font-medium text-blue-800">HIPAA Compliance Monitoring</h3>
-          <div className="mt-2 text-sm text-blue-700">
-            <p>
-              This dashboard provides monitoring and reporting tools for HIPAA compliance. 
-              All access to this information is logged for security and compliance purposes.
-            </p>
-          </div>
-          <div className="mt-2">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              Last accessed: {format(new Date(), 'MMM d, yyyy h:mm a')}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+export default function ComplianceDashboard() {
+  const { user } = useAuth()
+  const [auditLogs, setAuditLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [timeRange, setTimeRange] = useState("7d")
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-// Metric card component
-const MetricCard = ({ title, value, icon: Icon, description, change, changeType }) => {
-  return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center">
-          <div className="rounded-full p-2 bg-blue-100 text-blue-600">
-            <Icon className="h-5 w-5" />
-          </div>
-          <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
-        </div>
-      </div>
-      
-      <div className="px-6 py-4">
-        <div className="flex items-baseline">
-          <p className="text-3xl font-semibold text-gray-900">{value}</p>
-        </div>
-        
-        {change && (
-          <div className={`mt-1 flex items-center text-sm ${
-            changeType === 'positive' ? 'text-green-600' : 
-            changeType === 'negative' ? 'text-red-600' : 
-            'text-gray-500'
-          }`}>
-            {changeType === 'positive' ? '↑' : 
-             changeType === 'negative' ? '↓' : 
-             '→'}
-            <span className="ml-1">{change}</span>
-          </div>
-        )}
-        
-        {description && (
-          <p className="mt-2 text-sm text-gray-600">{description}</p>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Audit event item component
-const AuditEventItem = ({ event }) => {
-  const getEventTypeIcon = (type) => {
-    switch (type) {
-      case 'create':
-        return <FaEdit className="h-4 w-4 text-green-500" />;
-      case 'read':
-        return <FaEye className="h-4 w-4 text-blue-500" />;
-      case 'update':
-        return <FaEdit className="h-4 w-4 text-yellow-500" />;
-      case 'delete':
-        return <FaTrash className="h-4 w-4 text-red-500" />;
-      case 'login':
-        return <FaSignInAlt className="h-4 w-4 text-green-500" />;
-      case 'logout':
-        return <FaSignOutAlt className="h-4 w-4 text-gray-500" />;
-      case 'access':
-        return <FaEye className="h-4 w-4 text-blue-500" />;
-      case 'error':
-        return <FaExclamationCircle className="h-4 w-4 text-red-500" />;
-      case 'export':
-        return <FaDownload className="h-4 w-4 text-purple-500" />;
-      case 'share':
-        return <FaShareAlt className="h-4 w-4 text-blue-500" />;
-      default:
-        return <FaDatabase className="h-4 w-4 text-gray-500" />;
-    }
-  };
-  
-  const getEventTypeLabel = (type) => {
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  };
-  
-  const getEventTypeColor = (type) => {
-    switch (type) {
-      case 'create':
-        return 'bg-green-100 text-green-800';
-      case 'read':
-        return 'bg-blue-100 text-blue-800';
-      case 'update':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'delete':
-        return 'bg-red-100 text-red-800';
-      case 'login':
-        return 'bg-green-100 text-green-800';
-      case 'logout':
-        return 'bg-gray-100 text-gray-800';
-      case 'access':
-        return 'bg-blue-100 text-blue-800';
-      case 'error':
-        return 'bg-red-100 text-red-800';
-      case 'export':
-        return 'bg-purple-100 text-purple-800';
-      case 'share':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  return (
-    <div className="border-b border-gray-200 pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0">
-      <div className="flex justify-between items-start">
-        <div className="flex items-start">
-          <div className="flex-shrink-0 mt-1">
-            {getEventTypeIcon(event.event_type)}
-          </div>
-          <div className="ml-3">
-            <div className="flex items-center">
-              <h3 className="text-md font-medium text-gray-900">{event.description}</h3>
-              <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
-                {getEventTypeLabel(event.event_type)}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-gray-600">
-              {event.resource_type}{event.resource_id ? ` #${event.resource_id}` : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col items-end">
-          <span className="text-sm text-gray-500">
-            {format(parseISO(event.timestamp), 'MMM d, yyyy h:mm a')}
-          </span>
-          <span className="mt-1 text-xs text-gray-500">
-            {event.ip_address}
-          </span>
-        </div>
-      </div>
-      
-      <div className="mt-2 ml-7 text-sm text-gray-500">
-        <span className="font-medium">User:</span> {event.user_details ? `${event.user_details.first_name} ${event.user_details.last_name}` : 'Unknown'}
-        <span className="mx-2">•</span>
-        <span className="font-medium">User Agent:</span> {event.user_agent ? event.user_agent.split(' ')[0] : 'Unknown'}
-      </div>
-    </div>
-  );
-};
-
-// Compliance report card component
-const ComplianceReportCard = ({ title, icon: Icon, description, status, lastRun, onViewReport }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'compliant':
-        return 'bg-green-100 text-green-800';
-      case 'non_compliant':
-        return 'bg-red-100 text-red-800';
-      case 'warning':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'compliant':
-        return 'Compliant';
-      case 'non_compliant':
-        return 'Non-Compliant';
-      case 'warning':
-        return 'Warning';
-      default:
-        return 'Unknown';
-    }
-  };
-  
-  return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center">
-          <div className="rounded-full p-2 bg-blue-100 text-blue-600">
-            <Icon className="h-5 w-5" />
-          </div>
-          <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
-        </div>
-      </div>
-      
-      <div className="px-6 py-4">
-        <div className="flex items-center mb-2">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-            {getStatusLabel(status)}
-          </span>
-          {lastRun && (
-            <span className="ml-2 text-xs text-gray-500">
-              Last run: {format(parseISO(lastRun), 'MMM d, yyyy')}
-            </span>
-          )}
-        </div>
-        
-        <p className="text-sm text-gray-600">{description}</p>
-      </div>
-      
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <button
-          type="button"
-          onClick={onViewReport}
-          className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <FaFileAlt className="mr-2 h-4 w-4 text-gray-500" />
-          View Report
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Date range selector component
-const DateRangeSelector = ({ selectedRange, onRangeChange }) => {
-  const ranges = [
-    { label: 'Today', value: 'today' },
-    { label: 'Yesterday', value: 'yesterday' },
-    { label: 'Last 7 Days', value: 'last_7_days' },
-    { label: 'Last 30 Days', value: 'last_30_days' },
-    { label: 'This Month', value: 'this_month' },
-    { label: 'Last Month', value: 'last_month' },
-    { label: 'Custom Range', value: 'custom' }
-  ];
-  
-  return (
-    <div className="flex items-center space-x-2">
-      <FaCalendarAlt className="h-4 w-4 text-gray-500" />
-      <select
-        value={selectedRange}
-        onChange={(e) => onRangeChange(e.target.value)}
-        className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-      >
-        {ranges.map((range) => (
-          <option key={range.value} value={range.value}>
-            {range.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
-
-export default function ComplianceDashboardPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState({});
-  const [auditEvents, setAuditEvents] = useState([]);
-  const [complianceReports, setComplianceReports] = useState([]);
-  const [dateRange, setDateRange] = useState('last_7_days');
-  const [error, setError] = useState(null);
-  
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    if (!user) return
+
+    const fetchAuditLogs = async () => {
       try {
-        // Fetch dashboard metrics
-        const metricsData = await audit.getDashboardMetrics();
-        setMetrics(metricsData);
-        
-        // Fetch audit events
-        const eventsData = await audit.getAuditEvents({ 
+        setLoading(true)
+        const response = await audit.getAuditLogs({
+          timeRange,
+          page,
           limit: 10,
-          date_range: dateRange
-        });
-        setAuditEvents(eventsData.results);
-        
-        // Fetch compliance reports
-        // This would be replaced with an actual API call
-        // For now, we'll use mock data
-        const mockReports = [
-          {
-            id: 1,
-            report_type: 'data_sharing',
-            title: 'Data Sharing Report',
-            description: 'Tracks all instances of PHI being shared with third parties.',
-            status: 'compliant',
-            last_run: new Date().toISOString(),
-            icon: FaShareAlt
-          },
-          {
-            id: 2,
-            report_type: 'minimum_necessary',
-            title: 'Minimum Necessary Rule',
-            description: 'Ensures only the minimum necessary PHI is accessed for each operation.',
-            status: 'warning',
-            last_run: subDays(new Date(), 7).toISOString(),
-            icon: FaDatabase
-          },
-          {
-            id: 3,
-            report_type: 'patient_access',
-            title: 'Patient Access Report',
-            description: 'Tracks all access to patient records by users.',
-            status: 'compliant',
-            last_run: subDays(new Date(), 3).toISOString(),
-            icon: FaUserShield
-          },
-          {
-            id: 4,
-            report_type: 'risk_assessment',
-            title: 'Security Risk Assessment',
-            description: 'Evaluates potential security risks and vulnerabilities.',
-            status: 'non_compliant',
-            last_run: subDays(new Date(), 45).toISOString(),
-            icon: FaExclamationTriangle
-          }
-        ];
-        
-        setComplianceReports(mockReports);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setError('Failed to load compliance dashboard data. Please try again later.');
+        })
+
+        setAuditLogs(response.results)
+        setTotalPages(response.total_pages)
+      } catch (err) {
+        console.error("Error fetching audit logs:", err)
+        setError("Failed to load audit logs. Please try again later.")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-    
-    fetchDashboardData();
-  }, [dateRange]);
-  
-  const handleDateRangeChange = (range) => {
-    setDateRange(range);
-  };
-  
-  const handleViewReport = (reportType) => {
-    // This would navigate to the report page
-    console.log('View report:', reportType);
-  };
-  
-  const handleExportAuditLog = () => {
-    // This would trigger an export of the audit log
-    console.log('Export audit log');
-  };
-  
-  if (loading) {
-    return (
-      <AuthenticatedLayout>
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500"></div>
-        </div>
-      </AuthenticatedLayout>
-    );
+    }
+
+    fetchAuditLogs()
+  }, [user, timeRange, page])
+
+  const handleTimeRangeChange = (e) => {
+    setTimeRange(e.target.value)
+    setPage(1)
   }
-  
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage)
+  }
+
+  if (!user || (user.role !== "compliance" && user.role !== "admin" && user.role !== "superadmin")) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-red-500">You do not have permission to access this page.</p>
+      </div>
+    )
+  }
+
   return (
     <AuthenticatedLayout>
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Compliance Dashboard</h1>
-          
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={handleExportAuditLog}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <FaDownload className="mr-2 h-4 w-4 text-gray-500" />
-              Export Audit Log
-            </button>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Compliance Dashboard</h1>
+
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <div>
+              <h2 className="text-xl font-semibold">Audit Log Activity</h2>
+              <p className="text-gray-600">Review system activity and security events</p>
+            </div>
+
+            <div>
+              <label htmlFor="timeRange" className="block text-sm font-medium text-gray-700 mb-1">
+                Time Range
+              </label>
+              <select
+                id="timeRange"
+                value={timeRange}
+                onChange={handleTimeRangeChange}
+                className="block w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              >
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="90d">Last 90 Days</option>
+              </select>
+            </div>
           </div>
         </div>
-        
-        {/* HIPAA Compliance Banner */}
-        <HIPAABanner />
-        
-        {error && (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <FaExclamationTriangle className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">{error}</p>
-              </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Timestamp
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      User
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Action
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Resource
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      IP Address
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{log.user_name}</div>
+                        <div className="text-sm text-gray-500">{log.user_role}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.action}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {log.resource_type}: {log.resource_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.ip_address}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            log.status === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {log.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => handlePageChange(Math.max(1, page - 1))}
+                    disabled={page === 1}
+                    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                      page === 1 ? "text-gray-400 bg-gray-100" : "text-gray-700 bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                    disabled={page === totalPages}
+                    className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                      page === totalPages ? "text-gray-400 bg-gray-100" : "text-gray-700 bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{(page - 1) * 10 + 1}</span> to{" "}
+                      <span className="font-medium">{Math.min(page * 10, auditLogs.length)}</span> of{" "}
+                      <span className="font-medium">{auditLogs.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(Math.max(1, page - 1))}
+                        disabled={page === 1}
+                        className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 ${
+                          page === 1 ? "text-gray-400 bg-gray-100" : "text-gray-500 bg-white hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="sr-only">Previous</span>
+                        <svg
+                          className="h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Page numbers */}
+                      {[...Array(totalPages).keys()].map((i) => (
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i + 1)}
+                          className={`relative inline-flex items-center px-4 py-2 border ${
+                            page === i + 1
+                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                          } text-sm font-medium`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                        disabled={page === totalPages}
+                        className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 ${
+                          page === totalPages ? "text-gray-400 bg-gray-100" : "text-gray-500 bg-white hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="sr-only">Next</span>
+                        <svg
+                          className="h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
-        
-        {/* Metrics */}
-        <div className="mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Compliance Metrics</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <MetricCard
-              title="Total PHI Accesses"
-              value={metrics.total_phi_accesses || 0}
-              icon={FaEye}
-              description="Total number of PHI access events"
-              change={metrics.phi_access_change || "+12%"}
-              changeType={metrics.phi_access_change_type || "neutral"}
-            />
-            
-            <MetricCard
-              title="Data Sharing Events"
-              value={metrics.data_sharing_events || 0}
-              icon={FaShareAlt}
-              description="Number of times PHI was shared"
-              change={metrics.data_sharing_change || "-5%"}
-              changeType={metrics.data_sharing_change_type || "positive"}
-            />
-            
-            <MetricCard
-              title="Security Incidents"
-              value={metrics.security_incidents || 0}
-              icon={FaExclamationTriangle}
-              description="Number of security incidents"
-              change={metrics.security_incidents_change || "0"}
-              changeType={metrics.security_incidents_change_type || "positive"}
-            />
-            
-            <MetricCard
-              title="Compliance Score"
-              value={metrics.compliance_score || "85%"}
-              icon={FaUserShield}
-              description="Overall HIPAA compliance score"
-              change={metrics.compliance_score_change || "+3%"}
-              changeType={metrics.compliance_score_change_type || "positive"}
-            />
+
+        {/* Security Metrics Section */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold mb-2">Failed Login Attempts</h3>
+            <p className="text-3xl font-bold text-red-600">24</p>
+            <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
           </div>
-        </div>
-        
-        {/* Compliance Reports */}
-        <div className="mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Compliance Reports</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {complianceReports.map((report) => (
-              <ComplianceReportCard
-                key={report.id}
-                title={report.title}
-                icon={report.icon}
-                description={report.description}
-                status={report.status}
-                lastRun={report.last_run}
-                onViewReport={() => handleViewReport(report.report_type)}
-              />
-            ))}
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold mb-2">PHI Access Events</h3>
+            <p className="text-3xl font-bold text-blue-600">156</p>
+            <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
           </div>
-        </div>
-        
-        {/* Audit Log */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-medium text-gray-900">Recent Audit Events</h2>
-            
-            <div className="flex space-x-3">
-              <DateRangeSelector
-                selectedRange={dateRange}
-                onRangeChange={handleDateRangeChange}
-              />
-              
-              <button
-                type="button"
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <FaFilter className="mr-2 h-4 w-4 text-gray-500" />
-                Filter
-              </button>
-              
-              <button
-                type="button"
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <FaSearch className="mr-2 h-4 w-4 text-gray-500" />
-                Search
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Audit Log</h3>
-            </div>
-            
-            <div className="px-6 py-4">
-              {auditEvents.length === 0 ? (
-                <div className="text-center py-6">
-                  <FaFileAlt className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No audit events</h3>
-                  <p className="mt-1 text-sm text-gray-500">No audit events found for the selected time period.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {auditEvents.map((event) => (
-                    <AuditEventItem key={event.id} event={event} />
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="flex justify-between items-center">
-                <button
-                  type="button"
-                  onClick={handleExportAuditLog}
-                  className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <FaDownload className="mr-2 h-4 w-4 text-gray-500" />
-                  Export
-                </button>
-                
-                <a
-                  href="/compliance/audit-log"
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                >
-                  View Full Audit Log
-                </a>
-              </div>
-            </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold mb-2">Security Alerts</h3>
+            <p className="text-3xl font-bold text-yellow-600">3</p>
+            <p className="text-sm text-gray-500 mt-1">Require attention</p>
           </div>
         </div>
       </div>
     </AuthenticatedLayout>
-  );
+  )
 }

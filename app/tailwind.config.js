@@ -78,7 +78,7 @@ module.exports = {
       },
     },
   },
-  plugins: [require("@tailwindcss/forms"), require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate")],
   // Safely ensure any class combinations are generated
   safelist: [
     "bg-red-100",

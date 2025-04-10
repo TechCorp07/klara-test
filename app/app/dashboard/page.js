@@ -1,335 +1,164 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { format } from 'date-fns';
-import { useAuth } from '../../contexts/AuthContext';
-import { telemedicine, healthcare, wearables } from '../../lib/api';
-import AuthenticatedLayout from '../../components/layout/AuthenticatedLayout';
-import {
-  FaCalendarAlt,
-  FaCapsules,
-  FaComments,
-  FaFileAlt,
-  FaHeartbeat,
-  FaExclamationTriangle,
-} from 'react-icons/fa';
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
+import { useQuery } from "@tanstack/react-query"
+import { healthcare } from "@/lib/services/healthcareService"
+import { telemedicine } from "@/lib/services/telemedicineService"
+import { toast } from "react-toastify"
 
-// Dashboard stat item component
-const StatItem = ({ icon: Icon, title, value, href, color }) => {
-  return (
-    <Link 
-      href={href} 
-      className={`bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow ${color ? `border-l-4 border-${color}-500` : ''}`}
-    >
-      <div className="flex items-center">
-        <div className={`rounded-full p-3 ${color ? `bg-${color}-100 text-${color}-500` : 'bg-blue-100 text-blue-500'}`}>
-          <Icon className="h-6 w-6" />
-        </div>
-        <div className="ml-4">
-          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-          <p className="text-2xl font-semibold">{value}</p>
-        </div>
-      </div>
-    </Link>
-  );
-};
-
-// Dashboard overview component
-const DashboardOverview = ({ user }) => {
-  const [loading, setLoading] = useState(true);
+export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false)
+  const { user } = useAuth()
+  const router = useRouter()
   const [stats, setStats] = useState({
     upcomingAppointments: 0,
-    activePrescriptions: 0,
-    unreadMessages: 0,
-    pendingLabResults: 0,
-    allergies: 0,
-    withingsConnected: false,
-  });
-  const [appointments, setAppointments] = useState([]);
-  const [medications, setMedications] = useState([]);
-  
+    pendingMessages: 0,
+    medicationReminders: 0,
+    recentVitals: [],
+  })
+
+  // Set mounted state after component mounts
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch upcoming appointments
-        const appointmentsData = await telemedicine.getUpcomingAppointments();
-        setAppointments(appointmentsData);
-        setStats(prev => ({ ...prev, upcomingAppointments: appointmentsData.length }));
-        
-        // Fetch medical record
-        const medicalRecords = await healthcare.getMedicalRecords(user.id);
-        
-        if (medicalRecords.length > 0) {
-          const medicalRecordId = medicalRecords[0].id;
-          
-          // Fetch medications
-          const medicationsData = await healthcare.getMedications(medicalRecordId);
-          setMedications(medicationsData.filter(med => med.active));
-          setStats(prev => ({ 
-            ...prev, 
-            activePrescriptions: medicationsData.filter(med => med.active).length 
-          }));
-          
-          // Fetch allergies
-          const allergiesData = await healthcare.getAllergies(medicalRecordId);
-          setStats(prev => ({ ...prev, allergies: allergiesData.length }));
-          
-          // Fetch lab tests
-          const labTestsData = await healthcare.getLabTests(medicalRecordId);
-          const pendingTests = labTestsData.filter(test => test.status === 'pending');
-          setStats(prev => ({ ...prev, pendingLabResults: pendingTests.length }));
-        }
-        
-        // Check if Withings is connected
-        const withingsProfile = await wearables.getWithingsProfile();
-        setStats(prev => ({ ...prev, withingsConnected: !!withingsProfile }));
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
+    setMounted(true)
+  }, [])
+
+  // Fetch upcoming appointments
+  const { data: appointments } = useQuery({
+    queryKey: ["upcomingAppointments"],
+    queryFn: () => telemedicine.getUpcomingAppointments(),
+    enabled: !!user && mounted,
+    onError: (error) => {
+      if (mounted) {
+        toast.error("Failed to load upcoming appointments")
       }
-    };
-    
-    fetchDashboardData();
-  }, [user.id]);
-  
-  if (loading) {
+      console.error("Error fetching appointments:", error)
+    },
+  })
+
+  // Fetch medical records if user is a patient
+  const { data: medicalRecords } = useQuery({
+    queryKey: ["medicalRecords", user?.id],
+    queryFn: () => healthcare.getMedicalRecords(user?.id),
+    enabled: !!user && user.role === "patient" && mounted,
+    onError: (error) => {
+      if (mounted) {
+        toast.error("Failed to load medical records")
+      }
+      console.error("Error fetching medical records:", error)
+    },
+  })
+
+  // Update dashboard stats when data is loaded
+  useEffect(() => {
+    if (mounted && appointments) {
+      setStats((prev) => ({
+        ...prev,
+        upcomingAppointments: appointments.results?.length || 0,
+      }))
+    }
+  }, [appointments, mounted])
+
+  // Don't render anything during SSR
+  if (!mounted) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500"></div>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+        </div>
       </div>
-    );
+    )
   }
-  
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatItem 
-          icon={FaCalendarAlt} 
-          title="Upcoming Appointments"
-          value={stats.upcomingAppointments}
-          href="/appointments"
-          color="blue"
-        />
-        <StatItem 
-          icon={FaCapsules} 
-          title="Active Medications"
-          value={stats.activePrescriptions}
-          href="/medical-records/medications"
-          color="green"
-        />
-        <StatItem 
-          icon={FaFileAlt} 
-          title="Pending Lab Results"
-          value={stats.pendingLabResults}
-          href="/medical-records/lab-results"
-          color="purple"
-        />
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+
+      {/* Welcome message */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-2">Welcome, {user?.first_name || "User"}!</h2>
+        <p className="text-gray-600">Here's your health summary and upcoming activities.</p>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming appointments */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Upcoming Appointments</h3>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {appointments.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                No upcoming appointments
-              </div>
-            ) : (
-              appointments.slice(0, 3).map((appointment) => (
-                <Link 
-                  key={appointment.id} 
-                  href={`/appointments/${appointment.id}`}
-                  className="block hover:bg-gray-50"
-                >
-                  <div className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-600">
-                          {format(new Date(appointment.scheduled_time), 'MMMM d, yyyy')}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {format(new Date(appointment.scheduled_time), 'h:mm a')} - 
-                          {format(new Date(appointment.end_time), 'h:mm a')}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-900">{appointment.reason}</p>
-                      </div>
-                      <div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium 
-                          ${appointment.status === 'scheduled' ? 'bg-green-100 text-green-800' : 
-                            appointment.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'}`}>
-                          {appointment.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Dr. {appointment.provider_details.first_name} {appointment.provider_details.last_name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {appointment.appointment_type_display || appointment.appointment_type}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
-            {appointments.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50">
-                <Link 
-                  href="/appointments" 
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                >
-                  View all appointments
-                </Link>
-              </div>
-            )}
-          </div>
+
+      {/* Stats overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-2">Upcoming Appointments</h3>
+          <p className="text-3xl font-bold text-blue-600">{stats.upcomingAppointments}</p>
+          <button onClick={() => router.push("/appointments")} className="mt-4 text-blue-600 hover:text-blue-800">
+            View all appointments →
+          </button>
         </div>
-        
-        {/* Active Medications */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Active Medications</h3>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {medications.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                No active medications
-              </div>
-            ) : (
-              medications.slice(0, 3).map((medication) => (
-                <div key={medication.id} className="px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{medication.name}</p>
-                      <p className="text-sm text-gray-500">{medication.dosage}</p>
-                    </div>
-                    <div>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Active
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      {medication.frequency}
-                    </p>
-                    {medication.reason && (
-                      <p className="text-sm text-gray-500">
-                        For: {medication.reason}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-            {medications.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50">
-                <Link 
-                  href="/medical-records/medications" 
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                >
-                  View all medications
-                </Link>
-              </div>
-            )}
-          </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-2">Pending Messages</h3>
+          <p className="text-3xl font-bold text-blue-600">{stats.pendingMessages}</p>
+          <button onClick={() => router.push("/messages")} className="mt-4 text-blue-600 hover:text-blue-800">
+            View all messages →
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-2">Medication Reminders</h3>
+          <p className="text-3xl font-bold text-blue-600">{stats.medicationReminders}</p>
+          <button onClick={() => router.push("/medications")} className="mt-4 text-blue-600 hover:text-blue-800">
+            View medications →
+          </button>
         </div>
       </div>
-      
-      {/* Health device connection */}
-      {!stats.withingsConnected && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <FaExclamationTriangle className="h-6 w-6 text-yellow-400" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                Connect your health devices to automatically track your health data.
-              </p>
-              <div className="mt-2">
-                <Link
-                  href="/health-devices"
-                  className="text-sm font-medium text-yellow-700 hover:text-yellow-600"
-                >
-                  Connect a device &rarr;
-                </Link>
+
+      {/* Recent activity */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+        {appointments && appointments.results && appointments.results.length > 0 ? (
+          <div className="space-y-4">
+            {appointments.results.slice(0, 3).map((appointment) => (
+              <div key={appointment.id} className="border-b pb-4">
+                <p className="font-medium">{new Date(appointment.scheduled_time).toLocaleString()}</p>
+                <p className="text-gray-600">
+                  {appointment.appointment_type} with Dr. {appointment.provider_name}
+                </p>
+                <p className="text-sm text-gray-500">{appointment.reason}</p>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Dashboard page component
-export default function DashboardPage() {
-  const { user } = useAuth();
-  
-  if (!user) {
-    return null;
-  }
-  
-  return (
-    <AuthenticatedLayout>
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">
-          Welcome back, {user.first_name}!
-        </h1>
-        
-        {/* Render dashboard based on user role */}
-        {user.role === 'patient' && <DashboardOverview user={user} />}
-        {user.role === 'provider' && <ProviderDashboard user={user} />}
-        {user.role === 'pharmco' && <PharmacyDashboard user={user} />}
-        {user.role === 'insurer' && <InsurerDashboard user={user} />}
-        {user.role === 'admin' && <AdminDashboard user={user} />}
+        ) : (
+          <p className="text-gray-500">No recent activity to display.</p>
+        )}
       </div>
-    </AuthenticatedLayout>
-  );
-}
 
-// Placeholder components for other roles
-function ProviderDashboard({ user }) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Provider Dashboard</h2>
-      <p className="text-gray-600">Provider-specific dashboard content would go here.</p>
+      {/* Quick actions */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => router.push("/appointments/new")}
+            className="bg-blue-100 hover:bg-blue-200 text-blue-800 py-4 px-6 rounded-lg text-center"
+          >
+            Schedule Appointment
+          </button>
+          <button
+            onClick={() => router.push("/messages/new")}
+            className="bg-green-100 hover:bg-green-200 text-green-800 py-4 px-6 rounded-lg text-center"
+          >
+            Send Message
+          </button>
+          <button
+            onClick={() => router.push("/medical-records")}
+            className="bg-purple-100 hover:bg-purple-200 text-purple-800 py-4 px-6 rounded-lg text-center"
+          >
+            View Medical Records
+          </button>
+          <button
+            onClick={() => router.push("/health-devices")}
+            className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-4 px-6 rounded-lg text-center"
+          >
+            Connect Health Device
+          </button>
+        </div>
+      </div>
     </div>
-  );
-}
-
-function PharmacyDashboard({ user }) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Pharmacy Dashboard</h2>
-      <p className="text-gray-600">Pharmacy-specific dashboard content would go here.</p>
-    </div>
-  );
-}
-
-function InsurerDashboard({ user }) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Insurer Dashboard</h2>
-      <p className="text-gray-600">Insurer-specific dashboard content would go here.</p>
-    </div>
-  );
-}
-
-function AdminDashboard({ user }) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Admin Dashboard</h2>
-      <p className="text-gray-600">Admin-specific dashboard content would go here.</p>
-    </div>
-  );
+  )
 }
