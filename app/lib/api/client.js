@@ -1,9 +1,7 @@
 // lib/api/client.js
 import axios from 'axios';
 import { toast } from 'react-toastify';
-
-// Base API configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.klararety.com/api';
+import { API_URL } from '../env';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -46,7 +44,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         // If refresh fails, redirect to login
         if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+          window.location.href = '/login?session=expired';
         }
         return Promise.reject(refreshError);
       }
@@ -77,7 +75,7 @@ apiClient.interceptors.response.use(
 );
 
 // Helper methods
-const buildParams = (params = {}) => {
+export const buildParams = (params = {}) => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {

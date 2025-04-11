@@ -100,9 +100,9 @@ class ErrorBoundary extends React.Component {
 
     // Otherwise render default error UI
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" role="alert" aria-live="assertive">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md text-center">
-          <FaExclamationTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+          <FaExclamationTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" aria-hidden="true" />
           
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
           
@@ -128,7 +128,7 @@ class ErrorBoundary extends React.Component {
               href="/"
               className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <FaHome className="mr-2 h-4 w-4" />
+              <FaHome className="mr-2 h-4 w-4" aria-hidden="true" />
               Go to homepage
             </Link>
           </div>
