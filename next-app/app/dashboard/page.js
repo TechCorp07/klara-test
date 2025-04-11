@@ -1,25 +1,30 @@
+// app/dashboard/page.js
 "use client";
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'react-toastify';
 import { healthcare } from '@/lib/services/healthcareService';
 import { telemedicine } from '@/lib/services/telemedicineService';
-import { toast } from 'react-toastify';
+import Link from 'next/link';
+import StatsCard from '@/components/dashboard/StatsCard';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
+import { FaCalendarAlt, FaComments, FaFileMedical, FaPrescriptionBottleAlt } from 'react-icons/fa';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState({
-    upcomingAppointments: 0,
-    pendingMessages: 0,
-    medicationReminders: 0,
-    recentVitals: []
+    appointments: 0,
+    messages: 0,
+    medications: 0
   });
 
   // Fetch upcoming appointments
-  const { data: appointments } = useQuery({
+  const { data: appointments, isLoading: isLoadingAppointments } = useQuery({
     queryKey: ['upcomingAppointments'],
     queryFn: () => telemedicine.getUpcomingAppointments(),
     enabled: !!user,
@@ -30,7 +35,7 @@ export default function DashboardPage() {
   });
 
   // Fetch medical records if user is a patient
-  const { data: medicalRecords } = useQuery({
+  const { data: medicalRecords, isLoading: isLoadingRecords } = useQuery({
     queryKey: ['medicalRecords', user?.id],
     queryFn: () => healthcare.getMedicalRecords(user?.id),
     enabled: !!user && user.role === 'patient',
@@ -45,10 +50,26 @@ export default function DashboardPage() {
     if (appointments) {
       setStats(prev => ({
         ...prev,
-        upcomingAppointments: appointments.results?.length || 0
+        appointments: appointments.results?.length || 0
       }));
     }
   }, [appointments]);
+
+  // If user has a role-specific dashboard, redirect them
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'admin' || user.role === 'superadmin') {
+        router.push('/admin-dashboard');
+      } else if (user.role === 'patient') {
+        router.push('/patient-dashboard');
+      }
+      // Keep other roles on the general dashboard
+    }
+  }, [user, router]);
+
+  if (isLoadingAppointments || isLoadingRecords) {
+    return <LoadingSkeleton type="card" count={3} />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -64,38 +85,32 @@ export default function DashboardPage() {
       
       {/* Stats overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-2">Upcoming Appointments</h3>
-          <p className="text-3xl font-bold text-blue-600">{stats.upcomingAppointments}</p>
-          <button 
-            onClick={() => router.push('/appointments')}
-            className="mt-4 text-blue-600 hover:text-blue-800"
-          >
-            View all appointments →
-          </button>
-        </div>
+        <StatsCard
+          title="Upcoming Appointments"
+          value={stats.appointments}
+          link="/appointments"
+          linkText="View all appointments →"
+          icon={<FaCalendarAlt className="h-6 w-6 text-blue-500" />}
+          textColorClass="text-blue-600"
+        />
         
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-2">Pending Messages</h3>
-          <p className="text-3xl font-bold text-blue-600">{stats.pendingMessages}</p>
-          <button 
-            onClick={() => router.push('/messages')}
-            className="mt-4 text-blue-600 hover:text-blue-800"
-          >
-            View all messages →
-          </button>
-        </div>
+        <StatsCard
+          title="Pending Messages"
+          value={stats.messages}
+          link="/messages"
+          linkText="View all messages →"
+          icon={<FaComments className="h-6 w-6 text-green-500" />}
+          textColorClass="text-green-600"
+        />
         
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-2">Medication Reminders</h3>
-          <p className="text-3xl font-bold text-blue-600">{stats.medicationReminders}</p>
-          <button 
-            onClick={() => router.push('/medications')}
-            className="mt-4 text-blue-600 hover:text-blue-800"
-          >
-            View medications →
-          </button>
-        </div>
+        <StatsCard
+          title="Medication Reminders"
+          value={stats.medications}
+          link="/medications"
+          linkText="View medications →"
+          icon={<FaPrescriptionBottleAlt className="h-6 w-6 text-purple-500" />}
+          textColorClass="text-purple-600"
+        />
       </div>
       
       {/* Recent activity */}
@@ -120,30 +135,30 @@ export default function DashboardPage() {
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button 
-            onClick={() => router.push('/appointments/new')}
-            className="bg-blue-100 hover:bg-blue-200 text-blue-800 py-4 px-6 rounded-lg text-center"
+          <Link
+            href="/appointments/new"
+            className="bg-blue-100 hover:bg-blue-200 text-blue-800 py-4 px-6 rounded-lg text-center transition-colors"
           >
             Schedule Appointment
-          </button>
-          <button 
-            onClick={() => router.push('/messages/new')}
-            className="bg-green-100 hover:bg-green-200 text-green-800 py-4 px-6 rounded-lg text-center"
+          </Link>
+          <Link
+            href="/messages/new"
+            className="bg-green-100 hover:bg-green-200 text-green-800 py-4 px-6 rounded-lg text-center transition-colors"
           >
             Send Message
-          </button>
-          <button 
-            onClick={() => router.push('/medical-records')}
-            className="bg-purple-100 hover:bg-purple-200 text-purple-800 py-4 px-6 rounded-lg text-center"
+          </Link>
+          <Link
+            href="/medical-records"
+            className="bg-purple-100 hover:bg-purple-200 text-purple-800 py-4 px-6 rounded-lg text-center transition-colors"
           >
             View Medical Records
-          </button>
-          <button 
-            onClick={() => router.push('/health-devices')}
-            className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-4 px-6 rounded-lg text-center"
+          </Link>
+          <Link
+            href="/health-devices"
+            className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-4 px-6 rounded-lg text-center transition-colors"
           >
             Connect Health Device
-          </button>
+          </Link>
         </div>
       </div>
     </div>

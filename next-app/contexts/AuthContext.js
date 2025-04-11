@@ -1,3 +1,4 @@
+// contexts/AuthContext.js
 "use client";
 
 import { createContext, useState, useEffect, useContext, useCallback } from "react";
@@ -20,7 +21,9 @@ export const AuthProvider = ({ children }) => {
     queryKey: ["currentUser"],
     queryFn: async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await fetch('/api/auth/me', {
+          credentials: 'same-origin'
+        });
         if (!res.ok) {
           throw new Error('Authentication failed');
         }
@@ -32,6 +35,7 @@ export const AuthProvider = ({ children }) => {
       }
     },
     retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: true,
     onSuccess: (data) => {
       if (data) setUser(data);
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(credentials),
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -88,6 +93,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ token: twoFactorToken, code }),
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -110,6 +116,7 @@ export const AuthProvider = ({ children }) => {
     mutationFn: async () => {
       const res = await fetch('/api/auth/logout', {
         method: 'POST',
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -126,7 +133,7 @@ export const AuthProvider = ({ children }) => {
     },
   });
 
-  // Profile update mutation
+  // Profile update mutation with optimistic updates
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
       const res = await fetch('/api/auth/update-profile', {
@@ -135,6 +142,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -144,10 +152,40 @@ export const AuthProvider = ({ children }) => {
       
       return res.json();
     },
+    onMutate: async (newData) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["currentUser"] });
+      
+      // Snapshot the previous value
+      const previousUser = queryClient.getQueryData(["currentUser"]);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(["currentUser"], old => ({
+        ...old,
+        ...newData
+      }));
+      
+      // Update local state
+      setUser(prev => ({
+        ...prev,
+        ...newData
+      }));
+      
+      // Return context with the previous user
+      return { previousUser };
+    },
     onSuccess: (data) => {
       setUser(data.user);
       queryClient.setQueryData(["currentUser"], data.user);
       toast.success("Profile updated successfully");
+    },
+    onError: (error, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousUser) {
+        queryClient.setQueryData(["currentUser"], context.previousUser);
+        setUser(context.previousUser);
+      }
+      toast.error(error.message || 'Profile update failed');
     },
   });
 
@@ -195,16 +233,16 @@ export const AuthProvider = ({ children }) => {
       return result.user;
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error(error.message || 'Profile update failed');
       throw error;
     }
   }, [updateProfileMutation]);
 
-  // 2FA setup and management mutations
+  // 2FA setup and management mutations (kept for compatibility)
   const setup2FAMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/auth/setup-2fa', {
         method: 'POST',
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -224,6 +262,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code }),
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -248,6 +287,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ password }),
+        credentials: 'same-origin'
       });
       
       if (!res.ok) {
@@ -295,43 +335,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, [disable2FAMutation]);
 
-  // Consent management mutation
-  const updateConsentMutation = useMutation({
-    mutationFn: async ({ type, consented }) => {
-      const res = await fetch('/api/auth/update-consent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ consent_type: type, consented }),
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Consent update failed');
-      }
-      
-      return res.json();
-    },
-    onSuccess: (data, variables) => {
-      const { type, consented } = variables;
-      setUser(prev => ({ ...prev, [`${type.toLowerCase()}_consent`]: consented }));
-      queryClient.setQueryData(["currentUser"], prev => ({ ...prev, [`${type.toLowerCase()}_consent`]: consented }));
-      toast.success("Consent settings updated");
-    },
-  });
-
-  // Consent helper function
-  const updateConsent = useCallback(async (type, consented) => {
-    try {
-      return await updateConsentMutation.mutateAsync({ type, consented });
-    } catch (error) {
-      console.error('Consent update error:', error);
-      toast.error(error.message || 'Consent update failed');
-      throw error;
-    }
-  }, [updateConsentMutation]);
-
   const value = {
     user,
     loading,
@@ -343,8 +346,7 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     setup2FA,
     confirm2FA,
-    disable2FA,
-    updateConsent,
+    disable2FA
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 // Constants
 const MAX_IDLE_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
-const PUBLIC_PATHS = [
+const PUBLIC_PATHS = new Set([
   '/login', 
   '/register', 
   '/forgot-password', 
@@ -11,9 +11,9 @@ const PUBLIC_PATHS = [
   '/verify-email',
   '/terms',
   '/privacy'
-];
+]);
 
-// Static asset patterns to ignore
+// Static asset patterns to ignore - compiled once for better performance
 const ASSET_PATTERNS = [
   /^\/api\//,          // API routes
   /^\/_(next|vercel)/, // Next.js assets
@@ -32,31 +32,38 @@ function isAssetPath(path) {
 }
 
 /**
- * Check if a path is publicly accessible
+ * Check if a path is publicly accessible - using Set for O(1) lookup
  * @param {string} path - Path to check
  * @returns {boolean}
  */
 function isPublicPath(path) {
-  return PUBLIC_PATHS.some(publicPath => path.startsWith(publicPath));
+  // Check exact matches first for performance
+  if (PUBLIC_PATHS.has(path)) return true;
+  
+  // Then check path starts with
+  return Array.from(PUBLIC_PATHS).some(publicPath => 
+    path.startsWith(publicPath) && (path === publicPath || path.charAt(publicPath.length) === '/')
+  );
 }
 
+// Role-based redirect mapping for O(1) lookup
+const ROLE_REDIRECTS = {
+  'admin': '/admin-dashboard',
+  'superadmin': '/admin-dashboard',
+  'provider': '/provider-dashboard',
+  'compliance': '/compliance-dashboard',
+  'patient': '/patient-dashboard',
+  // Default fallback
+  'default': '/dashboard'
+};
+
 /**
- * Role-based redirection based on user role
+ * Get redirect path based on user role
  * @param {string} role - User role
  * @returns {string} Redirect path
  */
 function getRoleBasedPath(role) {
-  switch (role) {
-    case 'admin':
-    case 'superadmin':
-      return '/admin/dashboard';
-    case 'provider':
-      return '/provider/dashboard';
-    case 'compliance':
-      return '/compliance/dashboard';
-    default:
-      return '/dashboard';
-  }
+  return ROLE_REDIRECTS[role] || ROLE_REDIRECTS.default;
 }
 
 /**
@@ -87,7 +94,7 @@ export function middleware(request) {
   
   // Update last activity timestamp for authenticated users
   if (isAuth && !isSessionExpired) {
-    response.cookies.set('last_activity', Date.now().toString(), {
+    response.cookies.set('last_activity', now.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -128,7 +135,6 @@ export function middleware(request) {
   }
   
   // Role-based access control for specific paths
-  // Example: Only admins can access /admin/* routes
   if (pathname.startsWith('/admin')) {
     const role = request.cookies.get('user_role')?.value;
     if (role !== 'admin' && role !== 'superadmin') {

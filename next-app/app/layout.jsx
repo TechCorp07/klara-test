@@ -1,12 +1,9 @@
-// app/layout.js
+// app/layout.jsx
 import { Inter } from 'next/font/google';
 import { ToastContainer } from 'react-toastify';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
-import { AuthProvider } from '@/context/AuthContext';
+import { Providers } from './providers';
 import SessionTimeout from '@/components/auth/SessionTimeout';
-import { queryClient } from '@/lib/queryClient';
 
 import 'react-toastify/dist/ReactToastify.css';
 import '@/styles/global.css';
@@ -71,27 +68,23 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
-      <head />
       <body className="min-h-screen bg-gray-50">
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            {children}
-            <SessionTimeout />
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-          </AuthProvider>
-          {process.env.NODE_ENV !== 'production' && <ReactQueryDevtools initialIsOpen={false} />}
-        </QueryClientProvider>
+        <Providers>
+          {children}
+          <SessionTimeout />
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
+        </Providers>
         
         {/* Security headers script */}
         <script
