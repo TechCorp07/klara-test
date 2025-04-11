@@ -1,4 +1,6 @@
 // components/appointments/AppointmentForm.js
+"use client";
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { format, addDays, isBefore, startOfDay, parse, set } from 'date-fns';

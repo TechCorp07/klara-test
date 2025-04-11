@@ -1,4 +1,6 @@
 // components/appointments/AppointmentCalendar.js
+"use client";
+
 import { useState, useEffect } from 'react';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, 
          isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';

@@ -1,4 +1,5 @@
 // components/auth/TwoFactorAuthForm.js
+"use client";
 
 import { useState, useEffect } from "react";
 import {

@@ -1,4 +1,5 @@
 // File: /components/auth/QRCodeScanner.js
+"use client";
 
 import { useState, useEffect } from 'react';
 import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/browser';
