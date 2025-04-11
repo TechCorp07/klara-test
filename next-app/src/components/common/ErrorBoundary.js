@@ -28,10 +28,8 @@ class ErrorBoundary extends React.Component {
     // Generate unique error ID
     const errorId = `error-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     
-    if (process.env.NODE_ENV !== 'production') {
-      // Log error details for developers
-      console.error(`[ErrorBoundary] ${errorId}:`, error, errorInfo);
-    }
+    // Log error details for developers
+    console.error(`[ErrorBoundary] ${errorId}:`, error, errorInfo);
     
     // Store error details
     this.setState({ errorInfo, errorId });
