@@ -1,6 +1,6 @@
 // app/layout.jsx
 import { Inter } from "next/font/google";
-import { Providers } from './providers';
+import { Providers } from './providers/providers';
 import { ToastContainer } from 'react-toastify';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';

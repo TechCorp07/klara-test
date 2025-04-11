@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { Component } from 'react';
 import { toast } from 'react-toastify';
 import { FaExclamationTriangle, FaHome } from 'react-icons/fa';
 import Link from 'next/link';
 
 /**
  * Error Boundary for catching and displaying errors
+ * Includes error logging and error reporting capabilities
  */
-class ErrorBoundary extends React.Component {
+class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -20,61 +21,73 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Update state so the next render will show the fallback UI
+    // Update state to trigger fallback UI
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Generate unique error ID
+    // Generate unique error ID for tracking
     const errorId = `error-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     
-    // Log error details for developers
-    console.error(`[ErrorBoundary] ${errorId}:`, error, errorInfo);
-    
-    // Store error details
+    // Update state with error details
     this.setState({ errorInfo, errorId });
     
-    // Show toast notification
-    toast.error('An unexpected error occurred. Our team has been notified.');
+    // Only log in development or show toast in production
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(`[ErrorBoundary] ${errorId}:`, error, errorInfo);
+    } else {
+      toast.error('An unexpected error occurred. Our team has been notified.');
+    }
     
-    // Log error to server if needed
+    // Log error to server (if needed)
     this.logErrorToServer(error, errorInfo, errorId);
   }
 
+  /**
+   * Logs error to server for monitoring
+   * Ensures PII/PHI is not included in error reports
+   */
   logErrorToServer(error, errorInfo, errorId) {
     try {
-      // Don't include PII or PHI in error reports
+      // Skip in development mode to avoid unnecessary API calls
+      if (process.env.NODE_ENV !== 'production' || !window.fetch) {
+        return;
+      }
+      
+      // Sanitize error for reporting - no PII/PHI
       const sanitizedError = {
-        message: error.message,
         name: error.name,
-        stack: error.stack ? error.stack.split('\n').slice(0, 5).join('\n') : null,
-        componentStack: errorInfo.componentStack
-          ? errorInfo.componentStack.split('\n').slice(0, 10).join('\n')
-          : null,
+        message: error.message,
+        // Only include first few lines of stack trace
+        stack: error.stack ? 
+          error.stack.split('\n').slice(0, 5).join('\n') : null,
+        // Only include first few lines of component stack
+        componentStack: errorInfo.componentStack ?
+          errorInfo.componentStack.split('\n').slice(0, 10).join('\n') : null,
         errorId,
-        url: typeof window !== 'undefined' ? window.location.href : null,
+        url: window.location.pathname,
         timestamp: new Date().toISOString()
       };
 
-      // Send error to server - this would be replaced with your actual error logging endpoint
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-        fetch('/api/log-error', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(sanitizedError),
-          // Don't wait for response or handle errors, just fire and forget
-        }).catch(() => {
-          // Silent catch - don't cause errors in the error handler
-        });
-      }
+      // Fire-and-forget error logging
+      fetch('/api/log-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sanitizedError),
+        // Don't wait for response
+        keepalive: true
+      }).catch(() => {
+        // Silent catch - don't cause errors in the error handler
+      });
     } catch (loggingError) {
       // Silent catch - never throw from error logging
       console.error('Error in error logging:', loggingError);
     }
   }
 
+  /**
+   * Reset error state to try recovery
+   */
   handleReset = () => {
     this.setState({
       hasError: false,
@@ -88,19 +101,23 @@ class ErrorBoundary extends React.Component {
     const { children, fallback } = this.props;
     const { hasError, error, errorId } = this.state;
 
-    // If there's no error, render children
+    // No error, render children normally
     if (!hasError) {
       return children;
     }
 
-    // If custom fallback is provided, use it
-    if (fallback) {
+    // Use custom fallback if provided
+    if (typeof fallback === 'function') {
       return fallback(error, this.handleReset, errorId);
     }
 
-    // Otherwise render default error UI
+    // Default error UI
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" role="alert" aria-live="assertive">
+      <div 
+        className="min-h-screen flex items-center justify-center bg-gray-50 p-4" 
+        role="alert" 
+        aria-live="assertive"
+      >
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md text-center">
           <FaExclamationTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" aria-hidden="true" />
           
@@ -133,6 +150,7 @@ class ErrorBoundary extends React.Component {
             </Link>
           </div>
           
+          {/* Only show debug info in development */}
           {process.env.NODE_ENV !== 'production' && error && (
             <div className="mt-6 p-4 bg-red-50 rounded text-left">
               <h3 className="text-sm font-medium text-red-800 mb-2">Debug Information:</h3>

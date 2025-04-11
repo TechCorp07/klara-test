@@ -1,12 +1,14 @@
 // components/auth/SessionTimeout.js
-import { useState, useEffect, useCallback } from 'react';
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@/context/AuthContext";
 import { FaExclamationTriangle, FaLock } from 'react-icons/fa';
 
-// Default timeout values
-const DEFAULT_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
-const DEFAULT_WARNING_TIME = 60 * 1000; // 1 minute warning before timeout
+// Default timeout values (milliseconds)
+const DEFAULT_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+const DEFAULT_WARNING_TIME = 60 * 1000; // 1 minute warning
 
 /**
  * HIPAA compliant session timeout component
@@ -20,102 +22,120 @@ const SessionTimeout = ({
   const [countdown, setCountdown] = useState(Math.floor(warningTime / 1000));
   const { logout } = useAuth();
   const router = useRouter();
+  const timerRef = useRef(null);
+  const countdownRef = useRef(null);
   
   // Reset timer on user activity
   const resetTimer = useCallback(() => {
-    if (!showWarning) {
-      // No need to reset if warning is already showing
-      localStorage.setItem('lastActivity', Date.now().toString());
-    }
-  }, [showWarning]);
-  
-  // Check for inactivity and show warning or logout
-  const checkInactivity = useCallback(() => {
-    const lastActivity = parseInt(localStorage.getItem('lastActivity') || '0', 10);
-    const currentTime = Date.now();
-    const inactiveTime = currentTime - lastActivity;
+    if (showWarning) return; // Don't reset if warning is already showing
     
-    if (inactiveTime >= timeout - warningTime) {
-      // Show warning when approaching timeout
-      setShowWarning(true);
-      
-      // Calculate countdown
-      const remainingTime = Math.max(0, Math.floor((timeout - inactiveTime) / 1000));
-      setCountdown(remainingTime);
-      
-      // If no time remains, perform logout
-      if (remainingTime <= 0) {
-        handleLogout();
-      }
-    } else {
-      setShowWarning(false);
+    // Clear existing timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
-  }, [timeout, warningTime]);
+    
+    // Store last activity time
+    localStorage.setItem('lastActivity', Date.now().toString());
+    
+    // Set new timeout
+    timerRef.current = setTimeout(() => {
+      showTimeoutWarning();
+    }, timeout - warningTime);
+  }, [showWarning, timeout, warningTime]);
+  
+  // Show timeout warning
+  const showTimeoutWarning = useCallback(() => {
+    setShowWarning(true);
+    setCountdown(Math.floor(warningTime / 1000));
+    
+    // Set timeout for auto-logout
+    countdownRef.current = setTimeout(() => {
+      handleLogout();
+    }, warningTime);
+  }, [warningTime]);
   
   // Handle continue session
-  const handleContinueSession = () => {
-    resetTimer();
+  const handleContinueSession = useCallback(() => {
+    // Clear countdown timeout
+    if (countdownRef.current) {
+      clearTimeout(countdownRef.current);
+    }
+    
     setShowWarning(false);
-  };
+    resetTimer();
+  }, [resetTimer]);
   
   // Handle logout
-  const handleLogout = async () => {
-    setShowWarning(false);
+  const handleLogout = useCallback(async () => {
     try {
+      // Clear all timers
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (countdownRef.current) clearTimeout(countdownRef.current);
+      
+      setShowWarning(false);
       await logout();
-      router.push('/login');
+      router.push('/login?reason=timeout');
     } catch (error) {
       console.error('Error during session timeout logout:', error);
       // Force redirect to login even if logout API fails
-      router.push('/login');
+      router.push('/login?reason=timeout');
     }
-  };
+  }, [logout, router]);
   
-  // Set up activity tracking and inactivity checker
+  // Set up activity tracking and timer on mount
   useEffect(() => {
-    // Initialize last activity timestamp
-    if (!localStorage.getItem('lastActivity')) {
-      resetTimer();
-    }
+    // Initialize timer
+    resetTimer();
     
     // Set up event listeners for user activity
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    const handleActivity = () => resetTimer();
     
-    // Add event listeners
+    // Attach event listeners
     events.forEach(event => {
-      window.addEventListener(event, resetTimer);
+      window.addEventListener(event, handleActivity);
     });
     
-    // Set up interval to check for inactivity
-    const intervalId = setInterval(checkInactivity, 1000);
-    
-    // Cleanup
+    // Cleanup function
     return () => {
+      // Remove event listeners
       events.forEach(event => {
-        window.removeEventListener(event, resetTimer);
+        window.removeEventListener(event, handleActivity);
       });
-      clearInterval(intervalId);
+      
+      // Clear timers
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (countdownRef.current) clearTimeout(countdownRef.current);
     };
-  }, [resetTimer, checkInactivity]);
+  }, [resetTimer]);
   
   // Update countdown timer
   useEffect(() => {
+    let intervalId = null;
+    
     if (showWarning && countdown > 0) {
-      const timerId = setTimeout(() => {
-        setCountdown(countdown - 1);
+      intervalId = setInterval(() => {
+        setCountdown(prevCountdown => prevCountdown - 1);
       }, 1000);
-      
-      return () => clearTimeout(timerId);
     }
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [showWarning, countdown]);
   
+  // No warning, no render
   if (!showWarning) {
     return null;
   }
   
   return (
-    <div className="session-timeout-modal" aria-modal="true" role="dialog">
-      <div className="session-timeout-content">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      aria-modal="true" 
+      role="dialog"
+    >
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center mb-4 text-yellow-500">
           <FaExclamationTriangle className="h-6 w-6" />
           <h2 className="ml-2 text-xl font-semibold">Session Timeout Warning</h2>
