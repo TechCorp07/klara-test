@@ -3,8 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   poweredByHeader: false,
-  compress: true,
-
+  
   images: {
     domains: ['localhost', 'api.klararety.com'],
     formats: ['image/avif', 'image/webp'],
@@ -43,12 +42,6 @@ const nextConfig = {
 
   // Output standalone build for better deployment options
   output: 'standalone',
-  
-  experimental: {
-    // Enable modern optimizations
-    serverActions: true,
-    instrumentationHook: true,
-  },
 };
 
 module.exports = nextConfig;
