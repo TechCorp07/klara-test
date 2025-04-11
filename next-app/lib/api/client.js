@@ -219,7 +219,7 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
     }
     
     // Show toast notification if requested
-    if (showToast) {
+    if (showToast && isBrowser()) {
       toast.error(errorObject.message);
     }
     
@@ -239,7 +239,7 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
       Sentry.captureException(handlingError);
     });
     
-    if (showToast) {
+    if (showToast && isBrowser()) {
       toast.error(defaultMessage);
     }
     
@@ -254,6 +254,7 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
 
 /**
  * Make an API request with error handling and authentication
+ * Works in both client and server components
  * @param {string} method - HTTP method
  * @param {string} endpoint - API endpoint
  * @param {Object} data - Request data
@@ -338,7 +339,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     
     // Handle 401 Unauthorized errors (token expired)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && isBrowser()) {
       originalRequest._retry = true;
       
       try {
@@ -360,6 +361,37 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Safe wrapper for apiClient that works in both client and server components
+ */
+export const createServerSafeApiClient = () => {
+  const get = (endpoint, params = {}, options = {}) => 
+    apiRequest('GET', endpoint, null, { params, ...options });
+
+  const post = (endpoint, data = {}, options = {}) => 
+    apiRequest('POST', endpoint, data, options);
+
+  const put = (endpoint, data = {}, options = {}) => 
+    apiRequest('PUT', endpoint, data, options);
+
+  const patch = (endpoint, data = {}, options = {}) => 
+    apiRequest('PATCH', endpoint, data, options);
+
+  const del = (endpoint, options = {}) => 
+    apiRequest('DELETE', endpoint, null, options);
+
+  return {
+    get,
+    post,
+    put,
+    patch,
+    delete: del
+  };
+};
+
+// Create a server-safe API client
+export const serverSafeApiClient = createServerSafeApiClient();
 
 // Export convenience methods
 export const get = (endpoint, params = {}, options = {}) => 

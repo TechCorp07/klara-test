@@ -1,4 +1,4 @@
-// components/auth/SessionTimeout.js
+// components/auth/SessionTimeout.jsx
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -13,6 +13,9 @@ const DEFAULT_WARNING_TIME = 60 * 1000; // 1 minute warning
 /**
  * HIPAA compliant session timeout component
  * Shows a warning dialog before automatically logging out the user due to inactivity
+ * @param {Object} props
+ * @param {number} props.timeout - Session timeout in milliseconds
+ * @param {number} props.warningTime - Warning time before timeout in milliseconds
  */
 const SessionTimeout = ({
   timeout = DEFAULT_TIMEOUT,
@@ -24,6 +27,7 @@ const SessionTimeout = ({
   const router = useRouter();
   const timerRef = useRef(null);
   const countdownRef = useRef(null);
+  const activityTimeRef = useRef(Date.now());
   
   // Reset timer on user activity
   const resetTimer = useCallback(() => {
@@ -35,7 +39,8 @@ const SessionTimeout = ({
     }
     
     // Store last activity time
-    localStorage.setItem('lastActivity', Date.now().toString());
+    activityTimeRef.current = Date.now();
+    localStorage.setItem('lastActivity', activityTimeRef.current.toString());
     
     // Set new timeout
     timerRef.current = setTimeout(() => {
@@ -81,6 +86,43 @@ const SessionTimeout = ({
       router.push('/login?reason=timeout');
     }
   }, [logout, router]);
+  
+  // Check for inactivity when the component mounts or window gets focus
+  useEffect(() => {
+    const checkInactivity = () => {
+      const lastActivity = localStorage.getItem('lastActivity');
+      
+      if (lastActivity) {
+        const inactiveTime = Date.now() - parseInt(lastActivity, 10);
+        
+        // If user has been inactive longer than timeout, log them out
+        if (inactiveTime >= timeout) {
+          handleLogout();
+        }
+        // If user has been inactive longer than (timeout - warningTime), show warning
+        else if (inactiveTime >= (timeout - warningTime) && !showWarning) {
+          showTimeoutWarning();
+        }
+        // Otherwise reset the timer
+        else if (!showWarning) {
+          resetTimer();
+        }
+      } else {
+        // No last activity time found, set it
+        localStorage.setItem('lastActivity', Date.now().toString());
+      }
+    };
+    
+    // Check for inactivity when the window gets focus
+    window.addEventListener('focus', checkInactivity);
+    
+    // Initial check
+    checkInactivity();
+    
+    return () => {
+      window.removeEventListener('focus', checkInactivity);
+    };
+  }, [timeout, warningTime, showWarning, handleLogout, resetTimer, showTimeoutWarning]);
   
   // Set up activity tracking and timer on mount
   useEffect(() => {
@@ -134,11 +176,12 @@ const SessionTimeout = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
       aria-modal="true" 
       role="dialog"
+      aria-labelledby="session-timeout-title"
     >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center mb-4 text-yellow-500">
-          <FaExclamationTriangle className="h-6 w-6" />
-          <h2 className="ml-2 text-xl font-semibold">Session Timeout Warning</h2>
+          <FaExclamationTriangle className="h-6 w-6" aria-hidden="true" />
+          <h2 id="session-timeout-title" className="ml-2 text-xl font-semibold">Session Timeout Warning</h2>
         </div>
         
         <div className="mb-6">
@@ -146,13 +189,13 @@ const SessionTimeout = ({
             Your session is about to expire due to inactivity. For security and HIPAA compliance, you will be logged out in:
           </p>
           
-          <p className="text-3xl font-bold text-gray-900 text-center mb-4">
+          <p className="text-3xl font-bold text-gray-900 text-center mb-4" aria-live="polite">
             {Math.floor(countdown / 60).toString().padStart(2, '0')}:
             {(countdown % 60).toString().padStart(2, '0')}
           </p>
           
           <div className="flex items-center justify-center text-blue-600 mb-2">
-            <FaLock className="h-4 w-4 mr-2" />
+            <FaLock className="h-4 w-4 mr-2" aria-hidden="true" />
             <p className="text-sm">This is a HIPAA security requirement</p>
           </div>
         </div>
