@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+// This file sets up the required configuration for using Sentry with Next.js.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
+const { withSentryConfig } = require('@sentry/nextjs');
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
@@ -44,4 +49,30 @@ const nextConfig = {
   output: 'standalone',
 };
 
-module.exports = nextConfig;
+// Validate environment variables
+const requiredEnvVars = ['NEXT_PUBLIC_API_URL'];
+const missingEnvVars = requiredEnvVars.filter(
+  envVar => process.env[envVar] === undefined
+);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${missingEnvVars.join(', ')}`
+  );
+}
+
+// Sentry webpack plugin configuration
+const sentryWebpackPluginOptions = {
+  // Additional options for the Sentry webpack plugin
+  silent: true, // Suppresses all logs
+  release: process.env.NEXT_PUBLIC_VERSION || 'dev',
+  
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
+};
+
+// Make sure adding Sentry options is the last code to run before exporting
+module.exports = withSentryConfig(
+  nextConfig,
+  sentryWebpackPluginOptions
+);

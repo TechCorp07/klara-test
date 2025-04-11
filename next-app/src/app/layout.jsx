@@ -4,7 +4,7 @@ import { Providers } from './providers/providers';
 import { ToastContainer } from 'react-toastify';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
-import SessionTimeout from '@/components/auth/SessionTimeout';
+import SessionTimeout from '@/components/auth/SessionTimeout.';
 import Header from '@/components/layout/Header';
 
 import 'react-toastify/dist/ReactToastify.css';

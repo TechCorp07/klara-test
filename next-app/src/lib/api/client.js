@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { jwtDecode } from 'jwt-decode';
+import * as Sentry from '@sentry/nextjs';
 
 // Constants
 const TOKEN_REFRESH_MARGIN = 60_000; // 1 minute before expiry
@@ -38,7 +39,7 @@ export const buildParams = (params = {}) => {
       if (Array.isArray(value)) {
         searchParams.append(key, value.join(','));
       } else {
-        searchParams.append(key, value);
+        searchParams.append(key, value.toString());
       }
     }
   });
@@ -85,13 +86,33 @@ export const refreshAccessToken = async () => {
 };
 
 /**
- * Handle API errors consistently
+ * Format validation errors into a readable form
+ * @param {Object} errors - Validation errors object
+ * @returns {string} Formatted error string
+ */
+export const formatValidationErrors = (errors) => {
+  if (!errors || typeof errors !== 'object') {
+    return '';
+  }
+  
+  return Object.entries(errors)
+    .map(([field, messages]) => {
+      const fieldName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      const formattedMessages = Array.isArray(messages) ? messages.join(', ') : messages;
+      return `${fieldName}: ${formattedMessages}`;
+    })
+    .join('; ');
+};
+
+/**
+ * Handle API errors consistently with Sentry tracking
  * @param {Error} error - Error object
  * @param {string} defaultMessage - Default error message
  * @param {boolean} showToast - Whether to show error toast
+ * @param {Object} additionalContext - Additional context for error tracking
  * @returns {Object} Standardized error object
  */
-export const handleApiError = (error, defaultMessage = 'An error occurred', showToast = true) => {
+export const handleApiError = (error, defaultMessage = 'An error occurred', showToast = true, additionalContext = {}) => {
   // Default error structure
   const errorObject = {
     message: defaultMessage,
@@ -103,7 +124,7 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
   try {
     // Handle Axios errors
     if (error.response) {
-      const { status, data } = error.response;
+      const { status, data, config } = error.response;
       errorObject.status = status;
       
       // Extract error message
@@ -121,13 +142,80 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
         errorObject.message = 'The requested resource was not found.';
       } else if (status === 422) {
         errorObject.message = 'Validation error. Please check your input.';
+        
+        // Format validation errors for display
+        if (data.details && typeof data.details === 'object') {
+          const formattedErrors = formatValidationErrors(data.details);
+          if (formattedErrors) {
+            errorObject.message = `${errorObject.message}: ${formattedErrors}`;
+          }
+        }
       } else if (status >= 500) {
         errorObject.message = 'Server error. Please try again later.';
+      }
+      
+      // Track error in Sentry for non-401 errors (not auth issues)
+      if (status !== 401 && status !== 403) {
+        Sentry.withScope((scope) => {
+          scope.setTag('api_request', 'true');
+          scope.setTag('status_code', status);
+          scope.setExtra('endpoint', config?.url || 'unknown');
+          scope.setExtra('method', config?.method || 'unknown');
+          scope.setExtra('response_data', data);
+          
+          // Add additional context if provided
+          if (additionalContext) {
+            Object.entries(additionalContext).forEach(([key, value]) => {
+              scope.setExtra(key, value);
+            });
+          }
+          
+          Sentry.captureException(error);
+        });
       }
     } else if (error.request) {
       // Request made but no response received
       errorObject.message = 'No response from server. Please check your connection.';
       errorObject.status = 0;
+      
+      // Track network error in Sentry
+      Sentry.withScope((scope) => {
+        scope.setTag('api_request', 'true');
+        scope.setTag('error_type', 'network');
+        
+        // Add request details if available
+        if (error.request) {
+          scope.setExtra('request', {
+            url: error.request.url || error.config?.url,
+            method: error.config?.method
+          });
+        }
+        
+        // Add additional context if provided
+        if (additionalContext) {
+          Object.entries(additionalContext).forEach(([key, value]) => {
+            scope.setExtra(key, value);
+          });
+        }
+        
+        Sentry.captureException(error);
+      });
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      // Track general error in Sentry
+      Sentry.withScope((scope) => {
+        scope.setTag('api_request', 'true');
+        scope.setTag('error_type', 'setup');
+        
+        // Add additional context if provided
+        if (additionalContext) {
+          Object.entries(additionalContext).forEach(([key, value]) => {
+            scope.setExtra(key, value);
+          });
+        }
+        
+        Sentry.captureException(error);
+      });
     }
     
     // Show toast notification if requested
@@ -145,6 +233,12 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
     // In case error handling itself fails, return a safe error
     console.error('Error handling failure:', handlingError);
     
+    // Track error handling failure in Sentry
+    Sentry.withScope((scope) => {
+      scope.setTag('error_handling_failure', 'true');
+      Sentry.captureException(handlingError);
+    });
+    
     if (showToast) {
       toast.error(defaultMessage);
     }
@@ -155,6 +249,76 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
       details: null,
       original: error
     };
+  }
+};
+
+/**
+ * Make an API request with error handling and authentication
+ * @param {string} method - HTTP method
+ * @param {string} endpoint - API endpoint
+ * @param {Object} data - Request data
+ * @param {Object} options - Additional options
+ * @returns {Promise<any>} Response data
+ */
+export const apiRequest = async (method, endpoint, data = null, options = {}) => {
+  const { 
+    headers = {}, 
+    params = {}, 
+    errorMessage = 'An error occurred',
+    showErrorToast = true,
+    withAuth = true,
+    trackingContext = {}
+  } = options;
+
+  try {
+    const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
+    const queryParams = buildParams(params);
+    const requestUrl = queryParams ? `${url}?${queryParams}` : url;
+    
+    const requestOptions = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers
+      },
+      credentials: withAuth ? 'include' : 'same-origin'
+    };
+    
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+      requestOptions.body = JSON.stringify(data);
+    }
+    
+    const response = await fetch(requestUrl, requestOptions);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw { 
+        response: { 
+          status: response.status, 
+          data: errorData,
+          config: {
+            url: requestUrl,
+            method: method,
+            data: data
+          }
+        } 
+      };
+    }
+    
+    // Parse JSON if the response has content
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.indexOf('application/json') !== -1) {
+      return await response.json();
+    }
+    
+    return {};
+  } catch (error) {
+    const errorObj = handleApiError(error, errorMessage, showErrorToast, {
+      ...trackingContext,
+      endpoint,
+      method
+    });
+    throw errorObj;
   }
 };
 
@@ -196,6 +360,22 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Export convenience methods
+export const get = (endpoint, params = {}, options = {}) => 
+  apiRequest('GET', endpoint, null, { params, ...options });
+
+export const post = (endpoint, data = {}, options = {}) => 
+  apiRequest('POST', endpoint, data, options);
+
+export const put = (endpoint, data = {}, options = {}) => 
+  apiRequest('PUT', endpoint, data, options);
+
+export const patch = (endpoint, data = {}, options = {}) => 
+  apiRequest('PATCH', endpoint, data, options);
+
+export const del = (endpoint, options = {}) => 
+  apiRequest('DELETE', endpoint, null, options);
 
 export { apiClient };
 export default apiClient;
