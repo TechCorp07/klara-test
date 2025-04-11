@@ -7,26 +7,28 @@ import Link from 'next/link';
  * @param {Object} props
  * @param {string} props.title - Card title
  * @param {string|number} props.value - Main value to display
+ * @param {React.ReactNode} props.icon - Optional icon component
  * @param {string} props.link - Link URL for "View details" 
  * @param {string} props.linkText - Text for the link (defaults to "View details →")
  * @param {string} props.bgColorClass - Tailwind background color class
  * @param {string} props.textColorClass - Tailwind text color class
- * @param {React.ReactNode} props.icon - Optional icon component
  * @param {string} props.trend - Optional trend direction ('up', 'down', or null)
  * @param {string} props.trendValue - Optional trend value text
  * @param {string} props.trendType - Optional trend type ('positive' or 'negative')
+ * @param {Function} props.onClick - Optional click handler to make the card interactive
  */
 const StatsCard = ({ 
   title, 
   value, 
+  icon = null,
   link, 
   linkText = "View details →",
   bgColorClass = "bg-white",
   textColorClass = "text-blue-600",
-  icon = null,
   trend = null,
   trendValue = null,
-  trendType = 'positive'
+  trendType = 'positive',
+  onClick = null
 }) => {
   // Generate trend display
   const renderTrend = () => {
@@ -44,8 +46,9 @@ const StatsCard = ({
     );
   };
 
-  return (
-    <div className={`rounded-lg shadow-md p-6 ${bgColorClass}`}>
+  // Create the card content
+  const cardContent = (
+    <div className={`${bgColorClass} rounded-lg shadow-md p-6`}>
       <div className="flex items-center justify-between">
         {icon && <div className="flex-shrink-0 mr-3">{icon}</div>}
         <div className="flex-grow">
@@ -65,6 +68,19 @@ const StatsCard = ({
         </Link>
       )}
     </div>
+  );
+
+  // Return interactive button version if onClick is provided
+  return onClick ? (
+    <button 
+      onClick={onClick}
+      className="w-full text-left"
+      aria-label={`${title} stats: ${value}`}
+    >
+      {cardContent}
+    </button>
+  ) : (
+    cardContent
   );
 };
 

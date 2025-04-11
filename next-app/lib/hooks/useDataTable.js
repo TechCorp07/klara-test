@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useFilters } from '../utils/hooks';
-import { usePagination } from '../utils/hooks';
-import { useSorting } from '../utils/hooks';
-import { combineParams } from '../utils/queryHelpers';
-import { useQueryWrapper } from './useQueryWrapper';
+import { useFilters } from '@/utils/hooks';
+import { usePagination } from '@/utils/hooks';
+import { useSorting } from '@/utils/hooks';
+import { combineParams } from '@/utils/queryHelpers';
+import { useQueryWrapper } from '@/useQueryWrapper';
 
 /**
  * Custom hook for managing data tables with filtering, sorting, and pagination

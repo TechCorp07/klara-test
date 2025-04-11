@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { handleApiError } from '../utils/errorHandler';
+import { handleApiError } from '@/utils/errorHandler';
 
 /**
  * Custom hook for optimized data fetching with error handling and cancellation

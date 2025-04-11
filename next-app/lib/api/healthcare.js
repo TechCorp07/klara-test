@@ -1,5 +1,5 @@
 // lib/api/healthcare.js
-import apiClient, { buildParams } from './client';
+import apiClient, { buildParams } from '@/client';
 
 /**
  * Healthcare-related API functions

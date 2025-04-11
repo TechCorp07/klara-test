@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useQueryWrapper } from './useQueryWrapper';
+import { useQueryWrapper } from '@/useQueryWrapper';
 
 /**
  * Custom hook for fetching common dashboard data based on user role

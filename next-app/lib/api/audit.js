@@ -1,5 +1,5 @@
 // lib/api/audit.js
-import apiClient, { buildParams } from './client';
+import apiClient, { buildParams } from '@/client';
 
 /**
  * Audit and administration-related API functions

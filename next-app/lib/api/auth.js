@@ -1,5 +1,5 @@
 // lib/api/auth.js
-import apiClient from './client';
+import apiClient from '@/client';
 
 /**
  * Authentication and user-related API functions

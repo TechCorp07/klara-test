@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
-import { DashboardLayout } from '../layout/DashboardLayout';
+import { DashboardLayout } from '@/layout/DashboardLayout';
 
 /**
  * Higher-Order Component to wrap dashboard pages with common functionality

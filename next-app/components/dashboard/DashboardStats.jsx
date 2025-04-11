@@ -1,5 +1,5 @@
-import { DashboardGrid } from '../layout/DashboardGrid';
-import { StatsCard } from '../ui/StatsCard';
+import { DashboardGrid } from '@/layout/DashboardGrid';
+import { StatsCard } from '@/ui/StatsCard';
 
 /**
  * Dashboard statistics grid component that displays a set of stats cards

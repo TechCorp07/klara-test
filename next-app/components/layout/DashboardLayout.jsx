@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-toastify';
-import { PageHeader } from '../ui/PageHeader';
-import { LoadingState } from '../ui/LoadingState';
+import { PageHeader } from '@/ui/PageHeader';
+import { LoadingState } from '@/ui/LoadingState';
 
 /**
  * Common dashboard layout used by all role-specific dashboards

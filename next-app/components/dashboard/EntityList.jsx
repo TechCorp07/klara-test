@@ -1,5 +1,5 @@
-import { SectionContainer } from '../layout/SectionContainer';
-import { StatusBadge } from '../ui/StatusBadge';
+import { SectionContainer } from '@/layout/SectionContainer';
+import { StatusBadge } from '@/ui/StatusBadge';
 import Link from 'next/link';
 
 /**

@@ -1,5 +1,5 @@
 // lib/api/telemedicine.js
-import apiClient, { buildParams } from './client';
+import apiClient, { buildParams } from '@/client';
 
 /**
  * Telemedicine-related API functions
