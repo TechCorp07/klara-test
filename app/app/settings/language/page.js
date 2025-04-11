@@ -1,16 +1,16 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { toast } from "react-toastify"
-import { FaLanguage, FaGlobe, FaExclamationTriangle, FaSave } from "react-icons/fa"
-import { useAuth } from "../../../contexts/AuthContext"
-import AuthenticatedLayout from "../../../components/layout/AuthenticatedLayout"
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { toast } from 'react-toastify';
+import { FaLanguage, FaGlobe, FaExclamationTriangle, FaSave } from 'react-icons/fa';
+import { useAuth } from '../../../contexts/AuthContext';
+import AuthenticatedLayout from '../../../components/layout/AuthenticatedLayout';
 
 // Language option component
 const LanguageOption = ({ code, name, nativeName, selected, onSelect }) => (
-  <div
-    className={`p-4 border rounded-md cursor-pointer ${selected ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}`}
+  <div 
+    className={`p-4 border rounded-md cursor-pointer ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
     onClick={() => onSelect(code)}
   >
     <div className="flex items-center justify-between">
@@ -19,53 +19,35 @@ const LanguageOption = ({ code, name, nativeName, selected, onSelect }) => (
         {nativeName !== name && <p className="text-sm text-gray-500">{nativeName}</p>}
       </div>
       {selected && (
-        <svg
-          className="h-5 w-5 text-blue-500"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clipRule="evenodd"
-          />
+        <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
         </svg>
       )}
     </div>
   </div>
-)
+);
 
 // Region option component
 const RegionOption = ({ code, name, selected, onSelect }) => (
-  <div
-    className={`p-4 border rounded-md cursor-pointer ${selected ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}`}
+  <div 
+    className={`p-4 border rounded-md cursor-pointer ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
     onClick={() => onSelect(code)}
   >
     <div className="flex items-center justify-between">
       <h3 className="text-sm font-medium text-gray-900">{name}</h3>
       {selected && (
-        <svg
-          className="h-5 w-5 text-blue-500"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clipRule="evenodd"
-          />
+        <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
         </svg>
       )}
     </div>
   </div>
-)
+);
 
 // Date format option component
 const DateFormatOption = ({ format, example, selected, onSelect }) => (
-  <div
-    className={`p-4 border rounded-md cursor-pointer ${selected ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}`}
+  <div 
+    className={`p-4 border rounded-md cursor-pointer ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
     onClick={() => onSelect(format)}
   >
     <div className="flex items-center justify-between">
@@ -74,102 +56,93 @@ const DateFormatOption = ({ format, example, selected, onSelect }) => (
         <p className="text-sm text-gray-500">Example: {example}</p>
       </div>
       {selected && (
-        <svg
-          className="h-5 w-5 text-blue-500"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clipRule="evenodd"
-          />
+        <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
         </svg>
       )}
     </div>
   </div>
-)
+);
 
 export default function LanguageSettingsPage() {
-  const { user, updateProfile } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-
+  const { user, updateProfile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
   // Settings state
-  const [selectedLanguage, setSelectedLanguage] = useState("en-US")
-  const [selectedRegion, setSelectedRegion] = useState("US")
-  const [selectedDateFormat, setSelectedDateFormat] = useState("MM/DD/YYYY")
-  const [selectedTimeFormat, setSelectedTimeFormat] = useState("12h")
-  const [selectedMeasurementSystem, setSelectedMeasurementSystem] = useState("imperial")
-
+  const [selectedLanguage, setSelectedLanguage] = useState('en-US');
+  const [selectedRegion, setSelectedRegion] = useState('US');
+  const [selectedDateFormat, setSelectedDateFormat] = useState('MM/DD/YYYY');
+  const [selectedTimeFormat, setSelectedTimeFormat] = useState('12h');
+  const [selectedMeasurementSystem, setSelectedMeasurementSystem] = useState('imperial');
+  
   // Load current settings on mount
   useEffect(() => {
     // This would fetch from user preferences in a real implementation
     // For now we'll mock it with defaults
     if (user?.preferences?.language) {
-      setSelectedLanguage(user.preferences.language)
+      setSelectedLanguage(user.preferences.language);
     }
-
+    
     if (user?.preferences?.region) {
-      setSelectedRegion(user.preferences.region)
+      setSelectedRegion(user.preferences.region);
     }
-
+    
     if (user?.preferences?.date_format) {
-      setSelectedDateFormat(user.preferences.date_format)
+      setSelectedDateFormat(user.preferences.date_format);
     }
-
+    
     if (user?.preferences?.time_format) {
-      setSelectedTimeFormat(user.preferences.time_format)
+      setSelectedTimeFormat(user.preferences.time_format);
     }
-
+    
     if (user?.preferences?.measurement_system) {
-      setSelectedMeasurementSystem(user.preferences.measurement_system)
+      setSelectedMeasurementSystem(user.preferences.measurement_system);
     }
-  }, [user])
-
+  }, [user]);
+  
   // Language options
   const languages = [
-    { code: "en-US", name: "English (US)", nativeName: "English (US)" },
-    { code: "en-GB", name: "English (UK)", nativeName: "English (UK)" },
-    { code: "es", name: "Spanish", nativeName: "Español" },
-    { code: "fr", name: "French", nativeName: "Français" },
-    { code: "de", name: "German", nativeName: "Deutsch" },
-    { code: "pt", name: "Portuguese", nativeName: "Português" },
-    { code: "zh", name: "Chinese (Simplified)", nativeName: "中文 (简体)" },
-    { code: "ja", name: "Japanese", nativeName: "日本語" },
-  ]
-
+    { code: 'en-US', name: 'English (US)', nativeName: 'English (US)' },
+    { code: 'en-GB', name: 'English (UK)', nativeName: 'English (UK)' },
+    { code: 'es', name: 'Spanish', nativeName: 'Español' },
+    { code: 'fr', name: 'French', nativeName: 'Français' },
+    { code: 'de', name: 'German', nativeName: 'Deutsch' },
+    { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+    { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
+    { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+  ];
+  
   // Region options
   const regions = [
-    { code: "US", name: "United States" },
-    { code: "GB", name: "United Kingdom" },
-    { code: "CA", name: "Canada" },
-    { code: "AU", name: "Australia" },
-    { code: "DE", name: "Germany" },
-    { code: "FR", name: "France" },
-    { code: "ES", name: "Spain" },
-    { code: "MX", name: "Mexico" },
-    { code: "BR", name: "Brazil" },
-    { code: "IN", name: "India" },
-    { code: "JP", name: "Japan" },
-    { code: "CN", name: "China" },
-  ]
-
+    { code: 'US', name: 'United States' },
+    { code: 'GB', name: 'United Kingdom' },
+    { code: 'CA', name: 'Canada' },
+    { code: 'AU', name: 'Australia' },
+    { code: 'DE', name: 'Germany' },
+    { code: 'FR', name: 'France' },
+    { code: 'ES', name: 'Spain' },
+    { code: 'MX', name: 'Mexico' },
+    { code: 'BR', name: 'Brazil' },
+    { code: 'IN', name: 'India' },
+    { code: 'JP', name: 'Japan' },
+    { code: 'CN', name: 'China' },
+  ];
+  
   // Date format options
   const dateFormats = [
-    { format: "MM/DD/YYYY", example: "04/08/2025" },
-    { format: "DD/MM/YYYY", example: "08/04/2025" },
-    { format: "YYYY-MM-DD", example: "2025-04-08" },
-    { format: "YYYY/MM/DD", example: "2025/04/08" },
-    { format: "DD.MM.YYYY", example: "08.04.2025" },
-  ]
-
+    { format: 'MM/DD/YYYY', example: '04/08/2025' },
+    { format: 'DD/MM/YYYY', example: '08/04/2025' },
+    { format: 'YYYY-MM-DD', example: '2025-04-08' },
+    { format: 'YYYY/MM/DD', example: '2025/04/08' },
+    { format: 'DD.MM.YYYY', example: '08.04.2025' },
+  ];
+  
   // Handle form submission
   const handleSaveSettings = async () => {
-    setLoading(true)
-    setError(null)
-
+    setLoading(true);
+    setError(null);
+    
     try {
       // Create preferences object
       const preferences = {
@@ -178,36 +151,38 @@ export default function LanguageSettingsPage() {
         date_format: selectedDateFormat,
         time_format: selectedTimeFormat,
         measurement_system: selectedMeasurementSystem,
-      }
-
+      };
+      
       // In a real implementation, this would update the user's preferences
       // For now, we'll just simulate an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Update user object with new preferences
       if (updateProfile) {
-        await updateProfile({ preferences })
+        await updateProfile({ preferences });
       }
-
-      toast.success("Language and region settings saved successfully")
+      
+      toast.success('Language and region settings saved successfully');
     } catch (err) {
-      console.error("Error saving language settings:", err)
-      setError("Failed to save language settings. Please try again later.")
-      toast.error("Failed to save settings")
+      console.error('Error saving language settings:', err);
+      setError('Failed to save language settings. Please try again later.');
+      toast.error('Failed to save settings');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
+  };
+  
   return (
     <AuthenticatedLayout>
       <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Language & Region</h1>
-            <p className="mt-1 text-sm text-gray-500">Customize your language, date format, and regional preferences</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Customize your language, date format, and regional preferences
+            </p>
           </div>
-
+          
           <div className="flex">
             <Link
               href="/settings"
@@ -215,7 +190,7 @@ export default function LanguageSettingsPage() {
             >
               Back to Settings
             </Link>
-
+            
             <button
               type="button"
               onClick={handleSaveSettings}
@@ -224,25 +199,9 @@ export default function LanguageSettingsPage() {
             >
               {loading ? (
                 <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Saving...
                 </>
@@ -255,7 +214,7 @@ export default function LanguageSettingsPage() {
             </button>
           </div>
         </div>
-
+        
         {error && (
           <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
             <div className="flex">
@@ -268,7 +227,7 @@ export default function LanguageSettingsPage() {
             </div>
           </div>
         )}
-
+        
         <div className="space-y-6">
           {/* Language preferences */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -279,7 +238,7 @@ export default function LanguageSettingsPage() {
               </div>
               <p className="mt-1 text-sm text-gray-500">Select your preferred language for the application interface</p>
             </div>
-
+            
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {languages.map((language) => (
@@ -295,7 +254,7 @@ export default function LanguageSettingsPage() {
               </div>
             </div>
           </div>
-
+          
           {/* Region preferences */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
@@ -305,7 +264,7 @@ export default function LanguageSettingsPage() {
               </div>
               <p className="mt-1 text-sm text-gray-500">Select your location to personalize content and settings</p>
             </div>
-
+            
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {regions.map((region) => (
@@ -320,14 +279,14 @@ export default function LanguageSettingsPage() {
               </div>
             </div>
           </div>
-
+          
           {/* Format preferences */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-900">Format Preferences</h2>
               <p className="mt-1 text-sm text-gray-500">Choose how dates, times, and measurements are displayed</p>
             </div>
-
+            
             <div className="p-6">
               <div className="space-y-6">
                 <div>
@@ -344,88 +303,61 @@ export default function LanguageSettingsPage() {
                     ))}
                   </div>
                 </div>
-
+                
                 <div>
                   <h3 className="text-md font-medium text-gray-900 mb-3">Time Format</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div
-                      className={`p-4 border rounded-md cursor-pointer ${selectedTimeFormat === "12h" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}`}
-                      onClick={() => setSelectedTimeFormat("12h")}
+                    <div 
+                      className={`p-4 border rounded-md cursor-pointer ${selectedTimeFormat === '12h' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
+                      onClick={() => setSelectedTimeFormat('12h')}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-sm font-medium text-gray-900">12-hour clock</h3>
                           <p className="text-sm text-gray-500">Example: 2:30 PM</p>
                         </div>
-                        {selectedTimeFormat === "12h" && (
-                          <svg
-                            className="h-5 w-5 text-blue-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
+                        {selectedTimeFormat === '12h' && (
+                          <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                         )}
                       </div>
                     </div>
                   </div>
                 </div>
-
+                
                 <div>
                   <h3 className="text-md font-medium text-gray-900 mb-3">Measurement System</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div
-                      className={`p-4 border rounded-md cursor-pointer ${selectedMeasurementSystem === "metric" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}`}
-                      onClick={() => setSelectedMeasurementSystem("metric")}
+                    <div 
+                      className={`p-4 border rounded-md cursor-pointer ${selectedMeasurementSystem === 'metric' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
+                      onClick={() => setSelectedMeasurementSystem('metric')}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-sm font-medium text-gray-900">Metric</h3>
                           <p className="text-sm text-gray-500">Example: kg, cm, °C</p>
                         </div>
-                        {selectedMeasurementSystem === "metric" && (
-                          <svg
-                            className="h-5 w-5 text-blue-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
+                        {selectedMeasurementSystem === 'metric' && (
+                          <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                         )}
                       </div>
                     </div>
-
-                    <div
-                      className={`p-4 border rounded-md cursor-pointer ${selectedMeasurementSystem === "imperial" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}`}
-                      onClick={() => setSelectedMeasurementSystem("imperial")}
+                    
+                    <div 
+                      className={`p-4 border rounded-md cursor-pointer ${selectedMeasurementSystem === 'imperial' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
+                      onClick={() => setSelectedMeasurementSystem('imperial')}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-sm font-medium text-gray-900">Imperial</h3>
                           <p className="text-sm text-gray-500">Example: lb, ft, °F</p>
                         </div>
-                        {selectedMeasurementSystem === "imperial" && (
-                          <svg
-                            className="h-5 w-5 text-blue-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
+                        {selectedMeasurementSystem === 'imperial' && (
+                          <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                         )}
                       </div>
@@ -435,7 +367,7 @@ export default function LanguageSettingsPage() {
               </div>
             </div>
           </div>
-
+          
           {/* Save button at bottom */}
           <div className="flex justify-end">
             <button
@@ -446,25 +378,9 @@ export default function LanguageSettingsPage() {
             >
               {loading ? (
                 <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Saving...
                 </>
@@ -479,5 +395,5 @@ export default function LanguageSettingsPage() {
         </div>
       </div>
     </AuthenticatedLayout>
-  )
+  );
 }

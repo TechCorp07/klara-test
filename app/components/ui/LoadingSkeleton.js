@@ -9,29 +9,35 @@
  * @param {string} props.className - Additional CSS classes
  * @param {boolean} props.showHeader - Whether to show a header (for tables)
  */
-const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", showHeader = true }) => {
+const LoadingSkeleton = ({ 
+  type = 'text', 
+  lines = 3, 
+  count = 1, 
+  className = '', 
+  showHeader = true 
+}) => {
   // Create an array of specified length
   const createRange = (length) => {
-    return Array.from({ length }, (_, i) => i)
-  }
+    return Array.from({ length }, (_, i) => i);
+  };
 
   // Random width for realistic text lines
   const getRandomWidth = () => {
-    const widths = ["w-1/4", "w-1/3", "w-1/2", "w-2/3", "w-3/4", "w-full"]
-    return widths[Math.floor(Math.random() * widths.length)]
-  }
+    const widths = ['w-1/4', 'w-1/3', 'w-1/2', 'w-2/3', 'w-3/4', 'w-full'];
+    return widths[Math.floor(Math.random() * widths.length)];
+  };
 
   // Text skeleton (for paragraphs, descriptions)
   const TextSkeleton = ({ lines }) => (
     <div className="space-y-2">
       {createRange(lines).map((i) => (
-        <div
-          key={i}
-          className={`h-4 bg-gray-200 rounded animate-pulse ${i === lines - 1 ? getRandomWidth() : "w-full"}`}
+        <div 
+          key={i} 
+          className={`h-4 bg-gray-200 rounded animate-pulse ${i === lines - 1 ? getRandomWidth() : 'w-full'}`}
         ></div>
       ))}
     </div>
-  )
+  );
 
   // Card skeleton (for items in grid or list layouts)
   const CardSkeleton = ({ count }) => (
@@ -47,7 +53,7 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
         </div>
       ))}
     </div>
-  )
+  );
 
   // Table skeleton
   const TableSkeleton = ({ rows = 5, showHeader = true }) => (
@@ -60,7 +66,7 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
       <div className="border-t border-gray-200">
         <dl>
           {createRange(rows).map((i) => (
-            <div key={i} className={`px-4 py-5 ${i % 2 === 0 ? "bg-gray-50" : "bg-white"}`}>
+            <div key={i} className={`px-4 py-5 ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
               <div className="grid grid-cols-3 gap-4">
                 <div className="h-4 bg-gray-200 rounded"></div>
                 <div className="col-span-2 h-4 bg-gray-200 rounded"></div>
@@ -70,7 +76,7 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
         </dl>
       </div>
     </div>
-  )
+  );
 
   // Profile skeleton (for user profile details)
   const ProfileSkeleton = () => (
@@ -93,7 +99,7 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
         </div>
       </div>
     </div>
-  )
+  );
 
   // Chart skeleton (for data visualizations)
   const ChartSkeleton = () => (
@@ -107,7 +113,7 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
         <div className="h-4 bg-gray-200 rounded w-16"></div>
       </div>
     </div>
-  )
+  );
 
   // List skeleton (for simple lists)
   const ListSkeleton = ({ count }) => (
@@ -122,7 +128,7 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
         </li>
       ))}
     </ul>
-  )
+  );
 
   // Detail view skeleton (for single item details)
   const DetailSkeleton = () => (
@@ -141,31 +147,35 @@ const LoadingSkeleton = ({ type = "text", lines = 3, count = 1, className = "", 
         </div>
       </div>
     </div>
-  )
+  );
 
   // Render the appropriate skeleton based on type
   const renderSkeleton = () => {
     switch (type) {
-      case "text":
-        return <TextSkeleton lines={lines} />
-      case "card":
-        return <CardSkeleton count={count} />
-      case "table":
-        return <TableSkeleton rows={lines} showHeader={showHeader} />
-      case "profile":
-        return <ProfileSkeleton />
-      case "chart":
-        return <ChartSkeleton />
-      case "list":
-        return <ListSkeleton count={count} />
-      case "detail":
-        return <DetailSkeleton />
+      case 'text':
+        return <TextSkeleton lines={lines} />;
+      case 'card':
+        return <CardSkeleton count={count} />;
+      case 'table':
+        return <TableSkeleton rows={lines} showHeader={showHeader} />;
+      case 'profile':
+        return <ProfileSkeleton />;
+      case 'chart':
+        return <ChartSkeleton />;
+      case 'list':
+        return <ListSkeleton count={count} />;
+      case 'detail':
+        return <DetailSkeleton />;
       default:
-        return <TextSkeleton lines={lines} />
+        return <TextSkeleton lines={lines} />;
     }
-  }
+  };
 
-  return <div className={className}>{renderSkeleton()}</div>
-}
+  return (
+    <div className={className}>
+      {renderSkeleton()}
+    </div>
+  );
+};
 
-export default LoadingSkeleton
+export default LoadingSkeleton;

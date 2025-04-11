@@ -1,81 +1,77 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { healthcare } from "@/lib/services/healthcareService"
-import { useAuth } from "@/contexts/AuthContext"
-import { toast } from "react-toastify"
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { healthcare } from '@/lib/services/healthcareService';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'react-toastify';
 
 export default function MedicalRecordsPage() {
-  const { user } = useAuth()
-  const [selectedRecord, setSelectedRecord] = useState(null)
-  const queryClient = useQueryClient()
-
+  const { user } = useAuth();
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const queryClient = useQueryClient();
+  
   // Fetch medical records
-  const {
-    data: medicalRecords,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["medicalRecords", user?.id],
+  const { data: medicalRecords, isLoading, error } = useQuery({
+    queryKey: ['medicalRecords', user?.id],
     queryFn: () => healthcare.getMedicalRecords(user?.id),
     enabled: !!user,
     onError: (error) => {
-      toast.error("Failed to load medical records")
-      console.error("Error fetching medical records:", error)
-    },
-  })
-
+      toast.error('Failed to load medical records');
+      console.error('Error fetching medical records:', error);
+    }
+  });
+  
   // Fetch conditions for selected medical record
   const { data: conditions } = useQuery({
-    queryKey: ["conditions", selectedRecord?.id],
+    queryKey: ['conditions', selectedRecord?.id],
     queryFn: () => healthcare.getConditions(selectedRecord?.id),
     enabled: !!selectedRecord,
     onError: (error) => {
-      toast.error("Failed to load conditions")
-      console.error("Error fetching conditions:", error)
-    },
-  })
-
+      toast.error('Failed to load conditions');
+      console.error('Error fetching conditions:', error);
+    }
+  });
+  
   // Fetch allergies for selected medical record
   const { data: allergies } = useQuery({
-    queryKey: ["allergies", selectedRecord?.id],
+    queryKey: ['allergies', selectedRecord?.id],
     queryFn: () => healthcare.getAllergies(selectedRecord?.id),
     enabled: !!selectedRecord,
     onError: (error) => {
-      toast.error("Failed to load allergies")
-      console.error("Error fetching allergies:", error)
-    },
-  })
-
+      toast.error('Failed to load allergies');
+      console.error('Error fetching allergies:', error);
+    }
+  });
+  
   // Fetch medications for selected medical record
   const { data: medications } = useQuery({
-    queryKey: ["medications", selectedRecord?.id],
+    queryKey: ['medications', selectedRecord?.id],
     queryFn: () => healthcare.getMedications(selectedRecord?.id),
     enabled: !!selectedRecord,
     onError: (error) => {
-      toast.error("Failed to load medications")
-      console.error("Error fetching medications:", error)
-    },
-  })
-
+      toast.error('Failed to load medications');
+      console.error('Error fetching medications:', error);
+    }
+  });
+  
   // Mutation for updating medical record
   const updateMedicalRecordMutation = useMutation({
     mutationFn: ({ id, data }) => healthcare.updateMedicalRecord(id, data),
     onSuccess: () => {
-      toast.success("Medical record updated successfully")
-      queryClient.invalidateQueries(["medicalRecords", user?.id])
+      toast.success('Medical record updated successfully');
+      queryClient.invalidateQueries(['medicalRecords', user?.id]);
     },
     onError: (error) => {
-      toast.error("Failed to update medical record")
-      console.error("Error updating medical record:", error)
-    },
-  })
-
+      toast.error('Failed to update medical record');
+      console.error('Error updating medical record:', error);
+    }
+  });
+  
   const handleRecordSelect = (record) => {
-    setSelectedRecord(record)
-  }
-
+    setSelectedRecord(record);
+  };
+  
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -84,9 +80,9 @@ export default function MedicalRecordsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       </div>
-    )
+    );
   }
-
+  
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -95,28 +91,28 @@ export default function MedicalRecordsPage() {
           <p>Error loading medical records. Please try again later.</p>
         </div>
       </div>
-    )
+    );
   }
-
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Medical Records</h1>
-
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Medical Records List */}
         <div className="md:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Your Records</h2>
-
+            
             {medicalRecords && medicalRecords.results && medicalRecords.results.length > 0 ? (
               <div className="space-y-4">
                 {medicalRecords.results.map((record) => (
-                  <div
-                    key={record.id}
+                  <div 
+                    key={record.id} 
                     className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                      selectedRecord?.id === record.id
-                        ? "bg-blue-100 border border-blue-300"
-                        : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
+                      selectedRecord?.id === record.id 
+                        ? 'bg-blue-100 border border-blue-300' 
+                        : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
                     }`}
                     onClick={() => handleRecordSelect(record)}
                   >
@@ -132,13 +128,15 @@ export default function MedicalRecordsPage() {
             )}
           </div>
         </div>
-
+        
         {/* Medical Record Details */}
         <div className="md:col-span-2">
           {selectedRecord ? (
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Record #{selectedRecord.medical_record_number}</h2>
-
+              <h2 className="text-xl font-semibold mb-4">
+                Record #{selectedRecord.medical_record_number}
+              </h2>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <p className="text-gray-600">Date of Birth</p>
@@ -165,7 +163,7 @@ export default function MedicalRecordsPage() {
                   <p className="font-medium">{selectedRecord.ethnicity}</p>
                 </div>
               </div>
-
+              
               {/* Tabs for different sections */}
               <div className="border-b border-gray-200 mb-6">
                 <nav className="-mb-px flex space-x-8">
@@ -180,11 +178,11 @@ export default function MedicalRecordsPage() {
                   </button>
                 </nav>
               </div>
-
+              
               {/* Conditions Section */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Conditions</h3>
-
+                
                 {conditions && conditions.results && conditions.results.length > 0 ? (
                   <div className="space-y-4">
                     {conditions.results.map((condition) => (
@@ -193,8 +191,7 @@ export default function MedicalRecordsPage() {
                           <div>
                             <p className="font-medium">{condition.name}</p>
                             <p className="text-sm text-gray-600">
-                              Status:{" "}
-                              <span className={`${condition.status === "active" ? "text-red-600" : "text-green-600"}`}>
+                              Status: <span className={`${condition.status === 'active' ? 'text-red-600' : 'text-green-600'}`}>
                                 {condition.status}
                               </span>
                             </p>
@@ -202,15 +199,15 @@ export default function MedicalRecordsPage() {
                               Diagnosed: {new Date(condition.diagnosed_date).toLocaleDateString()}
                             </p>
                           </div>
-                          <span
-                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              condition.is_primary ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {condition.is_primary ? "Primary" : "Secondary"}
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            condition.is_primary 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {condition.is_primary ? 'Primary' : 'Secondary'}
                           </span>
                         </div>
-
+                        
                         {condition.notes && (
                           <div className="mt-2">
                             <p className="text-sm text-gray-600">{condition.notes}</p>
@@ -232,5 +229,5 @@ export default function MedicalRecordsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

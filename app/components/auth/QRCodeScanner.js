@@ -1,135 +1,140 @@
-"use client"
-
 // File: /components/auth/QRCodeScanner.js
 
-import { useState, useEffect } from "react"
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from "@zxing/browser"
-import { FaCamera, FaExclamationTriangle, FaCheck, FaSync } from "react-icons/fa"
+import { useState, useEffect } from 'react';
+import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/browser';
+import { FaCamera, FaExclamationTriangle, FaCheck, FaSync } from 'react-icons/fa';
 
 const QRCodeScanner = ({ onScan, onError }) => {
-  const [selectedDeviceId, setSelectedDeviceId] = useState("")
-  const [videoInputDevices, setVideoInputDevices] = useState([])
-  const [scanning, setScanning] = useState(false)
-  const [scanSuccess, setScanSuccess] = useState(false)
-  const [scanError, setScanError] = useState(null)
-  const [reader, setReader] = useState(null)
-
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const [videoInputDevices, setVideoInputDevices] = useState([]);
+  const [scanning, setScanning] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
+  const [scanError, setScanError] = useState(null);
+  const [reader, setReader] = useState(null);
+  
   // Initialize the QR code reader
   useEffect(() => {
-    const hints = new Map()
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE])
-
-    const codeReader = new BrowserMultiFormatReader(hints)
-    setReader(codeReader)
-
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]);
+    
+    const codeReader = new BrowserMultiFormatReader(hints);
+    setReader(codeReader);
+    
     // Get available video devices
-    codeReader
-      .listVideoInputDevices()
+    codeReader.listVideoInputDevices()
       .then((devices) => {
-        setVideoInputDevices(devices)
-
+        setVideoInputDevices(devices);
+        
         // Select the first device by default
         if (devices.length > 0) {
-          setSelectedDeviceId(devices[0].deviceId)
+          setSelectedDeviceId(devices[0].deviceId);
         }
       })
       .catch((err) => {
-        console.error("Error listing video devices:", err)
-        setScanError("Unable to access camera. Please ensure camera permissions are granted.")
-        if (onError) onError(err)
-      })
-
+        console.error('Error listing video devices:', err);
+        setScanError('Unable to access camera. Please ensure camera permissions are granted.');
+        if (onError) onError(err);
+      });
+    
     // Cleanup on unmount
     return () => {
       if (reader) {
-        reader.reset()
+        reader.reset();
       }
-    }
-  }, [])
-
+    };
+  }, []);
+  
   // Start scanning when device is selected
   useEffect(() => {
-    if (!reader || !selectedDeviceId) return
-
+    if (!reader || !selectedDeviceId) return;
+    
     const startScanning = async () => {
       try {
-        setScanning(true)
-        setScanSuccess(false)
-        setScanError(null)
-
+        setScanning(true);
+        setScanSuccess(false);
+        setScanError(null);
+        
         // Start decoding from video device
-        await reader.decodeFromVideoDevice(selectedDeviceId, "qr-video", (result, error) => {
-          if (result) {
-            // QR code detected
-            setScanSuccess(true)
-            setScanning(false)
-
-            // Call the onScan callback with the result
-            if (onScan) onScan(result.getText())
-
-            // Reset the reader
-            reader.reset()
+        await reader.decodeFromVideoDevice(
+          selectedDeviceId,
+          'qr-video',
+          (result, error) => {
+            if (result) {
+              // QR code detected
+              setScanSuccess(true);
+              setScanning(false);
+              
+              // Call the onScan callback with the result
+              if (onScan) onScan(result.getText());
+              
+              // Reset the reader
+              reader.reset();
+            }
+            
+            if (error && !(error instanceof TypeError)) {
+              // Ignore TypeError as it's thrown when no QR code is detected
+              console.error('Error scanning QR code:', error);
+            }
           }
-
-          if (error && !(error instanceof TypeError)) {
-            // Ignore TypeError as it's thrown when no QR code is detected
-            console.error("Error scanning QR code:", error)
-          }
-        })
+        );
       } catch (err) {
-        console.error("Error starting QR code scanner:", err)
-        setScanError("Failed to start QR code scanner. Please try again.")
-        setScanning(false)
-        if (onError) onError(err)
+        console.error('Error starting QR code scanner:', err);
+        setScanError('Failed to start QR code scanner. Please try again.');
+        setScanning(false);
+        if (onError) onError(err);
       }
-    }
-
-    startScanning()
-
+    };
+    
+    startScanning();
+    
     // Cleanup on device change
     return () => {
       if (reader) {
-        reader.reset()
+        reader.reset();
       }
-    }
-  }, [selectedDeviceId, reader])
-
+    };
+  }, [selectedDeviceId, reader]);
+  
   // Handle device selection change
   const handleDeviceChange = (e) => {
-    setSelectedDeviceId(e.target.value)
-  }
-
+    setSelectedDeviceId(e.target.value);
+  };
+  
   // Handle retry
   const handleRetry = () => {
-    setScanSuccess(false)
-    setScanError(null)
-
+    setScanSuccess(false);
+    setScanError(null);
+    
     // Reset the reader and start scanning again
     if (reader) {
-      reader.reset()
-
+      reader.reset();
+      
       // Small delay to ensure reset is complete
       setTimeout(() => {
         if (selectedDeviceId) {
-          reader.decodeFromVideoDevice(selectedDeviceId, "qr-video", (result, error) => {
-            if (result) {
-              setScanSuccess(true)
-              setScanning(false)
-
-              if (onScan) onScan(result.getText())
-
-              reader.reset()
+          reader.decodeFromVideoDevice(
+            selectedDeviceId,
+            'qr-video',
+            (result, error) => {
+              if (result) {
+                setScanSuccess(true);
+                setScanning(false);
+                
+                if (onScan) onScan(result.getText());
+                
+                reader.reset();
+              }
+              
+              if (error && !(error instanceof TypeError)) {
+                console.error('Error scanning QR code:', error);
+              }
             }
-
-            if (error && !(error instanceof TypeError)) {
-              console.error("Error scanning QR code:", error)
-            }
-          })
+          );
         }
-      }, 100)
+      }, 100);
     }
-  }
-
+  };
+  
   return (
     <div className="qr-scanner">
       <div className="mb-4">
@@ -148,19 +153,26 @@ const QRCodeScanner = ({ onScan, onError }) => {
               {device.label || `Camera ${videoInputDevices.indexOf(device) + 1}`}
             </option>
           ))}
-          {videoInputDevices.length === 0 && <option value="">No cameras available</option>}
+          {videoInputDevices.length === 0 && (
+            <option value="">No cameras available</option>
+          )}
         </select>
       </div>
-
+      
       <div className="relative">
         {/* Video element for QR code scanning */}
-        <div
-          className={`relative overflow-hidden rounded-lg border-2 ${
-            scanSuccess ? "border-green-500" : scanError ? "border-red-500" : "border-gray-300"
-          }`}
-        >
-          <video id="qr-video" className="w-full h-64 object-cover" muted playsInline></video>
-
+        <div className={`relative overflow-hidden rounded-lg border-2 ${
+          scanSuccess ? 'border-green-500' : 
+          scanError ? 'border-red-500' : 
+          'border-gray-300'
+        }`}>
+          <video
+            id="qr-video"
+            className="w-full h-64 object-cover"
+            muted
+            playsInline
+          ></video>
+          
           {/* Scanning overlay */}
           {scanning && !scanError && !scanSuccess && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-30">
@@ -170,7 +182,7 @@ const QRCodeScanner = ({ onScan, onError }) => {
               <p className="text-white text-sm font-medium">Scanning QR Code...</p>
             </div>
           )}
-
+          
           {/* Success overlay */}
           {scanSuccess && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-500 bg-opacity-30">
@@ -180,7 +192,7 @@ const QRCodeScanner = ({ onScan, onError }) => {
               <p className="text-white text-sm font-medium">QR Code Scanned Successfully!</p>
             </div>
           )}
-
+          
           {/* Error overlay */}
           {scanError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500 bg-opacity-30">
@@ -199,14 +211,14 @@ const QRCodeScanner = ({ onScan, onError }) => {
             </div>
           )}
         </div>
-
+        
         {/* Instructions */}
         <div className="mt-2 text-sm text-gray-600">
           <p>Position the QR code within the camera view to scan.</p>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default QRCodeScanner
+export default QRCodeScanner;

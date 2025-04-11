@@ -1,27 +1,21 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import "@/styles/global.css";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { AuthProvider } from "@/context/AuthContext";
+import SessionTimeout from "@/components/auth/SessionTimeout";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-export default function Providers({ children }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            refetchOnWindowFocus: false,
-            retry: 1,
-            staleTime: 5 * 60 * 1000, // 5 minutes
-          },
-        },
-      }),
-  )
-
+export function Providers({ children }) {
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      <AuthProvider>
+        {children}
+        <SessionTimeout />
+        <ToastContainer position="top-right" autoClose={5000} />
+      </AuthProvider>
     </QueryClientProvider>
-  )
+  );
 }

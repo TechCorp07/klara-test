@@ -1,43 +1,36 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { NextResponse } from 'next/server';
 
 export function middleware(request) {
-  // Get the pathname of the request
-  const path = request.nextUrl.pathname
+  const { pathname } = request.nextUrl;
 
-  // Define public paths that don't require authentication
-  const publicPaths = ["/login", "/register", "/forgot-password", "/reset-password"]
-  const isPublicPath = publicPaths.some((publicPath) => path.startsWith(publicPath))
+  // routes that anyone can hit
+  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const isPublic    = publicPaths.some((p) => pathname.startsWith(p));
 
-  // Check if user is authenticated
-  const cookieStore = cookies()
-  const accessToken = cookieStore.get("access_token")?.value
-  const isAuthenticated = !!accessToken
+  // read cookie straight from the Request (headers API isn’t available here)
+  const accessToken = request.cookies.get('access_token')?.value;
+  const isAuth      = Boolean(accessToken);
 
-  // If the path is public, allow access
-  if (isPublicPath) {
-    // If user is authenticated and trying to access public path, redirect to dashboard
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
-    return NextResponse.next()
+  if (isPublic) {
+    // authenticated user hitting a public page → send to dashboard
+    if (isAuth) return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.next();
   }
 
-  // If the path is protected and user is not authenticated, redirect to login
-  if (!isAuthenticated) {
-    const url = new URL("/login", request.url)
-    url.searchParams.set("from", request.nextUrl.pathname)
-    return NextResponse.redirect(url)
+  // protected route, not authenticated → bounce to login
+  if (!isAuth) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('from', pathname);
+    return NextResponse.redirect(url);
   }
 
-  // Continue to the protected route
-  return NextResponse.next()
+  // everything ok
+  return NextResponse.next();
 }
 
-// Configure which routes use this middleware
 export const config = {
   matcher: [
-    // Apply to all routes except API routes, static files, and images
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    // run on everything except API routes, static assets and favicon
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
-}
+};
