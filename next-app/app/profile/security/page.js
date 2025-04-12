@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { security } from '../../../lib/api';
+import { security } from '../../../api';
 import AuthenticatedLayout from '../../../components/layout/AuthenticatedLayout';
 import { FaShieldAlt, FaHistory, FaMobileAlt, FaExclamationTriangle } from 'react-icons/fa';
 

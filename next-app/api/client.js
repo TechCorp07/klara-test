@@ -6,8 +6,6 @@ import * as Sentry from '@sentry/nextjs';
 
 // Constants
 const TOKEN_REFRESH_MARGIN = 60_000; // 1 minute before expiry
-
-// API base URL from environment
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.klararety.com/api';
 
 /**
@@ -35,7 +33,7 @@ const apiClient = axios.create({
 export const buildParams = (params = {}) => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== '') {
       if (Array.isArray(value)) {
         searchParams.append(key, value.join(','));
       } else {
@@ -363,35 +361,117 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Safe wrapper for apiClient that works in both client and server components
+ * Create API service factory for consistent module generation
+ * @param {string} basePath - Base API path for this service
+ * @returns {Object} API service methods
  */
-export const createServerSafeApiClient = () => {
-  const get = (endpoint, params = {}, options = {}) => 
-    apiRequest('GET', endpoint, null, { params, ...options });
-
-  const post = (endpoint, data = {}, options = {}) => 
-    apiRequest('POST', endpoint, data, options);
-
-  const put = (endpoint, data = {}, options = {}) => 
-    apiRequest('PUT', endpoint, data, options);
-
-  const patch = (endpoint, data = {}, options = {}) => 
-    apiRequest('PATCH', endpoint, data, options);
-
-  const del = (endpoint, options = {}) => 
-    apiRequest('DELETE', endpoint, null, options);
-
+export const createApiService = (basePath) => {
   return {
-    get,
-    post,
-    put,
-    patch,
-    delete: del
+    /**
+     * Get a single resource by ID
+     * @param {string} id - Resource ID
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Resource data
+     */
+    getById: async (id, options = {}) => {
+      return apiRequest('GET', `${basePath}/${id}/`, null, options);
+    },
+    
+    /**
+     * Get a list of resources with optional filters
+     * @param {Object} filters - Filter parameters
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Paginated resources
+     */
+    getList: async (filters = {}, options = {}) => {
+      return apiRequest('GET', basePath, null, { 
+        params: filters,
+        ...options
+      });
+    },
+    
+    /**
+     * Create a new resource
+     * @param {Object} data - Resource data
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Created resource
+     */
+    create: async (data, options = {}) => {
+      return apiRequest('POST', basePath, data, options);
+    },
+    
+    /**
+     * Update a resource
+     * @param {string} id - Resource ID
+     * @param {Object} data - Updated resource data
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Updated resource
+     */
+    update: async (id, data, options = {}) => {
+      return apiRequest('PATCH', `${basePath}/${id}/`, data, options);
+    },
+    
+    /**
+     * Replace a resource
+     * @param {string} id - Resource ID
+     * @param {Object} data - New resource data
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Replaced resource
+     */
+    replace: async (id, data, options = {}) => {
+      return apiRequest('PUT', `${basePath}/${id}/`, data, options);
+    },
+    
+    /**
+     * Delete a resource
+     * @param {string} id - Resource ID
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Deletion response
+     */
+    delete: async (id, options = {}) => {
+      return apiRequest('DELETE', `${basePath}/${id}/`, null, options);
+    },
+    
+    /**
+     * Perform a custom action on a resource
+     * @param {string} id - Resource ID
+     * @param {string} action - Action name
+     * @param {Object} data - Action data
+     * @param {Object} options - Request options
+     * @returns {Promise<Object>} Action response
+     */
+    performAction: async (id, action, data = {}, options = {}) => {
+      return apiRequest('POST', `${basePath}/${id}/${action}/`, data, options);
+    },
+    
+    /**
+     * Create a custom method for this service
+     * @param {string} name - Method name
+     * @param {string} method - HTTP method
+     * @param {string} path - Endpoint path
+     * @param {Function} transformRequest - Request transformation function
+     * @param {Function} transformResponse - Response transformation function
+     * @returns {Function} Custom method
+     */
+    createMethod: (name, method, path, transformRequest, transformResponse) => {
+      return async (...args) => {
+        let requestData = args[0] || null;
+        let options = args[1] || {};
+        
+        if (transformRequest) {
+          const transformed = transformRequest(...args);
+          requestData = transformed.data;
+          options = { ...options, ...transformed.options };
+        }
+        
+        const fullPath = path.startsWith('/') ? path : `${basePath}/${path}`;
+        const response = await apiRequest(method, fullPath, requestData, options);
+        
+        return transformResponse ? transformResponse(response) : response;
+      };
+    }
   };
 };
-
-// Create a server-safe API client
-export const serverSafeApiClient = createServerSafeApiClient();
 
 // Export convenience methods
 export const get = (endpoint, params = {}, options = {}) => 

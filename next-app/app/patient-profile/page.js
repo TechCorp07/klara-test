@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { healthcare } from '../../lib/api';
+import { healthcare } from '../../api';
 import AuthenticatedLayout from '../../components/layout/AuthenticatedLayout';
 
 export default function PatientProfilePage() {

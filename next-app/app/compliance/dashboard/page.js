@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { audit } from '../../../lib/api';
+import { audit } from '../../../api';
 import AuthenticatedLayout from '../../../components/layout/AuthenticatedLayout';
 
 export default function ComplianceDashboard() {

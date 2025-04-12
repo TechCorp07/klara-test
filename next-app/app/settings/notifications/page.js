@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../../contexts/AuthContext';
-import { communication } from '../../../lib/api';
+import { communication } from '../../../api';
 import AuthenticatedLayout from '../../../components/layout/AuthenticatedLayout';
 import { FaBell, FaExclamationTriangle, FaSave, FaEnvelope, FaMobile, FaCalendarAlt, FaFileMedical, FaComments } from 'react-icons/fa';
 

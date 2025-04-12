@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { communication } from "@/lib/api";
+import { communication } from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { toast } from "react-toastify";
