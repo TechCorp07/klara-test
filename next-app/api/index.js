@@ -1,9 +1,9 @@
 // lib/api/index.js
-import apiClient from '@/client';
-import authApi from '@/auth';
-import healthcareApi from '@/healthcare';
-import telemedicineApi from '@/telemedicine';
-import auditApi from '@/audit';
+import apiClient from './client';
+import authApi from './auth';
+import healthcareApi from './healthcare';
+import telemedicineApi from './telemedicine';
+import auditApi from './audit';
 
 // Export all API modules
 export {

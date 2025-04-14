@@ -1,31 +1,28 @@
 // lib/api/auth.js
-import apiClient from '@/client';
+import apiClient, { createApiService, executeApiCall } from '@/client';
+
+/**
+ * Base API service for user-related endpoints
+ */
+const baseService = createApiService('/users');
 
 /**
  * Authentication and user-related API functions
  */
 const authApi = {
+  // Base CRUD operations for users
+  ...baseService,
+  
   /**
    * Get current authenticated user
    * @returns {Promise<Object>} User object
    */
   getMe: async () => {
-    try {
-      const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        credentials: 'same-origin'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Authentication failed');
-      }
-      
-      const data = await response.json();
-      return data.user;
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
-    }
+    return executeApiCall(
+      () => apiClient.get('/api/auth/me'),
+      'Failed to fetch user profile',
+      { endpoint: '/api/auth/me' }
+    ).then(data => data.user);
   },
   
   /**
@@ -34,26 +31,11 @@ const authApi = {
    * @returns {Promise<Object>} Login response
    */
   login: async (credentials) => {
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'same-origin'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
-      }
-      
-      return response.json();
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
+    return executeApiCall(
+      () => apiClient.post('/api/auth/login', credentials),
+      'Login failed',
+      { endpoint: '/api/auth/login' }
+    );
   },
   
   /**
@@ -63,26 +45,11 @@ const authApi = {
    * @returns {Promise<Object>} Verification response
    */
   verify2FA: async (token, code) => {
-    try {
-      const response = await fetch('/api/auth/verify-2fa', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, code }),
-        credentials: 'same-origin'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Verification failed');
-      }
-      
-      return response.json();
-    } catch (error) {
-      console.error('2FA verification error:', error);
-      throw error;
-    }
+    return executeApiCall(
+      () => apiClient.post('/api/auth/verify-2fa', { token, code }),
+      'Two-factor authentication verification failed',
+      { endpoint: '/api/auth/verify-2fa' }
+    );
   },
   
   /**
@@ -90,22 +57,11 @@ const authApi = {
    * @returns {Promise<Object>} Logout response
    */
   logout: async () => {
-    try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'same-origin'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Logout failed');
-      }
-      
-      return response.json();
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
-    }
+    return executeApiCall(
+      () => apiClient.post('/api/auth/logout'),
+      'Logout failed',
+      { endpoint: '/api/auth/logout' }
+    );
   },
   
   /**
@@ -114,8 +70,10 @@ const authApi = {
    * @returns {Promise<Object>} Registration response
    */
   register: async (userData) => {
-    const { data } = await apiClient.post('/users/users/', userData);
-    return data;
+    return baseService.create(userData, {
+      errorMessage: 'User registration failed',
+      trackingContext: { action: 'user_registration' }
+    });
   },
   
   /**
@@ -124,8 +82,11 @@ const authApi = {
    * @returns {Promise<Object>} Updated user object
    */
   updateProfile: async (profileData) => {
-    const { data } = await apiClient.patch('/users/me/', profileData);
-    return data;
+    return executeApiCall(
+      () => apiClient.patch('/users/me/', profileData),
+      'Failed to update user profile',
+      { endpoint: '/users/me' }
+    );
   },
   
   /**
@@ -134,8 +95,11 @@ const authApi = {
    * @returns {Promise<Object>} Reset request response
    */
   requestPasswordReset: async (email) => {
-    const { data } = await apiClient.post('/users/request-password-reset/', { email });
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/request-password-reset/', { email }),
+      'Failed to request password reset',
+      { endpoint: '/users/request-password-reset' }
+    );
   },
   
   /**
@@ -144,8 +108,11 @@ const authApi = {
    * @returns {Promise<Object>} Password reset response
    */
   resetPassword: async (resetData) => {
-    const { data } = await apiClient.post('/users/reset-password/', resetData);
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/reset-password/', resetData),
+      'Failed to reset password',
+      { endpoint: '/users/reset-password' }
+    );
   },
   
   /**
@@ -154,8 +121,11 @@ const authApi = {
    * @returns {Promise<Object>} Password change response
    */
   changePassword: async (passwordData) => {
-    const { data } = await apiClient.post('/users/change-password/', passwordData);
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/change-password/', passwordData),
+      'Failed to change password',
+      { endpoint: '/users/change-password' }
+    );
   },
   
   /**
@@ -163,8 +133,11 @@ const authApi = {
    * @returns {Promise<Object>} 2FA setup response with QR code
    */
   setup2FA: async () => {
-    const { data } = await apiClient.post('/users/setup-2fa/');
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/setup-2fa/'),
+      'Failed to setup two-factor authentication',
+      { endpoint: '/users/setup-2fa' }
+    );
   },
   
   /**
@@ -173,8 +146,11 @@ const authApi = {
    * @returns {Promise<Object>} 2FA confirmation response
    */
   confirm2FA: async (code) => {
-    const { data } = await apiClient.post('/users/confirm-2fa/', { code });
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/confirm-2fa/', { code }),
+      'Failed to confirm two-factor authentication',
+      { endpoint: '/users/confirm-2fa' }
+    );
   },
   
   /**
@@ -183,8 +159,11 @@ const authApi = {
    * @returns {Promise<Object>} 2FA disabling response
    */
   disable2FA: async (password) => {
-    const { data } = await apiClient.post('/users/disable-2fa/', { password });
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/disable-2fa/', { password }),
+      'Failed to disable two-factor authentication',
+      { endpoint: '/users/disable-2fa' }
+    );
   },
   
   /**
@@ -194,11 +173,14 @@ const authApi = {
    * @returns {Promise<Object>} Consent update response
    */
   updateConsent: async (type, consented) => {
-    const { data } = await apiClient.post('/users/update-consent/', { 
-      consent_type: type, 
-      consented 
-    });
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/users/update-consent/', { 
+        consent_type: type, 
+        consented 
+      }),
+      'Failed to update consent settings',
+      { endpoint: '/users/update-consent' }
+    );
   }
 };
 

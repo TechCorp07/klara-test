@@ -1,40 +1,41 @@
+// components/notifications/NotificationCenter.tsx
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { communication } from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { toast } from "react-toastify";
+import { useNotifications, useMarkNotificationsAsRead } from "@/hooks/notifications/useNotifications";
 
-export default function NotificationCenter() {
+const NotificationCenter: React.FC = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState<string>('all');
   
-  // Fetch notifications
-  const { data: notifications, isLoading, error } = useQuery({
-    queryKey: ["notifications", filter],
-    queryFn: () =>
-      communication.getNotifications(
-        filter !== "all" ? { type: filter } : {}
-      ),
-    enabled: !!user,
-    onError: () => {
-      toast.error("Failed to load notifications");
-    },
-  });
+  // Use custom hooks for data fetching and notification actions
+  const { data: notifications, isLoading, error } = useNotifications(
+    filter !== "all" ? { type: filter } : {}
+  );
   
-  // Mark all as read
-  const handleMarkAllAsRead = () => toast.success('All notifications marked as read');
-  
-  const handleMarkAsRead = (notificationId) => {
-    // Implementation would call API to mark as read
-    toast.success('Notification marked as read');
-  };
+  const { markAsRead, markAllAsRead } = useMarkNotificationsAsRead();
   
   // Count unread notifications
   const unreadCount = notifications?.results?.filter(n => !n.read_at).length || 0;
+  
+  // Handle mark as read
+  const handleMarkAsRead = async (notificationId: string) => {
+    const success = await markAsRead(notificationId);
+    if (success) {
+      // Optionally refetch or update the local state
+    }
+  };
+  
+  // Handle mark all as read
+  const handleMarkAllAsRead = async () => {
+    const success = await markAllAsRead();
+    if (success) {
+      // Optionally refetch or update the local state
+    }
+  };
   
   return (
     <div className="relative">
@@ -196,13 +197,13 @@ export default function NotificationCenter() {
       )}
     </div>
   );
-}
+};
 
 // Helper function to format time ago
-function formatTimeAgo(dateString) {
+function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
-  const seconds = Math.floor((now - date) / 1000);
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
   if (seconds < 60) {
     return 'just now';
@@ -225,3 +226,5 @@ function formatTimeAgo(dateString) {
   
   return date.toLocaleDateString();
 }
+
+export default NotificationCenter;

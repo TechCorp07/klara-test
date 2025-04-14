@@ -6,8 +6,28 @@ import { FaExclamationTriangle, FaHome } from 'react-icons/fa';
 import Link from 'next/link';
 
 /**
- * Error Boundary for catching and displaying errors
- * Includes error logging and error reporting capabilities
+ * ErrorBoundary: Class component that catches JavaScript errors in its child component tree.
+ * Use this to wrap sections of your application where you want to catch unexpected errors
+ * and prevent the entire application from crashing.
+ *
+ * @example
+ * // Basic usage
+ * <ErrorBoundary>
+ *   <ComponentThatMightError />
+ * </ErrorBoundary>
+ * 
+ * // With custom fallback component
+ * <ErrorBoundary
+ *   fallback={(error, reset) => (
+ *     <ErrorComponent 
+ *       error={error} 
+ *       variant="page" 
+ *       onRetry={reset} 
+ *     />
+ *   )}
+ * >
+ *   <ComponentThatMightError />
+ * </ErrorBoundary>
  */
 class ErrorBoundary extends Component {
   constructor(props) {

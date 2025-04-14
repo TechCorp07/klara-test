@@ -1,4 +1,4 @@
-// components/appointments/AppointmentCalendar.jsx
+// components/appointments/AppointmentCalendar.tsx
 "use client";
 
 import { useState, useEffect, useCallback, memo } from 'react';
@@ -7,17 +7,36 @@ import { format, startOfWeek, addDays, startOfMonth, endOfMonth,
 import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaVideo, 
          FaUserMd, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 
+// Define the TypeScript interfaces
+export interface Appointment {
+  id: string;
+  scheduled_time: string;
+  reason?: string;
+  appointment_type: 'video_consultation' | 'phone_consultation' | 'in_person';
+  status?: 'confirmed' | 'pending' | 'cancelled';
+  provider_id?: string;
+}
+
+export interface AppointmentCalendarProps {
+  /** List of appointment objects */
+  appointments?: Appointment[];
+  /** Callback when a date is selected */
+  onDateSelect?: (date: Date) => void;
+  /** Callback when an appointment is selected */
+  onAppointmentSelect?: (appointment: Appointment) => void;
+}
+
 /**
  * Calendar component for displaying and managing appointments
- * @param {Object} props
- * @param {Array} props.appointments - List of appointment objects
- * @param {Function} props.onDateSelect - Callback when a date is selected
- * @param {Function} props.onAppointmentSelect - Callback when an appointment is selected
  */
-const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSelect }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [calendarView, setCalendarView] = useState('month'); // 'month' or 'week'
+const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
+  appointments = [], 
+  onDateSelect, 
+  onAppointmentSelect 
+}) => {
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
 
   // Function to render the header with month and navigation
   const renderHeader = useCallback(() => {
@@ -34,7 +53,7 @@ const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSel
         <div className="flex space-x-2">
           <select
             value={calendarView}
-            onChange={(e) => setCalendarView(e.target.value)}
+            onChange={(e) => setCalendarView(e.target.value as 'month' | 'week')}
             className="mr-4 bg-white border border-gray-300 rounded-md shadow-sm py-1 px-3 text-sm"
           >
             <option value="month">Month</option>
@@ -152,7 +171,7 @@ const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSel
         day = addDays(day, 1);
       }
       rows.push(
-        <div className="grid grid-cols-7 gap-1" key={day}>
+        <div className="grid grid-cols-7 gap-1" key={day.toString()}>
           {days}
         </div>
       );
@@ -219,7 +238,7 @@ const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSel
   }, [appointments, selectedDate]);
 
   // Helper function to get appointment type style
-  const getAppointmentTypeStyle = (type) => {
+  const getAppointmentTypeStyle = (type: Appointment['appointment_type']): string => {
     switch (type) {
       case 'video_consultation':
         return 'bg-blue-50 text-blue-700';
@@ -233,7 +252,7 @@ const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSel
   };
 
   // Helper function to get appointment status color
-  const getAppointmentStatusColor = (status) => {
+  const getAppointmentStatusColor = (status?: Appointment['status']): string => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-500';
@@ -247,7 +266,7 @@ const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSel
   };
 
   // Helper function to get appointment type label
-  const getAppointmentTypeLabel = (type) => {
+  const getAppointmentTypeLabel = (type: Appointment['appointment_type']): string => {
     switch (type) {
       case 'video_consultation':
         return 'Video';
@@ -260,7 +279,7 @@ const AppointmentCalendar = ({ appointments = [], onDateSelect, onAppointmentSel
     }
   };
 
-  const onDateClick = useCallback((day) => {
+  const onDateClick = useCallback((day: Date) => {
     setSelectedDate(day);
     if (onDateSelect) {
       onDateSelect(day);

@@ -1,19 +1,42 @@
 // lib/api/telemedicine.js
-import apiClient, { buildParams } from '@/client';
+import apiClient, { createApiService, executeApiCall, buildParams } from '@/client';
+
+/**
+ * Base API service for appointment-related endpoints
+ */
+const appointmentService = createApiService('/appointments');
+
+/**
+ * Base API service for consultation-related endpoints
+ */
+const consultationService = createApiService('/consultations');
+
+/**
+ * Base API service for provider-related endpoints
+ */
+const providerService = createApiService('/providers');
+
+/**
+ * Base API service for referral-related endpoints
+ */
+const referralService = createApiService('/referrals');
 
 /**
  * Telemedicine-related API functions
  */
 const telemedicineApi = {
+  // Base CRUD operations
+  ...appointmentService,
+  
   /**
    * Get appointments with optional filters
    * @param {Object} filters - Filter parameters
    * @returns {Promise<Object>} Paginated appointments
    */
   getAppointments: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/appointments/?${params}`);
-    return data;
+    return appointmentService.getList(filters, {
+      errorMessage: 'Failed to fetch appointments'
+    });
   },
   
   /**
@@ -21,8 +44,11 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Paginated upcoming appointments
    */
   getUpcomingAppointments: async () => {
-    const { data } = await apiClient.get('/appointments/upcoming/');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/appointments/upcoming/'),
+      'Failed to fetch upcoming appointments',
+      { endpoint: '/appointments/upcoming' }
+    );
   },
   
   /**
@@ -35,8 +61,12 @@ const telemedicineApi = {
       ...filters,
       status: 'completed,cancelled,no_show'
     });
-    const { data } = await apiClient.get(`/appointments/?${params}`);
-    return data;
+    
+    return executeApiCall(
+      () => apiClient.get(`/appointments/?${params}`),
+      'Failed to fetch past appointments',
+      { endpoint: '/appointments', filters }
+    );
   },
   
   /**
@@ -45,8 +75,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Appointment
    */
   getAppointment: async (id) => {
-    const { data } = await apiClient.get(`/appointments/${id}/`);
-    return data;
+    return appointmentService.getById(id, {
+      errorMessage: 'Failed to fetch appointment details'
+    });
   },
   
   /**
@@ -55,8 +86,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Created appointment
    */
   createAppointment: async (appointmentData) => {
-    const { data } = await apiClient.post('/appointments/', appointmentData);
-    return data;
+    return appointmentService.create(appointmentData, {
+      errorMessage: 'Failed to create appointment'
+    });
   },
   
   /**
@@ -65,8 +97,11 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Created telehealth appointment
    */
   createTelehealthAppointment: async (appointmentData) => {
-    const { data } = await apiClient.post('/appointments/telehealth/', appointmentData);
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/appointments/telehealth/', appointmentData),
+      'Failed to create telehealth appointment',
+      { endpoint: '/appointments/telehealth' }
+    );
   },
   
   /**
@@ -76,8 +111,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Updated appointment
    */
   updateAppointment: async (id, appointmentData) => {
-    const { data } = await apiClient.patch(`/appointments/${id}/`, appointmentData);
-    return data;
+    return appointmentService.update(id, appointmentData, {
+      errorMessage: 'Failed to update appointment'
+    });
   },
   
   /**
@@ -87,8 +123,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Cancellation response
    */
   cancelAppointment: async (id, reason) => {
-    const { data } = await apiClient.post(`/appointments/${id}/cancel/`, { reason });
-    return data;
+    return appointmentService.performAction(id, 'cancel', { reason }, {
+      errorMessage: 'Failed to cancel appointment'
+    });
   },
   
   /**
@@ -97,8 +134,10 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Join information
    */
   getJoinInfo: async (appointmentId) => {
-    const { data } = await apiClient.get(`/appointments/${appointmentId}/join/`);
-    return data;
+    return appointmentService.performAction(appointmentId, 'join', null, {
+      method: 'GET',
+      errorMessage: 'Failed to get join information'
+    });
   },
   
   /**
@@ -107,9 +146,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Paginated consultations
    */
   getConsultations: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/consultations/?${params}`);
-    return data;
+    return consultationService.getList(filters, {
+      errorMessage: 'Failed to fetch consultations'
+    });
   },
   
   /**
@@ -118,8 +157,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Consultation
    */
   getConsultation: async (id) => {
-    const { data } = await apiClient.get(`/consultations/${id}/`);
-    return data;
+    return consultationService.getById(id, {
+      errorMessage: 'Failed to fetch consultation details'
+    });
   },
   
   /**
@@ -128,8 +168,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Paginated consultations
    */
   getConsultationsByAppointment: async (appointmentId) => {
-    const { data } = await apiClient.get(`/consultations/?appointment=${appointmentId}`);
-    return data;
+    return consultationService.getList({ appointment: appointmentId }, {
+      errorMessage: 'Failed to fetch consultations for appointment'
+    });
   },
   
   /**
@@ -138,8 +179,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Started consultation
    */
   startConsultation: async (id) => {
-    const { data } = await apiClient.post(`/consultations/${id}/start/`);
-    return data;
+    return consultationService.performAction(id, 'start', null, {
+      errorMessage: 'Failed to start consultation'
+    });
   },
   
   /**
@@ -149,8 +191,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Ended consultation
    */
   endConsultation: async (id, notes) => {
-    const { data } = await apiClient.post(`/consultations/${id}/end/`, { notes });
-    return data;
+    return consultationService.performAction(id, 'end', { notes }, {
+      errorMessage: 'Failed to end consultation'
+    });
   },
   
   /**
@@ -159,8 +202,11 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Paginated clinical notes
    */
   getClinicalNotes: async (consultationId) => {
-    const { data } = await apiClient.get(`/consultations/${consultationId}/clinical-notes/`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/consultations/${consultationId}/clinical-notes/`),
+      'Failed to fetch clinical notes',
+      { consultationId }
+    );
   },
   
   /**
@@ -170,8 +216,11 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Created clinical note
    */
   createClinicalNote: async (consultationId, noteData) => {
-    const { data } = await apiClient.post(`/consultations/${consultationId}/clinical-notes/`, noteData);
-    return data;
+    return executeApiCall(
+      () => apiClient.post(`/consultations/${consultationId}/clinical-notes/`, noteData),
+      'Failed to create clinical note',
+      { consultationId }
+    );
   },
   
   /**
@@ -181,8 +230,11 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Updated clinical note
    */
   updateClinicalNote: async (noteId, noteData) => {
-    const { data } = await apiClient.patch(`/clinical-notes/${noteId}/`, noteData);
-    return data;
+    return executeApiCall(
+      () => apiClient.patch(`/clinical-notes/${noteId}/`, noteData),
+      'Failed to update clinical note',
+      { noteId }
+    );
   },
   
   /**
@@ -191,9 +243,14 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Paginated providers
    */
   getAvailableProviders: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/providers/available/?${params}`);
-    return data;
+    return executeApiCall(
+      () => {
+        const params = buildParams(filters);
+        return apiClient.get(`/providers/available/?${params}`);
+      },
+      'Failed to fetch available providers',
+      { filters }
+    );
   },
   
   /**
@@ -204,12 +261,17 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Provider availability
    */
   getProviderAvailability: async (providerId, startDate, endDate) => {
-    const params = buildParams({
-      start_date: startDate,
-      end_date: endDate
-    });
-    const { data } = await apiClient.get(`/providers/${providerId}/availability/?${params}`);
-    return data;
+    return executeApiCall(
+      () => {
+        const params = buildParams({
+          start_date: startDate,
+          end_date: endDate
+        });
+        return apiClient.get(`/providers/${providerId}/availability/?${params}`);
+      },
+      'Failed to fetch provider availability',
+      { providerId, startDate, endDate }
+    );
   },
   
   /**
@@ -219,8 +281,11 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Provider schedule
    */
   getProviderSchedule: async (providerId, date) => {
-    const { data } = await apiClient.get(`/providers/${providerId}/schedule/?date=${date}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/providers/${providerId}/schedule/?date=${date}`),
+      'Failed to fetch provider schedule',
+      { providerId, date }
+    );
   },
   
   /**
@@ -229,9 +294,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Paginated referrals
    */
   getReferrals: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/referrals/?${params}`);
-    return data;
+    return referralService.getList(filters, {
+      errorMessage: 'Failed to fetch referrals'
+    });
   },
   
   /**
@@ -240,8 +305,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Created referral
    */
   createReferral: async (referralData) => {
-    const { data } = await apiClient.post('/referrals/', referralData);
-    return data;
+    return referralService.create(referralData, {
+      errorMessage: 'Failed to create referral'
+    });
   },
   
   /**
@@ -251,8 +317,9 @@ const telemedicineApi = {
    * @returns {Promise<Object>} Updated referral
    */
   updateReferral: async (id, referralData) => {
-    const { data } = await apiClient.patch(`/referrals/${id}/`, referralData);
-    return data;
+    return referralService.update(id, referralData, {
+      errorMessage: 'Failed to update referral'
+    });
   }
 };
 

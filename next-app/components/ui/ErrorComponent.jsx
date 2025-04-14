@@ -5,19 +5,59 @@ import { FaExclamationTriangle, FaInfoCircle, FaExclamationCircle, FaTimes, FaHo
 import Link from 'next/link';
 
 /**
- * Unified Error component for displaying errors in different contexts
- * @param {Object} props
- * @param {string|Error|Object} props.error - Error message, object, or instance
- * @param {string} props.variant - Error variant: 'alert', 'inline', 'page', 'toast'
- * @param {string} props.severity - Error severity: 'error', 'warning', 'info'
- * @param {boolean} props.dismissible - Whether the error can be dismissed
- * @param {Function} props.onDismiss - Function to call when error is dismissed
- * @param {string} props.className - Additional CSS classes
- * @param {React.ReactNode} props.action - Optional action component (button, link, etc.)
- * @param {Function} props.onRetry - Optional retry handler
- * @param {string} props.errorId - Optional error ID for tracking
+ * ErrorComponent: Functional component for displaying known errors with standardized styling.
+ * Use this component to display expected errors or error states that you handle in your application.
+ * This component does NOT catch unexpected errors - use ErrorBoundary for that purpose.
+ *
+ * @example
+ * // Alert-style error message
+ * {error && <ErrorComponent error={error} variant="alert" severity="error" />}
+ * 
+ * // Inline error message
+ * {error && <ErrorComponent error={error} variant="inline" severity="warning" />}
+ * 
+ * // Full-page error message
+ * {error && <ErrorComponent error={error} variant="page" onRetry={handleRetry} />}
+ * 
+ * // Toast-style error notification
+ * {error && <ErrorComponent error={error} variant="toast" dismissible />}
  */
-const ErrorComponent = ({
+
+// Define types for the error component
+export type ErrorSeverity = 'error' | 'warning' | 'info';
+export type ErrorVariant = 'alert' | 'inline' | 'page' | 'toast';
+
+export interface ErrorComponentProps {
+  /** Error message, object, or instance */
+  error: string | Error | Record<string, any> | null;
+  /** Error display variant */
+  variant?: ErrorVariant;
+  /** Error severity level */
+  severity?: ErrorSeverity;
+  /** Whether the error can be dismissed */
+  dismissible?: boolean;
+  /** Function to call when error is dismissed */
+  onDismiss?: () => void;
+  /** Additional CSS classes */
+  className?: string;
+  /** Optional action component (button, link, etc.) */
+  action?: React.ReactNode;
+  /** Optional retry handler */
+  onRetry?: () => void;
+  /** Optional error ID for tracking */
+  errorId?: string;
+  /** Path to redirect to home page */
+  homePath?: string;
+}
+
+interface ColorScheme {
+  bg: string;
+  border: string;
+  text: string;
+  icon: React.ReactNode;
+}
+
+const ErrorComponent: React.FC<ErrorComponentProps> = ({
   error,
   variant = 'inline',
   severity = 'error',
@@ -31,7 +71,7 @@ const ErrorComponent = ({
 }) => {
   // Extract error message
   let errorMessage = '';
-  let errorDetails = null;
+  let errorDetails: any = null;
   
   if (typeof error === 'string') {
     errorMessage = error;
@@ -46,7 +86,7 @@ const ErrorComponent = ({
   }
   
   // Define colors based on severity
-  const getColors = () => {
+  const getColors = (): ColorScheme => {
     switch (severity) {
       case 'warning':
         return {
@@ -115,7 +155,7 @@ const ErrorComponent = ({
       
     case 'inline':
       return (
-        <div className={`${bg} ${border ? `border border-${border}` : ''} text-${text} px-4 py-3 rounded ${className}`}>
+        <div className={`${bg} ${border ? `border border-${border}` : ''} ${text} px-4 py-3 rounded ${className}`}>
           <p>{errorMessage}</p>
           {onRetry && (
             <button
@@ -174,7 +214,7 @@ const ErrorComponent = ({
               <div className="mt-6 p-4 bg-red-50 rounded text-left">
                 <h3 className="text-sm font-medium text-red-800 mb-2">Debug Information:</h3>
                 <p className="text-sm text-red-700 mb-2">
-                  {errorDetails.toString ? errorDetails.toString() : JSON.stringify(errorDetails)}
+                  {typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails, null, 2)}
                 </p>
               </div>
             )}

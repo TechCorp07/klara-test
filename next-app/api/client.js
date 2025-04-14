@@ -251,6 +251,22 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
 };
 
 /**
+ * Standardized API request wrapper - use for all API calls
+ * @param {Function} apiCall - The API call function to execute
+ * @param {string} errorMessage - Custom error message
+ * @param {Object} errorContext - Additional error context
+ * @returns {Promise<any>} The response data
+ */
+export const executeApiCall = async (apiCall, errorMessage = 'An error occurred', errorContext = {}) => {
+  try {
+    const response = await apiCall();
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, errorMessage, true, errorContext);
+  }
+};
+
+/**
  * Make an API request with error handling and authentication
  * Works in both client and server components
  * @param {string} method - HTTP method
@@ -374,7 +390,12 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Resource data
      */
     getById: async (id, options = {}) => {
-      return apiRequest('GET', `${basePath}/${id}/`, null, options);
+      const errorMessage = options.errorMessage || `Failed to fetch ${basePath.split('/').pop()} details`;
+      return executeApiCall(
+        () => apiClient.get(`${basePath}/${id}/`, options),
+        errorMessage,
+        { resourceId: id, ...options.trackingContext }
+      );
     },
     
     /**
@@ -384,10 +405,15 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Paginated resources
      */
     getList: async (filters = {}, options = {}) => {
-      return apiRequest('GET', basePath, null, { 
-        params: filters,
-        ...options
-      });
+      const errorMessage = options.errorMessage || `Failed to fetch ${basePath.split('/').pop()} list`;
+      const params = buildParams(filters);
+      const url = params ? `${basePath}?${params}` : basePath;
+      
+      return executeApiCall(
+        () => apiClient.get(url, options),
+        errorMessage,
+        { filters, ...options.trackingContext }
+      );
     },
     
     /**
@@ -397,7 +423,12 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Created resource
      */
     create: async (data, options = {}) => {
-      return apiRequest('POST', basePath, data, options);
+      const errorMessage = options.errorMessage || `Failed to create ${basePath.split('/').pop()}`;
+      return executeApiCall(
+        () => apiClient.post(basePath, data, options),
+        errorMessage,
+        { ...options.trackingContext }
+      );
     },
     
     /**
@@ -408,7 +439,12 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Updated resource
      */
     update: async (id, data, options = {}) => {
-      return apiRequest('PATCH', `${basePath}/${id}/`, data, options);
+      const errorMessage = options.errorMessage || `Failed to update ${basePath.split('/').pop()}`;
+      return executeApiCall(
+        () => apiClient.patch(`${basePath}/${id}/`, data, options),
+        errorMessage,
+        { resourceId: id, ...options.trackingContext }
+      );
     },
     
     /**
@@ -419,7 +455,12 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Replaced resource
      */
     replace: async (id, data, options = {}) => {
-      return apiRequest('PUT', `${basePath}/${id}/`, data, options);
+      const errorMessage = options.errorMessage || `Failed to replace ${basePath.split('/').pop()}`;
+      return executeApiCall(
+        () => apiClient.put(`${basePath}/${id}/`, data, options),
+        errorMessage,
+        { resourceId: id, ...options.trackingContext }
+      );
     },
     
     /**
@@ -429,7 +470,12 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Deletion response
      */
     delete: async (id, options = {}) => {
-      return apiRequest('DELETE', `${basePath}/${id}/`, null, options);
+      const errorMessage = options.errorMessage || `Failed to delete ${basePath.split('/').pop()}`;
+      return executeApiCall(
+        () => apiClient.delete(`${basePath}/${id}/`, options),
+        errorMessage,
+        { resourceId: id, ...options.trackingContext }
+      );
     },
     
     /**
@@ -441,7 +487,12 @@ export const createApiService = (basePath) => {
      * @returns {Promise<Object>} Action response
      */
     performAction: async (id, action, data = {}, options = {}) => {
-      return apiRequest('POST', `${basePath}/${id}/${action}/`, data, options);
+      const errorMessage = options.errorMessage || `Failed to perform ${action} on ${basePath.split('/').pop()}`;
+      return executeApiCall(
+        () => apiClient.post(`${basePath}/${id}/${action}/`, data, options),
+        errorMessage,
+        { resourceId: id, action, ...options.trackingContext }
+      );
     },
     
     /**
@@ -465,9 +516,24 @@ export const createApiService = (basePath) => {
         }
         
         const fullPath = path.startsWith('/') ? path : `${basePath}/${path}`;
-        const response = await apiRequest(method, fullPath, requestData, options);
+        const errorMessage = options.errorMessage || `Failed to execute ${name}`;
         
-        return transformResponse ? transformResponse(response) : response;
+        try {
+          const response = await apiClient({
+            method,
+            url: fullPath,
+            data: ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) ? requestData : null,
+            params: method.toUpperCase() === 'GET' ? requestData : null,
+            ...options
+          });
+          
+          return transformResponse ? transformResponse(response.data) : response.data;
+        } catch (error) {
+          throw handleApiError(error, errorMessage, options.showErrorToast !== false, {
+            method: name,
+            ...options.trackingContext
+          });
+        }
       };
     }
   };
@@ -475,19 +541,34 @@ export const createApiService = (basePath) => {
 
 // Export convenience methods
 export const get = (endpoint, params = {}, options = {}) => 
-  apiRequest('GET', endpoint, null, { params, ...options });
+  executeApiCall(() => apiClient.get(endpoint, { params, ...options }), 
+    options.errorMessage || `Failed to fetch from ${endpoint}`, 
+    { endpoint, ...options.trackingContext }
+  );
 
 export const post = (endpoint, data = {}, options = {}) => 
-  apiRequest('POST', endpoint, data, options);
+  executeApiCall(() => apiClient.post(endpoint, data, options), 
+    options.errorMessage || `Failed to post to ${endpoint}`, 
+    { endpoint, ...options.trackingContext }
+  );
 
 export const put = (endpoint, data = {}, options = {}) => 
-  apiRequest('PUT', endpoint, data, options);
+  executeApiCall(() => apiClient.put(endpoint, data, options), 
+    options.errorMessage || `Failed to put to ${endpoint}`, 
+    { endpoint, ...options.trackingContext }
+  );
 
 export const patch = (endpoint, data = {}, options = {}) => 
-  apiRequest('PATCH', endpoint, data, options);
+  executeApiCall(() => apiClient.patch(endpoint, data, options), 
+    options.errorMessage || `Failed to patch ${endpoint}`, 
+    { endpoint, ...options.trackingContext }
+  );
 
 export const del = (endpoint, options = {}) => 
-  apiRequest('DELETE', endpoint, null, options);
+  executeApiCall(() => apiClient.delete(endpoint, options), 
+    options.errorMessage || `Failed to delete from ${endpoint}`, 
+    { endpoint, ...options.trackingContext }
+  );
 
 export { apiClient };
 export default apiClient;

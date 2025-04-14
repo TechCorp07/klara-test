@@ -10,7 +10,7 @@ export {
   FormCheckbox, 
   FormRadioGroup,
   PasswordStrengthMeter 
-} from './components/form/FormComponents';
+} from './form/FormComponents';
 
 // UI Components
 export { 
@@ -22,16 +22,26 @@ export {
   HIPAABanner,
   DataTable,
   Pagination
-} from './components/ui/UIComponents';
+} from './ui/UIComponents';
 
 // Error and Loading Components
-export { default as ErrorComponent } from './components/ui/ErrorComponent';
-export { default as LoadingComponent } from './components/ui/LoadingComponent';
+export { default as ErrorComponent } from './ui/ErrorComponent';
+export { default as LoadingComponent } from './ui/LoadingComponent';
+export { default as ErrorBoundary } from './common/ErrorBoundary';
+
+// Auth components
+export { default as QRCodeScanner } from './auth/QRCodeScanner';
+export { default as SessionTimeout } from './auth/SessionTimeout';
+export { default as TwoFactorAuthForm } from './auth/TwoFactorAuthForm';
+
+// Appointment components
+export { default as AppointmentCalendar } from './appointments/AppointmentCalendar';
+export { default as AppointmentForm } from './appointments/AppointmentForm';
 
 // Dashboard Components
 export {
   DashboardLayout
-} from './components/dashboard/DashboardLayout';
+} from './dashboard/DashboardLayout';
 
 export { 
   DashboardGrid,
@@ -42,7 +52,7 @@ export {
   EntityList,
   ResourceLinks,
   DashboardSidebar
-} from './components/dashboard/DashboardComponents';
+} from './dashboard/DashboardComponents';
 
 // Authentication Hooks
 export {

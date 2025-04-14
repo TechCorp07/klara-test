@@ -1,17 +1,30 @@
 // lib/api/audit.js
-import apiClient, { buildParams } from '@/client';
+import apiClient, { createApiService, executeApiCall, buildParams } from '@/client';
+
+/**
+ * Base API services for audit-related endpoints
+ */
+const auditEventsService = createApiService('/audit/events');
+const auditReportsService = createApiService('/audit/reports');
+const auditSecurityService = createApiService('/audit/security');
+const userService = createApiService('/users');
 
 /**
  * Audit and administration-related API functions
  */
 const auditApi = {
+  // Base CRUD operations for audit events
+  ...auditEventsService,
+  
   /**
    * Get system statistics
    * @returns {Promise<Object>} System statistics
    */
   getSystemStats: async () => {
-    const { data } = await apiClient.get('/audit/reports/dashboard/');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/audit/reports/dashboard/'),
+      'Failed to fetch system statistics'
+    );
   },
   
   /**
@@ -20,9 +33,9 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated audit events
    */
   getAuditEvents: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/audit/events/?${params}`);
-    return data;
+    return auditEventsService.getList(filters, {
+      errorMessage: 'Failed to fetch audit events'
+    });
   },
   
   /**
@@ -31,8 +44,9 @@ const auditApi = {
    * @returns {Promise<Object>} Audit event
    */
   getAuditEvent: async (id) => {
-    const { data } = await apiClient.get(`/audit/events/${id}/`);
-    return data;
+    return auditEventsService.getById(id, {
+      errorMessage: 'Failed to fetch audit event details'
+    });
   },
   
   /**
@@ -42,8 +56,11 @@ const auditApi = {
    */
   exportAuditEvents: async (filters = {}) => {
     const params = buildParams(filters);
-    const { data } = await apiClient.post(`/audit/events/export/?${params}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.post(`/audit/events/export/?${params}`),
+      'Failed to export audit events',
+      { filters }
+    );
   },
   
   /**
@@ -52,8 +69,9 @@ const auditApi = {
    * @returns {Promise<Object>} Created audit event
    */
   logAuditEvent: async (eventData) => {
-    const { data } = await apiClient.post('/audit/events/', eventData);
-    return data;
+    return auditEventsService.create(eventData, {
+      errorMessage: 'Failed to log audit event'
+    });
   },
   
   /**
@@ -62,8 +80,11 @@ const auditApi = {
    * @returns {Promise<Object>} Event summary
    */
   getEventSummary: async (timeframe = 'last_30_days') => {
-    const { data } = await apiClient.get(`/audit/events/summary/?timeframe=${timeframe}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/audit/events/summary/?timeframe=${timeframe}`),
+      'Failed to fetch event summary',
+      { timeframe }
+    );
   },
   
   /**
@@ -73,12 +94,13 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated audit events for user
    */
   getUserActivity: async (userId, filters = {}) => {
-    const params = buildParams({
+    return auditEventsService.getList({
       ...filters,
       user: userId
+    }, {
+      errorMessage: 'Failed to fetch user activity',
+      trackingContext: { userId }
     });
-    const { data } = await apiClient.get(`/audit/events/?${params}`);
-    return data;
   },
   
   /**
@@ -89,13 +111,14 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated audit events for resource
    */
   getResourceActivity: async (type, id, filters = {}) => {
-    const params = buildParams({
+    return auditEventsService.getList({
       ...filters,
       resource_type: type,
       resource_id: id
+    }, {
+      errorMessage: 'Failed to fetch resource activity',
+      trackingContext: { resourceType: type, resourceId: id }
     });
-    const { data } = await apiClient.get(`/audit/events/?${params}`);
-    return data;
   },
   
   /**
@@ -105,8 +128,11 @@ const auditApi = {
    */
   getPHIAccessLogs: async (filters = {}) => {
     const params = buildParams(filters);
-    const { data } = await apiClient.get(`/audit/phi-access/?${params}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/audit/phi-access/?${params}`),
+      'Failed to fetch PHI access logs',
+      { filters }
+    );
   },
   
   /**
@@ -115,9 +141,9 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated security incidents
    */
   getSecurityIncidents: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/audit/security/?${params}`);
-    return data;
+    return auditSecurityService.getList(filters, {
+      errorMessage: 'Failed to fetch security incidents'
+    });
   },
   
   /**
@@ -126,8 +152,9 @@ const auditApi = {
    * @returns {Promise<Object>} Created security incident
    */
   logSecurityIncident: async (incidentData) => {
-    const { data } = await apiClient.post('/audit/security/', incidentData);
-    return data;
+    return auditSecurityService.create(incidentData, {
+      errorMessage: 'Failed to log security incident'
+    });
   },
   
   /**
@@ -137,8 +164,9 @@ const auditApi = {
    * @returns {Promise<Object>} Resolved security incident
    */
   resolveSecurityIncident: async (id, resolution) => {
-    const { data } = await apiClient.post(`/audit/security/${id}/resolve/`, { resolution });
-    return data;
+    return auditSecurityService.performAction(id, 'resolve', { resolution }, {
+      errorMessage: 'Failed to resolve security incident'
+    });
   },
   
   /**
@@ -147,9 +175,9 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated compliance reports
    */
   getComplianceReports: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/audit/reports/?${params}`);
-    return data;
+    return auditReportsService.getList(filters, {
+      errorMessage: 'Failed to fetch compliance reports'
+    });
   },
   
   /**
@@ -158,8 +186,9 @@ const auditApi = {
    * @returns {Promise<Object>} Compliance report
    */
   getComplianceReport: async (id) => {
-    const { data } = await apiClient.get(`/audit/reports/${id}/`);
-    return data;
+    return auditReportsService.getById(id, {
+      errorMessage: 'Failed to fetch compliance report'
+    });
   },
   
   /**
@@ -169,11 +198,14 @@ const auditApi = {
    * @returns {Promise<Object>} Generated compliance report
    */
   generateComplianceReport: async (type, range) => {
-    const { data } = await apiClient.post('/audit/reports/generate/', {
-      report_type: type,
-      date_range: range
-    });
-    return data;
+    return executeApiCall(
+      () => apiClient.post('/audit/reports/generate/', {
+        report_type: type,
+        date_range: range
+      }),
+      'Failed to generate compliance report',
+      { reportType: type, dateRange: range }
+    );
   },
   
   /**
@@ -181,8 +213,10 @@ const auditApi = {
    * @returns {Promise<Object>} Dashboard metrics
    */
   getDashboardMetrics: async () => {
-    const { data } = await apiClient.get('/audit/reports/dashboard/');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/audit/reports/dashboard/'),
+      'Failed to fetch dashboard metrics'
+    );
   },
   
   /**
@@ -190,8 +224,10 @@ const auditApi = {
    * @returns {Promise<Object>} Compliance metrics
    */
   getComplianceMetrics: async () => {
-    const { data } = await apiClient.get('/audit/compliance/metrics/');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/audit/compliance/metrics/'),
+      'Failed to fetch compliance metrics'
+    );
   },
   
   /**
@@ -202,8 +238,11 @@ const auditApi = {
    */
   getPatientAccessHistory: async (patientId, options = {}) => {
     const params = buildParams(options);
-    const { data } = await apiClient.get(`/audit/compliance/patient-access/${patientId}/?${params}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/audit/compliance/patient-access/${patientId}/?${params}`),
+      'Failed to fetch patient access history',
+      { patientId, ...options }
+    );
   },
   
   /**
@@ -213,8 +252,11 @@ const auditApi = {
    */
   getRecentUsers: async (filters = {}) => {
     const params = buildParams(filters);
-    const { data } = await apiClient.get(`/users/recent/?${params}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/users/recent/?${params}`),
+      'Failed to fetch recent users',
+      { filters }
+    );
   },
   
   /**
@@ -223,9 +265,9 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated users
    */
   getUsers: async (filters = {}) => {
-    const params = buildParams(filters);
-    const { data } = await apiClient.get(`/users/users/?${params}`);
-    return data;
+    return userService.getList(filters, {
+      errorMessage: 'Failed to fetch users'
+    });
   },
   
   /**
@@ -235,8 +277,11 @@ const auditApi = {
    */
   getSystemAlerts: async (filters = {}) => {
     const params = buildParams(filters);
-    const { data } = await apiClient.get(`/audit/alerts/?${params}`);
-    return data;
+    return executeApiCall(
+      () => apiClient.get(`/audit/alerts/?${params}`),
+      'Failed to fetch system alerts',
+      { filters }
+    );
   },
   
   /**
@@ -244,8 +289,10 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated critical alerts
    */
   getCriticalAlerts: async () => {
-    const { data } = await apiClient.get('/audit/alerts/?severity=critical');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/audit/alerts/?severity=critical'),
+      'Failed to fetch critical alerts'
+    );
   },
   
   /**
@@ -253,8 +300,10 @@ const auditApi = {
    * @returns {Promise<Object>} Paginated admin users
    */
   getAdminUsers: async () => {
-    const { data } = await apiClient.get('/users/users/?role=admin,superadmin');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/users/users/?role=admin,superadmin'),
+      'Failed to fetch admin users'
+    );
   },
   
   /**
@@ -262,8 +311,10 @@ const auditApi = {
    * @returns {Promise<Object>} Organization statistics
    */
   getOrganizationStats: async () => {
-    const { data } = await apiClient.get('/audit/organizations/stats/');
-    return data;
+    return executeApiCall(
+      () => apiClient.get('/audit/organizations/stats/'),
+      'Failed to fetch organization statistics'
+    );
   }
 };
 
