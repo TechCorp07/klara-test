@@ -1,0 +1,224 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 245, 247, 250;
+  --background-end-rgb: 255, 255, 255;
+  --primary-color: 37, 99, 235;
+  --secondary-color: 79, 70, 229;
+  --success-color: 22, 163, 74;
+  --warning-color: 234, 179, 8;
+  --error-color: 220, 38, 38;
+  --info-color: 59, 130, 246;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+}
+
+/* Healthcare-specific styles */
+.patient-card {
+  @apply bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200;
+}
+
+.status-badge {
+  @apply px-2 py-1 text-xs font-medium rounded-full;
+}
+
+.status-badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-badge-error {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-badge-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+/* Dashboard layout styles */
+.dashboard-container {
+  @apply min-h-screen bg-gray-50;
+}
+
+.dashboard-content {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+}
+
+.dashboard-card {
+  @apply bg-white rounded-lg shadow-md p-6 mb-6;
+}
+
+.dashboard-title {
+  @apply text-2xl font-bold text-gray-900 mb-6;
+}
+
+.dashboard-subtitle {
+  @apply text-xl font-semibold mb-4;
+}
+
+/* Form styles */
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.form-input {
+  @apply block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2;
+}
+
+.form-error {
+  @apply mt-1 text-sm text-red-600;
+}
+
+.form-button {
+  @apply inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+}
+
+/* HIPAA compliance banner */
+.hipaa-banner {
+  @apply bg-blue-50 border-l-4 border-blue-400 p-4 mb-6;
+}
+
+.hipaa-banner-title {
+  @apply text-blue-800 font-medium;
+}
+
+.hipaa-banner-text {
+  @apply text-blue-700 mt-1;
+}
+
+/* Wearables integration styles */
+.device-card {
+  @apply border rounded-lg p-4 flex items-center space-x-4 mb-4;
+}
+
+.device-icon {
+  @apply w-12 h-12 flex-shrink-0;
+}
+
+.device-info {
+  @apply flex-grow;
+}
+
+.device-name {
+  @apply font-medium;
+}
+
+.device-status {
+  @apply text-sm text-gray-500;
+}
+
+.device-action {
+  @apply text-blue-600 hover:text-blue-800 text-sm font-medium;
+}
+
+/* Security module styles */
+.security-metric {
+  @apply mb-4;
+}
+
+.security-metric-header {
+  @apply flex justify-between items-center mb-2;
+}
+
+.security-metric-title {
+  @apply font-medium;
+}
+
+.security-metric-value {
+  @apply text-sm font-medium px-2 py-1 rounded-full;
+}
+
+.security-progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2.5;
+}
+
+.security-progress-value {
+  @apply h-2.5 rounded-full;
+}
+
+/* EHR and FHIR styles */
+.fhir-resource {
+  @apply border rounded-lg p-4 mb-4;
+}
+
+.fhir-resource-header {
+  @apply flex justify-between items-center mb-2;
+}
+
+.fhir-resource-title {
+  @apply font-medium;
+}
+
+.fhir-resource-type {
+  @apply text-sm text-gray-500;
+}
+
+.fhir-resource-content {
+  @apply text-sm;
+}
+
+.ehr-patient-header {
+  @apply flex items-center space-x-4 mb-6;
+}
+
+.ehr-patient-avatar {
+  @apply w-16 h-16 rounded-full bg-gray-200 flex-shrink-0;
+}
+
+.ehr-patient-info {
+  @apply flex-grow;
+}
+
+.ehr-patient-name {
+  @apply text-xl font-medium;
+}
+
+.ehr-patient-details {
+  @apply text-sm text-gray-500;
+}
+
+.ehr-section {
+  @apply border-t pt-4 mt-4;
+}
+
+.ehr-section-title {
+  @apply text-lg font-medium mb-2;
+}
+
+/* Auth form improvements */
+.auth-input {
+  @apply appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+}
+
+.auth-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.auth-button {
+  @apply w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200;
+}
+
+.auth-card {
+  @apply bg-white rounded-lg shadow-md p-6;
+}
+
+.auth-form-group {
+  @apply space-y-1 mb-4;
+}
+
+.auth-error {
+  @apply mt-1 text-sm text-red-600;
+}
