@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { medication } from '@/lib/services/medicationService';
+import { medicationService } from '@/lib/services/medicationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-toastify';
 
@@ -18,7 +18,7 @@ export default function MedicationsClient() {
   // Fetch medications
   const { data: medications, isLoading, error } = useQuery({
     queryKey: ['medications', user?.id],
-    queryFn: () => medication.getMedications({ patient: user?.id }),
+    queryFn: () => medicationService.getMedications({ patient: user?.id }),
     enabled: !!user,
     onError: (error) => {
       toast.error('Failed to load medications');
@@ -29,7 +29,7 @@ export default function MedicationsClient() {
   // Fetch medication adherence for selected medication
   const { data: adherenceData, isLoading: isAdherenceLoading } = useQuery({
     queryKey: ['medicationAdherence', selectedMedication?.id],
-    queryFn: () => medication.getMedicationIntakes(selectedMedication?.id),
+    queryFn: () => medicationService.getMedicationIntakes(selectedMedication?.id),
     enabled: !!selectedMedication && showAdherenceHistory,
     onError: (error) => {
       toast.error('Failed to load medication adherence data');
@@ -39,7 +39,7 @@ export default function MedicationsClient() {
   
   // Mutation for recording medication intake
   const recordIntakeMutation = useMutation({
-    mutationFn: (intakeData) => medication.recordMedicationIntake(intakeData),
+    mutationFn: (intakeData) => medicationService.recordMedicationIntake(intakeData),
     onSuccess: () => {
       toast.success('Medication intake recorded');
       queryClient.invalidateQueries(['medicationAdherence', selectedMedication?.id]);
@@ -52,7 +52,7 @@ export default function MedicationsClient() {
   
   // Mutation for requesting a refill
   const requestRefillMutation = useMutation({
-    mutationFn: (medicationId) => medication.requestRefill(medicationId),
+    mutationFn: (medicationId) => medicationService.requestRefill(medicationId),
     onSuccess: () => {
       toast.success('Refill request sent');
     },
@@ -62,15 +62,15 @@ export default function MedicationsClient() {
     }
   });
   
-  const handleMedicationSelect = (medication) => {
-    setSelectedMedication(medication);
+  const handleMedicationSelect = (medicationService) => {
+    setSelectedMedication(medicationService);
     setShowAdherenceHistory(false);
   };
   
   const handleRecordIntake = () => {
     if (selectedMedication) {
       recordIntakeMutation.mutate({
-        medication: selectedMedication.id,
+        medicationService: selectedMedication.id,
         taken_at: new Date().toISOString(),
         status: 'taken'
       });

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { communication } from '@/lib/services/communicationService';
+import { communicationService } from '@/lib/services/communicationService';
 
 /**
  * Client component for moderation page
@@ -22,7 +22,7 @@ export default function ModerationClient() {
   // Fetch reported posts
   const { data: reportedPosts, isLoading, error } = useQuery({
     queryKey: ['reportedPosts', filterStatus],
-    queryFn: () => communication.getReportedCommunityPosts({ status: filterStatus }),
+    queryFn: () => communicationService.getReportedCommunityPosts({ status: filterStatus }),
     enabled: !!user && hasModPermissions,
     onError: (error) => {
       toast.error('Failed to load reported posts');
@@ -32,7 +32,7 @@ export default function ModerationClient() {
   
   // Mutation for approving a post
   const approvePostMutation = useMutation({
-    mutationFn: (postId) => communication.moderatePost(postId, { action: 'approve' }),
+    mutationFn: (postId) => communicationService.moderatePost(postId, { action: 'approve' }),
     onSuccess: () => {
       toast.success('Post approved');
       setSelectedPost(null);
@@ -46,7 +46,7 @@ export default function ModerationClient() {
   
   // Mutation for rejecting a post
   const rejectPostMutation = useMutation({
-    mutationFn: ({ postId, reason }) => communication.moderatePost(postId, { 
+    mutationFn: ({ postId, reason }) => communicationService.moderatePost(postId, { 
       action: 'reject', 
       reason 
     }),

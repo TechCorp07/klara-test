@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { communication } from '@/lib/services/communicationService';
+import { communicationService } from '@/lib/services/communicationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-toastify';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ export default function TopicsClient() {
   // Fetch community topics
   const { data: topics, isLoading, error } = useQuery({
     queryKey: ['communityTopics'],
-    queryFn: () => communication.getCommunityTopics(),
+    queryFn: () => communicationService.getCommunityTopics(),
     enabled: !!user,
     onError: (error) => {
       toast.error('Failed to load community topics');
@@ -28,7 +28,7 @@ export default function TopicsClient() {
   // Fetch posts for selected topic
   const { data: topicPosts, isLoading: isPostsLoading } = useQuery({
     queryKey: ['topicPosts', selectedTopic?.id],
-    queryFn: () => communication.getCommunityPosts({ topic: selectedTopic?.id }),
+    queryFn: () => communicationService.getCommunityPosts({ topic: selectedTopic?.id }),
     enabled: !!selectedTopic,
     onError: (error) => {
       toast.error('Failed to load topic posts');

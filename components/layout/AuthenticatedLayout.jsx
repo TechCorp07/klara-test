@@ -1,16 +1,20 @@
-"use client"
-import { useAuth } from "@/contexts/AuthContext"
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 /**
  * AuthenticatedLayout component that provides a layout for authenticated pages
- *
+ * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Page content
  * @param {string} props.title - Page title
  */
-const AuthenticatedLayout = ({ children, title }) => {
-  const { user } = useAuth()
-
+const AuthenticatedLayout = ({ 
+  children, 
+  title 
+}) => {
+  const { user } = useAuth();
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -21,10 +25,10 @@ const AuthenticatedLayout = ({ children, title }) => {
           </p>
         )}
       </div>
-
+      
       {children}
     </div>
-  )
-}
+  );
+};
 
-export default AuthenticatedLayout
+export default AuthenticatedLayout;

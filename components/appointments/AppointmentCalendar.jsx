@@ -1,53 +1,43 @@
-// components/appointments/AppointmentCalendar.tsx
-"use client"
+// components/appointments/AppointmentCalendar.jsx
+"use client";
 
-import React from "react"
+import { useState, useEffect, useCallback, memo } from 'react';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, 
+         isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
+import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaVideo, 
+         FaUserMd, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 
-import { useState, useCallback, memo } from "react"
-import {
-  format,
-  startOfWeek,
-  addDays,
-  startOfMonth,
-  endOfMonth,
-  isSameMonth,
-  isSameDay,
-  addMonths,
-  subMonths,
-  parseISO,
-} from "date-fns"
-import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from "react-icons/fa"
+// Define the prop types
+/**
+ * @typedef {Object} Appointment
+ * @property {string} id
+ * @property {string} scheduled_time
+ * @property {string} [reason]
+ * @property {'video_consultation' | 'phone_consultation' | 'in_person'} appointment_type
+ * @property {'confirmed' | 'pending' | 'cancelled'} [status]
+ * @property {string} [provider_id]
+ */
 
-// Define the TypeScript interfaces
-export interface Appointment {
-  id: string
-  scheduled_time: string
-  reason?: string
-  appointment_type: "video_consultation" | "phone_consultation" | "in_person"
-  status?: "confirmed" | "pending" | "cancelled"
-  provider_id?: string
-}
-
-export interface AppointmentCalendarProps {
-  /** List of appointment objects */
-  appointments?: Appointment[];
-  /** Callback when a date is selected */
-  onDateSelect?: (date: Date) => void;
-  /** Callback when an appointment is selected */
-  onAppointmentSelect?: (appointment: Appointment) => void;
-}
+/**
+ * @typedef {Object} AppointmentCalendarProps
+ * @property {Appointment[]} [appointments] - List of appointment objects
+ * @property {function(Date): void} [onDateSelect] - Callback when a date is selected
+ * @property {function(Appointment): void} [onAppointmentSelect] - Callback when an appointment is selected
+ */
 
 /**
  * Calendar component for displaying and managing appointments
+ * @param {AppointmentCalendarProps} props
+ * @returns {JSX.Element}
  */
-const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
+const AppointmentCalendar = ({ 
   appointments = [], 
   onDateSelect, 
   onAppointmentSelect 
 }) => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState('month');
 
   // Function to render the header with month and navigation
   const renderHeader = useCallback(() => {
@@ -64,7 +54,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         <div className="flex space-x-2">
           <select
             value={calendarView}
-            onChange={(e) => setCalendarView(e.target.value as 'month' | 'week')}
+            onChange={(e) => setCalendarView(e.target.value)}
             className="mr-4 bg-white border border-gray-300 rounded-md shadow-sm py-1 px-3 text-sm"
           >
             <option value="month">Month</option>
@@ -249,7 +239,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   }, [appointments, selectedDate]);
 
   // Helper function to get appointment type style
-  const getAppointmentTypeStyle = (type: Appointment['appointment_type']): string => {
+  const getAppointmentTypeStyle = (type) => {
     switch (type) {
       case 'video_consultation':
         return 'bg-blue-50 text-blue-700';
@@ -263,7 +253,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   };
 
   // Helper function to get appointment status color
-  const getAppointmentStatusColor = (status?: Appointment['status']): string => {
+  const getAppointmentStatusColor = (status) => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-500';
@@ -277,7 +267,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   };
 
   // Helper function to get appointment type label
-  const getAppointmentTypeLabel = (type: Appointment['appointment_type']): string => {
+  const getAppointmentTypeLabel = (type) => {
     switch (type) {
       case 'video_consultation':
         return 'Video';
@@ -290,7 +280,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     }
   };
 
-  const onDateClick = useCallback((day: Date) => {
+  const onDateClick = useCallback((day) => {
     setSelectedDate(day);
     if (onDateSelect) {
       onDateSelect(day);
@@ -322,4 +312,4 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   );
 };
 
-export default memo(AppointmentCalendar)
+export default memo(AppointmentCalendar);

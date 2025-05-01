@@ -105,12 +105,14 @@ export default function Sidebar({ user }) {
       // Get navigation for the user's role or fallback to patient
       const roleNav = roleNavigation[user.role] || roleNavigation.patient
 
-      // Enhance navigation with submenu items as needed
+      // Enhance navigation with submenu items
       const enhancedNav = roleNav.map((item) => {
+        const hasSubmenu = item.children && item.children.length > 0
+
         if (item.name === "Medical Records") {
           return {
             ...item,
-            hasSubmenu: true,
+            hasSubmenu,
             children: [
               { name: "Overview", href: "/medical-records" },
               { name: "Medications", href: "/medical-records/medications" },
@@ -124,7 +126,7 @@ export default function Sidebar({ user }) {
         if (item.name === "Appointments") {
           return {
             ...item,
-            hasSubmenu: true,
+            hasSubmenu,
             children: [
               { name: "Upcoming", href: "/appointments" },
               { name: "Past", href: "/appointments/past" },
@@ -136,7 +138,7 @@ export default function Sidebar({ user }) {
         if (user.role === "provider" && item.name === "Patients") {
           return {
             ...item,
-            hasSubmenu: true,
+            hasSubmenu,
             children: [
               { name: "All Patients", href: "/patients" },
               { name: "Recent", href: "/patients/recent" },

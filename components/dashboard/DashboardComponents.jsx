@@ -1,5 +1,7 @@
-"use client"
-import Link from "next/link"
+"use client";
+
+import React from 'react';
+import Link from 'next/link';
 
 /**
  * Dashboard Layout component
@@ -16,8 +18,8 @@ export const DashboardLayout = ({ title, children }) => {
         {children}
       </div>
     </div>
-  )
-}
+  );
+};
 
 /**
  * Stats Card component
@@ -29,7 +31,7 @@ export const DashboardLayout = ({ title, children }) => {
  * @param {string} props.valueColor - Value text color class
  * @returns {React.ReactElement} Stats card component
  */
-export const StatsCard = ({ title, value, linkText, linkHref, valueColor = "text-blue-600" }) => {
+export const StatsCard = ({ title, value, linkText, linkHref, valueColor = 'text-blue-600' }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h3 className="text-sm font-medium text-gray-500">{title}</h3>
@@ -42,8 +44,8 @@ export const StatsCard = ({ title, value, linkText, linkHref, valueColor = "text
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
 /**
  * Data Panel component
@@ -57,8 +59,8 @@ export const StatsCard = ({ title, value, linkText, linkHref, valueColor = "text
  * @returns {React.ReactElement} Data panel component
  */
 export const DataPanel = ({ title, data, renderItem, emptyMessage, viewAllLink, maxItems = 5 }) => {
-  const displayData = data?.slice(0, maxItems) || []
-
+  const displayData = data?.slice(0, maxItems) || [];
+  
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-4">
@@ -69,7 +71,7 @@ export const DataPanel = ({ title, data, renderItem, emptyMessage, viewAllLink, 
           </Link>
         )}
       </div>
-
+      
       {displayData.length > 0 ? (
         <div className="space-y-4">
           {displayData.map((item, index) => (
@@ -82,8 +84,8 @@ export const DataPanel = ({ title, data, renderItem, emptyMessage, viewAllLink, 
         <p className="text-gray-500">{emptyMessage}</p>
       )}
     </div>
-  )
-}
+  );
+};
 
 /**
  * Quick Action Button component
@@ -98,12 +100,12 @@ export const DataPanel = ({ title, data, renderItem, emptyMessage, viewAllLink, 
  */
 export const QuickActionButton = ({ href, label, icon, bgColor, textColor, hoverColor }) => {
   return (
-    <Link
+    <Link 
       href={href}
       className={`flex flex-col items-center justify-center p-4 rounded-lg ${bgColor} ${textColor} ${hoverColor} transition-colors duration-200`}
     >
       {icon}
       <span className="text-sm font-medium">{label}</span>
     </Link>
-  )
-}
+  );
+};

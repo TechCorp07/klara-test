@@ -1,8 +1,12 @@
-import Link from "next/link"
+// components/dashboard/DataPanel.jsx
+// Reusable data panel component for dashboards
+
+import React from 'react';
+import Link from 'next/link';
 
 /**
  * DataPanel component for displaying data lists with headers and "View all" links
- *
+ * 
  * @param {Object} props - Component props
  * @param {string} props.title - Panel title
  * @param {Array} props.data - Array of data items to display
@@ -12,14 +16,14 @@ import Link from "next/link"
  * @param {string} props.viewAllText - Text for "View all" link
  * @param {number} props.maxItems - Maximum number of items to display
  */
-const DataPanel = ({
-  title,
-  data = [],
-  renderItem,
-  emptyMessage = "No data available.",
-  viewAllLink,
-  viewAllText = "View all",
-  maxItems = 5,
+const DataPanel = ({ 
+  title, 
+  data = [], 
+  renderItem, 
+  emptyMessage = "No data available.", 
+  viewAllLink, 
+  viewAllText = "View all", 
+  maxItems = 5 
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -31,7 +35,7 @@ const DataPanel = ({
           </Link>
         )}
       </div>
-
+      
       {data && data.length > 0 ? (
         <div className="space-y-4">
           {data.slice(0, maxItems).map((item, index) => (
@@ -44,7 +48,7 @@ const DataPanel = ({
         <p className="text-gray-500">{emptyMessage}</p>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default DataPanel
+export default DataPanel;

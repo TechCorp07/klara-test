@@ -1,108 +1,155 @@
-// api/auth.js
-// lib/api/auth.js
-import { apiRequest, createApiService } from "./client"
+// api/auth.js - Add email verification endpoints
+
+import { apiRequest } from './client';
 
 /**
- * Base API service for user-related endpoints
+ * Authentication API service
+ * Handles user authentication, registration, and profile management
  */
-const authApi = createApiService("/users")
-
-/**
- * Auth-related API functions
- */
-const auth = {
-  ...authApi,
-
+const authAPI = {
   /**
-   * Login user
+   * Login with username and password
    * @param {Object} credentials - Login credentials
-   * @returns {Promise<Object>} Login response with tokens and user data
+   * @returns {Promise<Object>} - Response with user data and tokens
    */
-  login: (credentials) =>
-    apiRequest("POST", "/users/login", credentials, {
-      errorMessage: "Login failed",
+  login: (credentials) => 
+    apiRequest('POST', '/api/users/login/', credentials, {
+      errorMessage: 'Login failed'
     }),
-
+  
   /**
-   * Logout user
-   * @returns {Promise<Object>} Logout response
+   * Verify two-factor authentication
+   * @param {Object} data - 2FA verification data
+   * @returns {Promise<Object>} - Response with user data
    */
-  logout: () =>
-    apiRequest("POST", "/users/logout", null, {
-      errorMessage: "Logout failed",
+  verify2FA: (data) => 
+    apiRequest('POST', '/api/users/verify-2fa/', data, {
+      errorMessage: '2FA verification failed'
     }),
-
+  
   /**
-   * Get current user
-   * @returns {Promise<Object>} Current user data
+   * Setup two-factor authentication
+   * @returns {Promise<Object>} - Response with 2FA setup data
    */
-  getCurrentUser: () =>
-    apiRequest("GET", "/users/me", null, {
-      errorMessage: "Failed to fetch current user",
+  setup2FA: () => 
+    apiRequest('POST', '/api/users/setup-2fa/', null, {
+      errorMessage: '2FA setup failed'
     }),
-
+  
   /**
-   * Register new user
-   * @param {Object} userData - User registration data
-   * @returns {Promise<Object>} Registration response
+   * Confirm two-factor authentication setup
+   * @param {Object} data - 2FA confirmation data
+   * @returns {Promise<Object>} - Response with confirmation result
    */
-  register: (userData) =>
-    apiRequest("POST", "/users/register", userData, {
-      errorMessage: "Registration failed",
-      successMessage: "Registration successful",
+  confirm2FA: (data) => 
+    apiRequest('POST', '/api/users/confirm-2fa/', data, {
+      errorMessage: '2FA confirmation failed'
     }),
-
+  
   /**
-   * Verify 2FA code
-   * @param {Object} verificationData - 2FA verification data
-   * @returns {Promise<Object>} Verification response
+   * Disable two-factor authentication
+   * @param {Object} data - Password for verification
+   * @returns {Promise<Object>} - Response with result
    */
-  verify2FA: (verificationData) =>
-    apiRequest("POST", "/users/verify-2fa", verificationData, {
-      errorMessage: "2FA verification failed",
+  disable2FA: (data) => 
+    apiRequest('POST', '/api/users/disable-2fa/', data, {
+      errorMessage: '2FA disabling failed'
     }),
-
+  
   /**
-   * Setup 2FA
-   * @returns {Promise<Object>} 2FA setup response with QR code
+   * Logout current user
+   * @returns {Promise<Object>} - Response with logout result
    */
-  setup2FA: () =>
-    apiRequest("POST", "/users/setup-2fa", null, {
-      errorMessage: "2FA setup failed",
+  logout: () => 
+    apiRequest('POST', '/api/users/logout/', null, {
+      errorMessage: 'Logout failed'
     }),
-
+  
   /**
-   * Confirm 2FA setup
-   * @param {Object} confirmationData - 2FA confirmation data
-   * @returns {Promise<Object>} Confirmation response
+   * Get current user profile
+   * @returns {Promise<Object>} - Response with user data
    */
-  confirm2FA: (confirmationData) =>
-    apiRequest("POST", "/users/confirm-2fa", confirmationData, {
-      errorMessage: "2FA confirmation failed",
-      successMessage: "2FA enabled successfully",
+  getCurrentUser: () => 
+    apiRequest('GET', '/api/users/me/', null, {
+      errorMessage: 'Failed to fetch user profile'
     }),
-
-  /**
-   * Disable 2FA
-   * @param {Object} disableData - 2FA disable data
-   * @returns {Promise<Object>} Disable response
-   */
-  disable2FA: (disableData) =>
-    apiRequest("POST", "/users/disable-2fa", disableData, {
-      errorMessage: "2FA disable failed",
-      successMessage: "2FA disabled successfully",
-    }),
-
+  
   /**
    * Update user profile
-   * @param {Object} profileData - Profile update data
-   * @returns {Promise<Object>} Updated profile
+   * @param {Object} data - Profile data to update
+   * @returns {Promise<Object>} - Response with updated user data
    */
-  updateProfile: (profileData) =>
-    apiRequest("POST", "/users/update-profile", profileData, {
-      errorMessage: "Profile update failed",
-      successMessage: "Profile updated successfully",
+  updateProfile: (data) => 
+    apiRequest('PUT', '/api/users/me/', data, {
+      errorMessage: 'Profile update failed',
+      successMessage: 'Profile updated successfully'
     }),
-}
+  
+  /**
+   * Request password reset
+   * @param {Object} data - Email for password reset
+   * @returns {Promise<Object>} - Response with result
+   */
+  requestPasswordReset: (data) => 
+    apiRequest('POST', '/api/users/forgot-password/', data, {
+      errorMessage: 'Password reset request failed',
+      successMessage: 'Password reset instructions sent to your email'
+    }),
+  
+  /**
+   * Reset password with token
+   * @param {Object} data - Reset token and new password
+   * @returns {Promise<Object>} - Response with result
+   */
+  resetPassword: (data) => 
+    apiRequest('POST', '/api/users/reset-password/', data, {
+      errorMessage: 'Password reset failed',
+      successMessage: 'Password reset successful'
+    }),
+  
+  /**
+   * Update user consent settings
+   * @param {Object} data - Consent data
+   * @returns {Promise<Object>} - Response with updated consent settings
+   */
+  updateConsent: (data) => 
+    apiRequest('POST', '/api/users/update-consent/', data, {
+      errorMessage: 'Consent update failed',
+      successMessage: 'Consent settings updated'
+    }),
+  
+  /**
+   * Register new user
+   * @param {Object} data - User registration data
+   * @returns {Promise<Object>} - Response with new user data
+   */
+  registerUser: (data) => 
+    apiRequest('POST', '/api/users/users/', data, {
+      errorMessage: 'Registration failed',
+      successMessage: 'Registration successful'
+    }),
+    
+  /**
+   * Request email verification
+   * @param {Object} data - Email to verify
+   * @returns {Promise<Object>} - Response with result
+   */
+  requestEmailVerification: (data) => 
+    apiRequest('POST', '/api/users/request-email-verification/', data, {
+      errorMessage: 'Email verification request failed',
+      successMessage: 'Verification email sent'
+    }),
+    
+  /**
+   * Verify email with token
+   * @param {Object} data - Verification token
+   * @returns {Promise<Object>} - Response with verification result
+   */
+  verifyEmail: (data) => 
+    apiRequest('POST', '/api/users/verify-email/', data, {
+      errorMessage: 'Email verification failed',
+      successMessage: 'Email verified successfully'
+    })
+};
 
-export default auth
+export default authAPI;

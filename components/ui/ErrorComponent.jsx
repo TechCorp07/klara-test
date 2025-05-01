@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import React from "react"
-import { FaExclamationTriangle, FaInfoCircle, FaExclamationCircle, FaTimes, FaHome } from "react-icons/fa"
-import Link from "next/link"
+import React from 'react';
+import { FaExclamationTriangle, FaInfoCircle, FaExclamationCircle, FaTimes, FaHome } from 'react-icons/fa';
+import Link from 'next/link';
 
 /**
  * ErrorComponent: Functional component for displaying known errors with standardized styling.
@@ -12,52 +12,53 @@ import Link from "next/link"
  * @example
  * // Alert-style error message
  * {error && <ErrorComponent error={error} variant="alert" severity="error" />}
- *
+ * 
  * // Inline error message
  * {error && <ErrorComponent error={error} variant="inline" severity="warning" />}
- *
+ * 
  * // Full-page error message
  * {error && <ErrorComponent error={error} variant="page" onRetry={handleRetry} />}
- *
+ * 
  * // Toast-style error notification
  * {error && <ErrorComponent error={error} variant="toast" dismissible />}
  */
 
-// Define types for the error component
-export type ErrorSeverity = "error" | "warning" | "info"
-export type ErrorVariant = "alert" | "inline" | "page" | "toast"
+/**
+ * @typedef {'error' | 'warning' | 'info'} ErrorSeverity
+ */
 
-export interface ErrorComponentProps {
-  /** Error message, object, or instance */
-  error: string | Error | Record<string, any> | null
-  /** Error display variant */
-  variant?: ErrorVariant
-  /** Error severity level */
-  severity?: ErrorSeverity
-  /** Whether the error can be dismissed */
-  dismissible?: boolean
-  /** Function to call when error is dismissed */
-  onDismiss?: () => void
-  /** Additional CSS classes */
-  className?: string
-  /** Optional action component (button, link, etc.) */
-  action?: React.ReactNode
-  /** Optional retry handler */
-  onRetry?: () => void
-  /** Optional error ID for tracking */
-  errorId?: string
-  /** Path to redirect to home page */
-  homePath?: string
-}
+/**
+ * @typedef {'alert' | 'inline' | 'page' | 'toast'} ErrorVariant
+ */
 
-interface ColorScheme {
-  bg: string;
-  border: string;
-  text: string;
-  icon: React.ReactNode;
-}
+/**
+ * @typedef {Object} ErrorComponentProps
+ * @property {string|Error|Object|null} error - Error message, object, or instance
+ * @property {ErrorVariant} [variant] - Error display variant
+ * @property {ErrorSeverity} [severity] - Error severity level
+ * @property {boolean} [dismissible] - Whether the error can be dismissed
+ * @property {Function} [onDismiss] - Function to call when error is dismissed
+ * @property {string} [className] - Additional CSS classes
+ * @property {React.ReactNode} [action] - Optional action component (button, link, etc.)
+ * @property {Function} [onRetry] - Optional retry handler
+ * @property {string} [errorId] - Optional error ID for tracking
+ * @property {string} [homePath] - Path to redirect to home page
+ */
 
-const ErrorComponent: React.FC<ErrorComponentProps> = ({
+/**
+ * @typedef {Object} ColorScheme
+ * @property {string} bg - Background color class
+ * @property {string} border - Border color class
+ * @property {string} text - Text color class
+ * @property {React.ReactNode} icon - Icon component
+ */
+
+/**
+ * Error component for displaying known errors with standardized styling
+ * @param {ErrorComponentProps} props
+ * @returns {JSX.Element}
+ */
+const ErrorComponent = ({
   error,
   variant = 'inline',
   severity = 'error',
@@ -71,7 +72,7 @@ const ErrorComponent: React.FC<ErrorComponentProps> = ({
 }) => {
   // Extract error message
   let errorMessage = '';
-  let errorDetails: any = null;
+  let errorDetails = null;
   
   if (typeof error === 'string') {
     errorMessage = error;
@@ -86,7 +87,7 @@ const ErrorComponent: React.FC<ErrorComponentProps> = ({
   }
   
   // Define colors based on severity
-  const getColors = (): ColorScheme => {
+  const getColors = () => {
     switch (severity) {
       case 'warning':
         return {
@@ -239,4 +240,4 @@ const ErrorComponent: React.FC<ErrorComponentProps> = ({
   }
 };
 
-export default ErrorComponent
+export default ErrorComponent;

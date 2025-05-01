@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { communication } from '@/lib/services/communicationService';
+import { communicationService } from '@/lib/services/communicationService';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { toast } from 'react-toastify';
 
 export default function CommunityLayout({ children }) {
   const { user } = useAuth();
@@ -14,7 +13,7 @@ export default function CommunityLayout({ children }) {
   // Fetch community stats
   const { data: communityStats } = useQuery({
     queryKey: ['communityStats'],
-    queryFn: () => communication.getCommunityStats(),
+    queryFn: () => communicationService.getCommunityStats(),
     enabled: !!user,
     onError: (error) => {
       console.error('Error fetching community stats:', error);

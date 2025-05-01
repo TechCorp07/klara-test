@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { communication } from '@/lib/services/communicationService';
+import { communicationService } from '@/lib/services/communicationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-toastify';
 
@@ -18,7 +18,7 @@ export default function MessagesClient() {
   // Fetch conversations
   const { data: conversations, isLoading, error } = useQuery({
     queryKey: ['conversations'],
-    queryFn: () => communication.getConversations(),
+    queryFn: () => communicationService.getConversations(),
     enabled: !!user,
     onError: (error) => {
       toast.error('Failed to load conversations');
@@ -29,7 +29,7 @@ export default function MessagesClient() {
   // Fetch messages for selected conversation
   const { data: messages, isLoading: isMessagesLoading } = useQuery({
     queryKey: ['messages', selectedConversation?.id],
-    queryFn: () => communication.getMessages(selectedConversation?.id),
+    queryFn: () => communicationService.getMessages(selectedConversation?.id),
     enabled: !!selectedConversation,
     onError: (error) => {
       toast.error('Failed to load messages');
@@ -39,7 +39,7 @@ export default function MessagesClient() {
   
   // Mutation for sending a message
   const sendMessageMutation = useMutation({
-    mutationFn: (messageData) => communication.sendMessage(messageData),
+    mutationFn: (messageData) => communicationService.sendMessage(messageData),
     onSuccess: () => {
       setNewMessage('');
       queryClient.invalidateQueries(['messages', selectedConversation?.id]);
