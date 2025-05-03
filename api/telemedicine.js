@@ -5,7 +5,7 @@ import { apiRequest, createApiService } from "./client"
 /**
  * Base API service for appointment-related endpoints
  */
-const telemedicineApi = createApiService("/api/telemedicine")
+const telemedicineApi = createApiService("telemedicine")
 
 /**
  * Telemedicine-related API functions
@@ -19,7 +19,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Paginated appointments
    */
   getUpcomingAppointments: (filters = {}) =>
-    apiRequest("GET", "/api/telemedicine/appointments/upcoming", null, {
+    apiRequest("GET", "telemedicine/appointments/upcoming", null, {
       params: filters,
       errorMessage: "Failed to fetch upcoming appointments",
     }),
@@ -30,7 +30,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Paginated appointments
    */
   getProviderAppointments: (filters = {}) =>
-    apiRequest("GET", "/api/telemedicine/provider/appointments", null, {
+    apiRequest("GET", "telemedicine/provider/appointments", null, {
       params: filters,
       errorMessage: "Failed to fetch provider appointments",
     }),
@@ -41,7 +41,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Created appointment
    */
   scheduleAppointment: (appointmentData) =>
-    apiRequest("POST", "/api/telemedicine/appointments", appointmentData, {
+    apiRequest("POST", "telemedicine/appointments", appointmentData, {
       errorMessage: "Failed to schedule appointment",
       successMessage: "Appointment scheduled successfully",
     }),
@@ -53,7 +53,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Cancellation response
    */
   cancelAppointment: (appointmentId, cancellationData) =>
-    apiRequest("POST", `/api/telemedicine/appointments/${appointmentId}/cancel`, cancellationData, {
+    apiRequest("POST", `telemedicine/appointments/${appointmentId}/cancel`, cancellationData, {
       errorMessage: "Failed to cancel appointment",
       successMessage: "Appointment cancelled successfully",
     }),
@@ -65,7 +65,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Rescheduled appointment
    */
   rescheduleAppointment: (appointmentId, rescheduleData) =>
-    apiRequest("POST", `/api/telemedicine/appointments/${appointmentId}/reschedule`, rescheduleData, {
+    apiRequest("POST", `telemedicine/appointments/${appointmentId}/reschedule`, rescheduleData, {
       errorMessage: "Failed to reschedule appointment",
       successMessage: "Appointment rescheduled successfully",
     }),
@@ -77,7 +77,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Provider availability
    */
   getProviderAvailability: (providerId, filters = {}) =>
-    apiRequest("GET", `/api/telemedicine/providers/${providerId}/availability`, null, {
+    apiRequest("GET", `telemedicine/providers/${providerId}/availability`, null, {
       params: filters,
       errorMessage: "Failed to fetch provider availability",
     }),
@@ -88,7 +88,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Paginated messages
    */
   getProviderMessages: (filters = {}) =>
-    apiRequest("GET", "/api/telemedicine/provider/messages", null, {
+    apiRequest("GET", "telemedicine/provider/messages", null, {
       params: filters,
       errorMessage: "Failed to fetch provider messages",
     }),
@@ -99,7 +99,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Session details
    */
   startSession: (appointmentId) =>
-    apiRequest("POST", `/api/telemedicine/appointments/${appointmentId}/start`, null, {
+    apiRequest("POST", `telemedicine/appointments/${appointmentId}/start`, null, {
       errorMessage: "Failed to start telemedicine session",
     }),
 
@@ -110,7 +110,7 @@ const telemedicine = {
    * @returns {Promise<Object>} Session summary
    */
   endSession: (sessionId, sessionData) =>
-    apiRequest("POST", `/api/telemedicine/sessions/${sessionId}/end`, sessionData, {
+    apiRequest("POST", `telemedicine/sessions/${sessionId}/end`, sessionData, {
       errorMessage: "Failed to end telemedicine session",
       successMessage: "Session ended successfully",
     }),

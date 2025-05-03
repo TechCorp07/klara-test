@@ -19,7 +19,7 @@ const AdminNotification = () => {
       try {
         setIsLoading(true)
 
-        const response = await fetch("/api/users/pending", {
+        const response = await fetch("users/pending", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -54,7 +54,7 @@ const AdminNotification = () => {
     try {
       setProcessingUser(userId)
 
-      const response = await fetch(`/api/users/${userId}/approve`, {
+      const response = await fetch(`users/${userId}/approve`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,7 +84,7 @@ const AdminNotification = () => {
     try {
       setProcessingUser(userId)
 
-      const response = await fetch(`/api/users/${userId}/deny`, {
+      const response = await fetch(`users/${userId}/deny`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

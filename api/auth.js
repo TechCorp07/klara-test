@@ -13,7 +13,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with user data and tokens
    */
   login: (credentials) =>
-    apiRequest("POST", "/api/users/login/", credentials, {
+    apiRequest("POST", "users/login", credentials, {
       errorMessage: "Login failed",
     }),
 
@@ -23,7 +23,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with user data
    */
   verify2FA: (data) =>
-    apiRequest("POST", "/api/users/verify-2fa/", data, {
+    apiRequest("POST", "users/verify-2fa/", data, {
       errorMessage: "2FA verification failed",
     }),
 
@@ -32,7 +32,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with 2FA setup data
    */
   setup2FA: () =>
-    apiRequest("POST", "/api/users/setup-2fa/", null, {
+    apiRequest("POST", "users/setup-2fa/", null, {
       errorMessage: "2FA setup failed",
     }),
 
@@ -42,7 +42,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with confirmation result
    */
   confirm2FA: (data) =>
-    apiRequest("POST", "/api/users/confirm-2fa/", data, {
+    apiRequest("POST", "users/confirm-2fa/", data, {
       errorMessage: "2FA confirmation failed",
     }),
 
@@ -52,7 +52,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with result
    */
   disable2FA: (data) =>
-    apiRequest("POST", "/api/users/disable-2fa/", data, {
+    apiRequest("POST", "users/disable-2fa/", data, {
       errorMessage: "2FA disabling failed",
     }),
 
@@ -61,7 +61,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with logout result
    */
   logout: () =>
-    apiRequest("POST", "/api/users/logout/", null, {
+    apiRequest("POST", "users/logout/", null, {
       errorMessage: "Logout failed",
     }),
 
@@ -70,7 +70,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with user data
    */
   getCurrentUser: () =>
-    apiRequest("GET", "/api/users/me/", null, {
+    apiRequest("GET", "users/me/", null, {
       errorMessage: "Failed to fetch user profile",
     }),
 
@@ -80,7 +80,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with updated user data
    */
   updateProfile: (data) =>
-    apiRequest("PUT", "/api/users/me/", data, {
+    apiRequest("PUT", "users/me/", data, {
       errorMessage: "Profile update failed",
       successMessage: "Profile updated successfully",
     }),
@@ -91,7 +91,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with result
    */
   requestPasswordReset: (data) =>
-    apiRequest("POST", "/api/users/forgot-password/", data, {
+    apiRequest("POST", "users/forgot-password/", data, {
       errorMessage: "Password reset request failed",
       successMessage: "Password reset instructions sent to your email",
     }),
@@ -102,7 +102,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with result
    */
   resetPassword: (data) =>
-    apiRequest("POST", "/api/users/reset-password/", data, {
+    apiRequest("POST", "users/reset-password/", data, {
       errorMessage: "Password reset failed",
       successMessage: "Password reset successful",
     }),
@@ -113,7 +113,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with updated consent settings
    */
   updateConsent: (data) =>
-    apiRequest("POST", "/api/users/update-consent/", data, {
+    apiRequest("POST", "users/update-consent/", data, {
       errorMessage: "Consent update failed",
       successMessage: "Consent settings updated",
     }),
@@ -124,7 +124,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with new user data
    */
   registerUser: (data) =>
-    apiRequest("POST", "/api/users/users/", data, {
+    apiRequest("POST", "users/users/", data, {
       errorMessage: "Registration failed",
       successMessage: "Registration successful",
     }),
@@ -135,7 +135,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with result
    */
   requestEmailVerification: (data) =>
-    apiRequest("POST", "/api/users/request-email-verification/", data, {
+    apiRequest("POST", "users/request-email-verification/", data, {
       errorMessage: "Email verification request failed",
       successMessage: "Verification email sent",
     }),
@@ -146,7 +146,7 @@ const authAPI = {
    * @returns {Promise<Object>} - Response with verification result
    */
   verifyEmail: (data) =>
-    apiRequest("POST", "/api/users/verify-email/", data, {
+    apiRequest("POST", "users/verify-email/", data, {
       errorMessage: "Email verification failed",
       successMessage: "Email verified successfully",
     }),

@@ -20,7 +20,7 @@ const MedicationPlanAnalysis = ({ userId, medicationPlan }) => {
       try {
         setIsLoading(true)
 
-        const response = await fetch(`/api/wearables/user/${userId}/health-data?range=${dateRange}`, {
+        const response = await fetch(`wearables/user/${userId}/health-data?range=${dateRange}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",

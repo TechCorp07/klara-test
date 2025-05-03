@@ -11,7 +11,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} List of report types
    */
   getReportTypes: () =>
-    apiRequest("GET", "/api/reports", null, {
+    apiRequest("GET", "reports", null, {
       params: { type: "all" },
       errorMessage: "Failed to fetch report types",
     }),
@@ -25,7 +25,7 @@ const reportsAPI = {
   generateReport: (reportType, parameters = {}) =>
     apiRequest(
       "POST",
-      `/api/reports/generate`,
+      `reports/generate`,
       { ...parameters, reportType },
       {
         errorMessage: "Failed to generate report",
@@ -39,7 +39,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Report status
    */
   getReportStatus: (reportId) =>
-    apiRequest("GET", `/api/reports/${reportId}`.replace(/\${reportId}/g, reportId), null, {
+    apiRequest("GET", `reports/${reportId}`.replace(/\${reportId}/g, reportId), null, {
       params: { includeStatus: true },
       errorMessage: "Failed to fetch report status",
     }),
@@ -50,7 +50,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Report result
    */
   getReportResult: (reportId) =>
-    apiRequest("GET", `/api/reports/${reportId}`.replace(/\${reportId}/g, reportId), null, {
+    apiRequest("GET", `reports/${reportId}`.replace(/\${reportId}/g, reportId), null, {
       errorMessage: "Failed to fetch report result",
     }),
 
@@ -60,7 +60,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} List of user reports
    */
   getUserReports: (params = {}) =>
-    apiRequest("GET", "/api/reports", null, {
+    apiRequest("GET", "reports", null, {
       params: { ...params, scope: "user" },
       errorMessage: "Failed to fetch user reports",
     }),
@@ -72,7 +72,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Dashboard data
    */
   getDashboardData: (dashboardId, params = {}) =>
-    apiRequest("GET", `/api/reports/dashboards/${dashboardId}`.replace(/\${dashboardId}/g, dashboardId), null, {
+    apiRequest("GET", `reports/dashboards/${dashboardId}`.replace(/\${dashboardId}/g, dashboardId), null, {
       params,
       errorMessage: "Failed to fetch dashboard data",
     }),
@@ -82,7 +82,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} List of dashboards
    */
   getDashboards: () =>
-    apiRequest("GET", "/api/reports/dashboards", null, {
+    apiRequest("GET", "reports/dashboards", null, {
       errorMessage: "Failed to fetch dashboards",
     }),
 
@@ -93,7 +93,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Export result with download URL
    */
   exportReport: (reportId, format) =>
-    apiRequest("GET", `/api/reports/${reportId}`.replace(/\${reportId}/g, reportId), null, {
+    apiRequest("GET", `reports/${reportId}`.replace(/\${reportId}/g, reportId), null, {
       params: { format },
       errorMessage: `Failed to export report to ${format}`,
     }),
@@ -107,7 +107,7 @@ const reportsAPI = {
   scheduleReport: (reportType, schedule) =>
     apiRequest(
       "POST",
-      `/api/reports/generate`,
+      `reports/generate`,
       { ...schedule, reportType, scheduled: true },
       {
         errorMessage: "Failed to schedule report",
@@ -121,7 +121,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} List of scheduled reports
    */
   getScheduledReports: (params = {}) =>
-    apiRequest("GET", "/api/reports", null, {
+    apiRequest("GET", "reports", null, {
       params: { ...params, scheduled: true },
       errorMessage: "Failed to fetch scheduled reports",
     }),
@@ -132,7 +132,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Cancellation response
    */
   cancelScheduledReport: (scheduleId) =>
-    apiRequest("DELETE", `/api/reports/${scheduleId}`.replace(/\${scheduleId}/g, scheduleId), null, {
+    apiRequest("DELETE", `reports/${scheduleId}`.replace(/\${scheduleId}/g, scheduleId), null, {
       errorMessage: "Failed to cancel scheduled report",
       successMessage: "Scheduled report cancelled",
     }),
@@ -144,7 +144,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Analytics data
    */
   getAnalyticsData: (metric, params = {}) =>
-    apiRequest("GET", `/api/reports`, null, {
+    apiRequest("GET", `reports`, null, {
       params: { ...params, metric, type: "analytics" },
       errorMessage: "Failed to fetch analytics data",
     }),
@@ -156,7 +156,7 @@ const reportsAPI = {
    * @returns {Promise<Object>} Predictive analytics data
    */
   getPredictiveAnalytics: (model, params = {}) =>
-    apiRequest("GET", `/api/ai/predictions/${model}`.replace(/\${model}/g, model), null, {
+    apiRequest("GET", `ai/predictions/${model}`.replace(/\${model}/g, model), null, {
       params,
       errorMessage: "Failed to fetch predictive analytics",
     }),

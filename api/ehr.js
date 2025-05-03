@@ -11,7 +11,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} List of available EHR systems
    */
   getAvailableSystems: () =>
-    apiRequest("GET", "/api/ehr/systems", null, {
+    apiRequest("GET", "ehr/systems", null, {
       errorMessage: "Failed to fetch available EHR systems",
     }),
 
@@ -21,7 +21,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Integration status
    */
   getIntegrationStatus: (systemId) =>
-    apiRequest("GET", `/api/ehr/systems/${systemId}/status`, null, {
+    apiRequest("GET", `ehr/systems/${systemId}/status`, null, {
       errorMessage: "Failed to fetch integration status",
     }),
 
@@ -32,7 +32,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Configuration result
    */
   configureIntegration: (systemId, config) =>
-    apiRequest("POST", `/api/ehr/systems/${systemId}/configure`, config, {
+    apiRequest("POST", `ehr/systems/${systemId}/configure`, config, {
       errorMessage: "Failed to configure EHR integration",
       successMessage: "EHR integration configured successfully",
     }),
@@ -43,7 +43,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Connection test result
    */
   testConnection: (systemId) =>
-    apiRequest("POST", `/api/ehr/systems/${systemId}/test`, null, {
+    apiRequest("POST", `ehr/systems/${systemId}/test`, null, {
       errorMessage: "Failed to test EHR connection",
     }),
 
@@ -54,7 +54,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Sync result
    */
   syncData: (systemId, options = {}) =>
-    apiRequest("POST", `/api/ehr/systems/${systemId}/sync`, options, {
+    apiRequest("POST", `ehr/systems/${systemId}/sync`, options, {
       errorMessage: "Failed to sync data with EHR system",
     }),
 
@@ -64,7 +64,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Sync history
    */
   getSyncHistory: (systemId) =>
-    apiRequest("GET", `/api/ehr/systems/${systemId}/sync-history`, null, {
+    apiRequest("GET", `ehr/systems/${systemId}/sync-history`, null, {
       errorMessage: "Failed to fetch sync history",
     }),
 
@@ -74,7 +74,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Available data mappings
    */
   getDataMappings: (systemId) =>
-    apiRequest("GET", `/api/ehr/systems/${systemId}/mappings`, null, {
+    apiRequest("GET", `ehr/systems/${systemId}/mappings`, null, {
       errorMessage: "Failed to fetch data mappings",
     }),
 
@@ -85,7 +85,7 @@ const ehrAPI = {
    * @returns {Promise<Object>} Update result
    */
   updateDataMappings: (systemId, mappings) =>
-    apiRequest("PUT", `/api/ehr/systems/${systemId}/mappings`, mappings, {
+    apiRequest("PUT", `ehr/systems/${systemId}/mappings`, mappings, {
       errorMessage: "Failed to update data mappings",
       successMessage: "Data mappings updated successfully",
     }),

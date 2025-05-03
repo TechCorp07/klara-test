@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 /**
  * Token refresh endpoint - refreshes access token
- * @route POST /api/auth/refresh
+ * @route POST auth/refresh
  */
 export async function POST(request) {
   try {

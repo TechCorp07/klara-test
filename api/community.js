@@ -12,7 +12,7 @@ const communityAPI = {
    * @returns {Promise<Object>} List of forums
    */
   getForums: (params = {}) =>
-    apiRequest("GET", "/api/community/forums", null, {
+    apiRequest("GET", "community/forums", null, {
       params,
       errorMessage: "Failed to fetch forums",
     }),
@@ -23,7 +23,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Forum details
    */
   getForum: (forumId) =>
-    apiRequest("GET", `/api/community/forums/${forumId}`.replace("${forumId}", forumId), null, {
+    apiRequest("GET", `community/forums/${forumId}`.replace("${forumId}", forumId), null, {
       errorMessage: "Failed to fetch forum details",
     }),
 
@@ -34,7 +34,7 @@ const communityAPI = {
    * @returns {Promise<Object>} List of topics
    */
   getForumTopics: (forumId, params = {}) =>
-    apiRequest("GET", `/api/community/topics`, null, {
+    apiRequest("GET", `community/topics`, null, {
       params: { ...params, forumId },
       errorMessage: "Failed to fetch forum topics",
     }),
@@ -48,7 +48,7 @@ const communityAPI = {
   createTopic: (forumId, topicData) =>
     apiRequest(
       "POST",
-      `/api/community/topics`,
+      `community/topics`,
       { ...topicData, forumId },
       {
         errorMessage: "Failed to create topic",
@@ -62,7 +62,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Topic details
    */
   getTopic: (topicId) =>
-    apiRequest("GET", `/api/community/topics/${topicId}`.replace("${topicId}", topicId), null, {
+    apiRequest("GET", `community/topics/${topicId}`.replace("${topicId}", topicId), null, {
       errorMessage: "Failed to fetch topic details",
     }),
 
@@ -73,7 +73,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Updated topic
    */
   updateTopic: (topicId, topicData) =>
-    apiRequest("PUT", `/api/community/topics/${topicId}`.replace("${topicId}", topicId), topicData, {
+    apiRequest("PUT", `community/topics/${topicId}`.replace("${topicId}", topicId), topicData, {
       errorMessage: "Failed to update topic",
       successMessage: "Topic updated successfully",
     }),
@@ -84,7 +84,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Deletion response
    */
   deleteTopic: (topicId) =>
-    apiRequest("DELETE", `/api/community/topics/${topicId}`.replace("${topicId}", topicId), null, {
+    apiRequest("DELETE", `community/topics/${topicId}`.replace("${topicId}", topicId), null, {
       errorMessage: "Failed to delete topic",
       successMessage: "Topic deleted successfully",
     }),
@@ -96,7 +96,7 @@ const communityAPI = {
    * @returns {Promise<Object>} List of posts
    */
   getTopicPosts: (topicId, params = {}) =>
-    apiRequest("GET", `/api/community/posts`, null, {
+    apiRequest("GET", `community/posts`, null, {
       params: { ...params, topicId },
       errorMessage: "Failed to fetch topic posts",
     }),
@@ -110,7 +110,7 @@ const communityAPI = {
   createPost: (topicId, postData) =>
     apiRequest(
       "POST",
-      `/api/community/posts`,
+      `community/posts`,
       { ...postData, topicId },
       {
         errorMessage: "Failed to create post",
@@ -125,7 +125,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Updated post
    */
   updatePost: (postId, postData) =>
-    apiRequest("PUT", `/api/community/posts/${postId}`.replace("${postId}", postId), postData, {
+    apiRequest("PUT", `community/posts/${postId}`.replace("${postId}", postId), postData, {
       errorMessage: "Failed to update post",
       successMessage: "Post updated successfully",
     }),
@@ -136,7 +136,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Deletion response
    */
   deletePost: (postId) =>
-    apiRequest("DELETE", `/api/community/posts/${postId}`.replace("${postId}", postId), null, {
+    apiRequest("DELETE", `community/posts/${postId}`.replace("${postId}", postId), null, {
       errorMessage: "Failed to delete post",
       successMessage: "Post deleted successfully",
     }),
@@ -147,7 +147,7 @@ const communityAPI = {
    * @returns {Promise<Object>} List of groups
    */
   getGroups: (params = {}) =>
-    apiRequest("GET", "/api/community/connections", null, {
+    apiRequest("GET", "community/connections", null, {
       params: { ...params, type: "group" },
       errorMessage: "Failed to fetch groups",
     }),
@@ -158,7 +158,7 @@ const communityAPI = {
    * @returns {Promise<Object>} Group details
    */
   getGroup: (groupId) =>
-    apiRequest("GET", "/api/community/connections", null, {
+    apiRequest("GET", "community/connections", null, {
       params: { id: groupId, type: "group" },
       errorMessage: "Failed to fetch group details",
     }),
@@ -171,7 +171,7 @@ const communityAPI = {
   joinGroup: (groupId) =>
     apiRequest(
       "POST",
-      "/api/community/connections",
+      "community/connections",
       { id: groupId, action: "join", type: "group" },
       {
         errorMessage: "Failed to join group",
@@ -187,7 +187,7 @@ const communityAPI = {
   leaveGroup: (groupId) =>
     apiRequest(
       "POST",
-      "/api/community/connections",
+      "community/connections",
       { id: groupId, action: "leave", type: "group" },
       {
         errorMessage: "Failed to leave group",
@@ -201,7 +201,7 @@ const communityAPI = {
    * @returns {Promise<Object>} List of connections
    */
   getConnections: (params = {}) =>
-    apiRequest("GET", "/api/community/connections", null, {
+    apiRequest("GET", "community/connections", null, {
       params: { ...params, type: "user" },
       errorMessage: "Failed to fetch connections",
     }),
@@ -214,7 +214,7 @@ const communityAPI = {
   sendConnectionRequest: (userId) =>
     apiRequest(
       "POST",
-      "/api/community/connections",
+      "community/connections",
       { userId, action: "connect" },
       {
         errorMessage: "Failed to send connection request",
@@ -230,7 +230,7 @@ const communityAPI = {
   acceptConnectionRequest: (requestId) =>
     apiRequest(
       "POST",
-      "/api/community/connections",
+      "community/connections",
       { requestId, action: "accept" },
       {
         errorMessage: "Failed to accept connection request",
@@ -246,7 +246,7 @@ const communityAPI = {
   rejectConnectionRequest: (requestId) =>
     apiRequest(
       "POST",
-      "/api/community/connections",
+      "community/connections",
       { requestId, action: "reject" },
       {
         errorMessage: "Failed to reject connection request",
@@ -260,7 +260,7 @@ const communityAPI = {
    * @returns {Promise<Object>} List of connection requests
    */
   getConnectionRequests: (params = {}) =>
-    apiRequest("GET", "/api/community/connections", null, {
+    apiRequest("GET", "community/connections", null, {
       params: { ...params, status: "pending" },
       errorMessage: "Failed to fetch connection requests",
     }),

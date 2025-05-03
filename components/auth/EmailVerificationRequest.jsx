@@ -33,7 +33,7 @@ const EmailVerificationRequest = () => {
       setLoading(true)
 
       // Call the API to request email verification
-      const response = await fetch("/api/users/request-email-verification/", {
+      const response = await fetch("users/request-email-verification/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -27,7 +27,7 @@ const EmailVerification = () => {
         }
 
         // Call the API to verify email
-        const response = await fetch("/api/users/verify-email/", {
+        const response = await fetch("users/verify-email/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -41,7 +41,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "https://api.klararety.com/:path*",
+        destination: "https://api.klararety.com/api/:path*",
       },
     ]
   },

@@ -12,7 +12,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} List of medications
    */
   getPatientMedications: (patientId) =>
-    apiRequest("GET", `/api/medications`, null, {
+    apiRequest("GET", `medications`, null, {
       params: { patientId },
       errorMessage: "Failed to fetch patient medications",
     }),
@@ -23,7 +23,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} Medication details
    */
   getMedication: (medicationId) =>
-    apiRequest("GET", `/api/medications/${medicationId}`.replace("${medicationId}", medicationId), null, {
+    apiRequest("GET", `medications/${medicationId}`.replace("${medicationId}", medicationId), null, {
       errorMessage: "Failed to fetch medication details",
     }),
 
@@ -33,7 +33,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} Created medication
    */
   createMedication: (medicationData) =>
-    apiRequest("POST", "/api/medications", medicationData, {
+    apiRequest("POST", "medications", medicationData, {
       errorMessage: "Failed to create medication",
       successMessage: "Medication created successfully",
     }),
@@ -45,7 +45,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} Updated medication
    */
   updateMedication: (medicationId, medicationData) =>
-    apiRequest("PUT", `/api/medications/${medicationId}`.replace("${medicationId}", medicationId), medicationData, {
+    apiRequest("PUT", `medications/${medicationId}`.replace("${medicationId}", medicationId), medicationData, {
       errorMessage: "Failed to update medication",
       successMessage: "Medication updated successfully",
     }),
@@ -56,7 +56,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} Deletion response
    */
   deleteMedication: (medicationId) =>
-    apiRequest("DELETE", `/api/medications/${medicationId}`.replace("${medicationId}", medicationId), null, {
+    apiRequest("DELETE", `medications/${medicationId}`.replace("${medicationId}", medicationId), null, {
       errorMessage: "Failed to delete medication",
       successMessage: "Medication deleted successfully",
     }),
@@ -70,7 +70,7 @@ const medicationAPI = {
   requestRefill: (medicationId, refillData) =>
     apiRequest(
       "POST",
-      `/api/medications/reminders`,
+      `medications/reminders`,
       { ...refillData, medicationId },
       {
         errorMessage: "Failed to request medication refill",
@@ -85,7 +85,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} Adherence data
    */
   getAdherenceData: (patientId, params = {}) =>
-    apiRequest("GET", `/api/medications/adherence`, null, {
+    apiRequest("GET", `medications/adherence`, null, {
       params: { ...params, patientId },
       errorMessage: "Failed to fetch medication adherence data",
     }),
@@ -99,7 +99,7 @@ const medicationAPI = {
   recordIntake: (medicationId, intakeData) =>
     apiRequest(
       "POST",
-      `/api/medications/adherence`,
+      `medications/adherence`,
       { ...intakeData, medicationId },
       {
         errorMessage: "Failed to record medication intake",
@@ -114,7 +114,7 @@ const medicationAPI = {
    * @returns {Promise<Object>} Medication schedule
    */
   getMedicationSchedule: (patientId, params = {}) =>
-    apiRequest("GET", `/api/medications/reminders`, null, {
+    apiRequest("GET", `medications/reminders`, null, {
       params: { ...params, patientId },
       errorMessage: "Failed to fetch medication schedule",
     }),

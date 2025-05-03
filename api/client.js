@@ -17,7 +17,7 @@ export const getApiBaseUrl = () => {
 
     // Local development
     if (hostname === "localhost" || hostname.includes("127.0.0.1")) {
-      return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+      return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
     }
 
     // Production environment - main domain
@@ -42,7 +42,8 @@ export const apiRequest = async (method, endpoint, data = null, options = {}) =>
   const { errorMessage = "Request failed", successMessage = "" } = options
 
   const baseUrl = getApiBaseUrl()
-  const url = `${baseUrl}${endpoint}`
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint
+  const url = `${baseUrl}/${normalizedEndpoint}`
 
   const headers = {
     "Content-Type": "application/json",

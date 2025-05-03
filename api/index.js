@@ -13,16 +13,16 @@ export const Communication = {
   getMessages: (userId, options = {}) => {
     const { limit = 20, offset = 0, includeArchived = false } = options
     return fetch(
-      `/api/messages?userId=${userId}&limit=${limit}&offset=${offset}&includeArchived=${includeArchived}`,
+      `messages?userId=${userId}&limit=${limit}&offset=${offset}&includeArchived=${includeArchived}`,
     ).then((res) => res.json())
   },
 
   getMessageById: (messageId) => {
-    return fetch(`/api/messages/${messageId}`).then((res) => res.json())
+    return fetch(`messages/${messageId}`).then((res) => res.json())
   },
 
   sendMessage: (message) => {
-    return fetch("/api/messages", {
+    return fetch("messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -32,7 +32,7 @@ export const Communication = {
   },
 
   updateMessage: (messageId, updates) => {
-    return fetch(`/api/messages/${messageId}`, {
+    return fetch(`messages/${messageId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -42,25 +42,25 @@ export const Communication = {
   },
 
   deleteMessage: (messageId) => {
-    return fetch(`/api/messages/${messageId}`, {
+    return fetch(`messages/${messageId}`, {
       method: "DELETE",
     }).then((res) => res.json())
   },
 
   markAsRead: (messageId) => {
-    return fetch(`/api/messages/${messageId}/read`, {
+    return fetch(`messages/${messageId}/read`, {
       method: "POST",
     }).then((res) => res.json())
   },
 
   archiveMessage: (messageId) => {
-    return fetch(`/api/messages/${messageId}/archive`, {
+    return fetch(`messages/${messageId}/archive`, {
       method: "POST",
     }).then((res) => res.json())
   },
 
   getUnreadCount: (userId) => {
-    return fetch(`/api/messages/unread-count?userId=${userId}`).then((res) => res.json())
+    return fetch(`messages/unread-count?userId=${userId}`).then((res) => res.json())
   },
 }
 

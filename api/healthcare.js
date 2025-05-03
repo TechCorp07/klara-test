@@ -4,7 +4,7 @@ import { apiRequest, createApiService } from "./client"
 /**
  * Healthcare API service with standard and specialized methods
  */
-const baseService = createApiService("/api/healthcare")
+const baseService = createApiService("healthcare")
 
 /**
  * Healthcare-related API functions
@@ -50,7 +50,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Paginated conditions
    */
   getConditions: (filters = {}) =>
-    apiRequest("GET", "/api/healthcare/conditions", null, {
+    apiRequest("GET", "healthcare/conditions", null, {
       params: filters,
       errorMessage: "Failed to fetch conditions",
     }),
@@ -61,7 +61,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Condition
    */
   getCondition: (id) =>
-    apiRequest("GET", `/api/healthcare/conditions/${id}`, null, {
+    apiRequest("GET", `healthcare/conditions/${id}`, null, {
       errorMessage: "Failed to fetch condition",
     }),
 
@@ -71,7 +71,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Paginated allergies
    */
   getAllergies: (filters = {}) =>
-    apiRequest("GET", "/api/healthcare/allergies", null, {
+    apiRequest("GET", "healthcare/allergies", null, {
       params: filters,
       errorMessage: "Failed to fetch allergies",
     }),
@@ -82,7 +82,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Paginated immunizations
    */
   getImmunizations: (filters = {}) =>
-    apiRequest("GET", "/api/healthcare/immunizations", null, {
+    apiRequest("GET", "healthcare/immunizations", null, {
       params: filters,
       errorMessage: "Failed to fetch immunizations",
     }),
@@ -93,7 +93,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Paginated lab tests
    */
   getLabTests: (filters = {}) =>
-    apiRequest("GET", "/api/healthcare/lab-tests", null, {
+    apiRequest("GET", "healthcare/lab-tests", null, {
       params: filters,
       errorMessage: "Failed to fetch lab tests",
     }),
@@ -104,7 +104,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Paginated vital signs
    */
   getVitalSigns: (filters = {}) =>
-    apiRequest("GET", "/api/healthcare/vital-signs", null, {
+    apiRequest("GET", "healthcare/vital-signs", null, {
       params: filters,
       errorMessage: "Failed to fetch vital signs",
     }),
@@ -115,7 +115,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Paginated pending approvals
    */
   getPendingApprovals: (filters = {}) =>
-    apiRequest("GET", "/api/healthcare/approvals/pending", null, {
+    apiRequest("GET", "healthcare/approvals/pending", null, {
       params: filters,
       errorMessage: "Failed to fetch pending approvals",
     }),
@@ -127,7 +127,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Approval response
    */
   approveRequest: (id, approvalData = {}) =>
-    apiRequest("POST", `/api/healthcare/approvals/${id}/approve`, approvalData, {
+    apiRequest("POST", `healthcare/approvals/${id}/approve`, approvalData, {
       errorMessage: "Failed to approve request",
       successMessage: "Request approved successfully",
     }),
@@ -139,7 +139,7 @@ const healthcareApi = {
    * @returns {Promise<Object>} Rejection response
    */
   rejectRequest: (id, rejectionData = {}) =>
-    apiRequest("POST", `/api/healthcare/approvals/${id}/reject`, rejectionData, {
+    apiRequest("POST", `healthcare/approvals/${id}/reject`, rejectionData, {
       errorMessage: "Failed to reject request",
       successMessage: "Request rejected successfully",
     }),

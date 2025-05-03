@@ -21,7 +21,7 @@ export default function ForgotPasswordClient() {
 
     try {
       // API call to request password reset
-      const response = await fetch("/api/auth/forgot-password", {
+      const response = await fetch("auth/forgot-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
