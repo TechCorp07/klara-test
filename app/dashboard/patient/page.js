@@ -1,3 +1,5 @@
+"use client"
+
 import PatientDashboard from "./components/PatientDashboard"
 import { withRoleAccess } from "@/components/hoc/withRoleAccess"
 

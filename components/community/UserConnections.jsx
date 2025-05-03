@@ -1,92 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { community } from '../../api';
-import { toast } from 'react-toastify';
+"use client"
+
+import { useState, useEffect } from "react"
+import { toast } from "react-toastify"
 
 /**
  * UserConnections Component
  * Displays and manages user connections in the community
  */
 const UserConnections = () => {
-  const [connections, setConnections] = useState([]);
-  const [connectionRequests, setConnectionRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [requestsLoading, setRequestsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [connections, setConnections] = useState([])
+  const [connectionRequests, setConnectionRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [requestsLoading, setRequestsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
-    fetchConnections();
-    fetchConnectionRequests();
-  }, []);
+    fetchConnections()
+    fetchConnectionRequests()
+  }, [])
 
   const fetchConnections = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await communityAPI.getConnections();
-      setConnections(response.connections || []);
-      setError(null);
+      const response = await communityAPI.getConnections()
+      setConnections(response.connections || [])
+      setError(null)
     } catch (err) {
-      console.error('Error fetching connections:', err);
-      setError('Failed to load connections. Please try again.');
-      toast.error('Failed to load connections');
+      console.error("Error fetching connections:", err)
+      setError("Failed to load connections. Please try again.")
+      toast.error("Failed to load connections")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const fetchConnectionRequests = async () => {
-    setRequestsLoading(true);
+    setRequestsLoading(true)
     try {
-      const response = await communityAPI.getConnectionRequests();
-      setConnectionRequests(response.requests || []);
+      const response = await communityAPI.getConnectionRequests()
+      setConnectionRequests(response.requests || [])
     } catch (err) {
-      console.error('Error fetching connection requests:', err);
-      toast.error('Failed to load connection requests');
+      console.error("Error fetching connection requests:", err)
+      toast.error("Failed to load connection requests")
     } finally {
-      setRequestsLoading(false);
+      setRequestsLoading(false)
     }
-  };
+  }
 
   const handleSendConnectionRequest = async (userId) => {
     try {
-      await communityAPI.sendConnectionRequest(userId);
-      toast.success('Connection request sent successfully');
+      await communityAPI.sendConnectionRequest(userId)
+      toast.success("Connection request sent successfully")
       // Refresh the connections list
-      fetchConnections();
+      fetchConnections()
     } catch (err) {
-      console.error('Error sending connection request:', err);
-      toast.error('Failed to send connection request');
+      console.error("Error sending connection request:", err)
+      toast.error("Failed to send connection request")
     }
-  };
+  }
 
   const handleAcceptRequest = async (requestId) => {
     try {
-      await communityAPI.acceptConnectionRequest(requestId);
-      toast.success('Connection request accepted');
+      await communityAPI.acceptConnectionRequest(requestId)
+      toast.success("Connection request accepted")
       // Refresh both connections and requests
-      fetchConnections();
-      fetchConnectionRequests();
+      fetchConnections()
+      fetchConnectionRequests()
     } catch (err) {
-      console.error('Error accepting connection request:', err);
-      toast.error('Failed to accept connection request');
+      console.error("Error accepting connection request:", err)
+      toast.error("Failed to accept connection request")
     }
-  };
+  }
 
   const handleRejectRequest = async (requestId) => {
     try {
-      await communityAPI.rejectConnectionRequest(requestId);
-      toast.success('Connection request rejected');
+      await communityAPI.rejectConnectionRequest(requestId)
+      toast.success("Connection request rejected")
       // Refresh the requests list
-      fetchConnectionRequests();
+      fetchConnectionRequests()
     } catch (err) {
-      console.error('Error rejecting connection request:', err);
-      toast.error('Failed to reject connection request');
+      console.error("Error rejecting connection request:", err)
+      toast.error("Failed to reject connection request")
     }
-  };
+  }
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
+    setSearchTerm(e.target.value)
+  }
 
   if (loading && requestsLoading) {
     return (
@@ -95,7 +96,7 @@ const UserConnections = () => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    );
+    )
   }
 
   if (error && connections.length === 0) {
@@ -103,7 +104,7 @@ const UserConnections = () => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    );
+    )
   }
 
   return (
@@ -130,27 +131,24 @@ const UserConnections = () => {
                   <div key={request.id} className="list-group-item list-group-item-action">
                     <div className="d-flex justify-content-between align-items-center">
                       <div className="d-flex align-items-center">
-                        <img 
-                          src={request.sender.avatar || '/images/default-avatar.png'} 
-                          alt={request.sender.name} 
-                          className="rounded-circle me-3" 
-                          width="40" 
-                          height="40" 
+                        <img
+                          src={request.sender.avatar || "/images/default-avatar.png"}
+                          alt={request.sender.name}
+                          className="rounded-circle me-3"
+                          width="40"
+                          height="40"
                         />
                         <div>
                           <h6 className="mb-0">{request.sender.name}</h6>
-                          <small className="text-muted">{request.sender.title || 'Community Member'}</small>
+                          <small className="text-muted">{request.sender.title || "Community Member"}</small>
                         </div>
                       </div>
                       <div>
-                        <button 
-                          className="btn btn-sm btn-success me-2" 
-                          onClick={() => handleAcceptRequest(request.id)}
-                        >
+                        <button className="btn btn-sm btn-success me-2" onClick={() => handleAcceptRequest(request.id)}>
                           Accept
                         </button>
-                        <button 
-                          className="btn btn-sm btn-outline-danger" 
+                        <button
+                          className="btn btn-sm btn-outline-danger"
                           onClick={() => handleRejectRequest(request.id)}
                         >
                           Decline
@@ -169,11 +167,11 @@ const UserConnections = () => {
         <div className="card-header">
           <div className="d-flex justify-content-between align-items-center">
             <h5 className="mb-0">Your Network</h5>
-            <div className="input-group" style={{ maxWidth: '300px' }}>
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="Search connections..." 
+            <div className="input-group" style={{ maxWidth: "300px" }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search connections..."
                 value={searchTerm}
                 onChange={handleSearchChange}
               />
@@ -195,30 +193,29 @@ const UserConnections = () => {
           ) : (
             <div className="row">
               {connections
-                .filter(connection => 
-                  connection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  (connection.title && connection.title.toLowerCase().includes(searchTerm.toLowerCase()))
+                .filter(
+                  (connection) =>
+                    connection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (connection.title && connection.title.toLowerCase().includes(searchTerm.toLowerCase())),
                 )
                 .map((connection) => (
                   <div key={connection.id} className="col-md-6 col-lg-4 mb-3">
                     <div className="card h-100">
                       <div className="card-body">
                         <div className="d-flex align-items-center mb-3">
-                          <img 
-                            src={connection.avatar || '/images/default-avatar.png'} 
-                            alt={connection.name} 
-                            className="rounded-circle me-3" 
-                            width="50" 
-                            height="50" 
+                          <img
+                            src={connection.avatar || "/images/default-avatar.png"}
+                            alt={connection.name}
+                            className="rounded-circle me-3"
+                            width="50"
+                            height="50"
                           />
                           <div>
                             <h6 className="mb-0">{connection.name}</h6>
-                            <small className="text-muted">{connection.title || 'Community Member'}</small>
+                            <small className="text-muted">{connection.title || "Community Member"}</small>
                           </div>
                         </div>
-                        {connection.bio && (
-                          <p className="card-text small">{connection.bio}</p>
-                        )}
+                        {connection.bio && <p className="card-text small">{connection.bio}</p>}
                         <div className="d-flex justify-content-between align-items-center mt-3">
                           <span className="badge bg-secondary">
                             Connected since {new Date(connection.connectedSince).toLocaleDateString()}
@@ -248,7 +245,7 @@ const UserConnections = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UserConnections;
+export default UserConnections

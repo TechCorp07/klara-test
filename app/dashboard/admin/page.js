@@ -1,3 +1,5 @@
+"use client"
+
 import AdminDashboardWrapper from "./components/AdminDashboardWrapper"
 
 /**

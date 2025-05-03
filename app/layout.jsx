@@ -1,70 +1,68 @@
-// app/layout.jsx
-import { Inter } from 'next/font/google';
-import { ToastContainer } from 'react-toastify';
+import { Inter } from "next/font/google"
+import { ToastContainer } from "react-toastify"
 
-import { Providers } from './providers';
-import SessionTimeout from '@/components/auth/SessionTimeout';
+import { Providers } from "./providers"
+import SessionTimeout from "@/components/auth/SessionTimeout"
 
-import 'react-toastify/dist/ReactToastify.css';
-import '@/styles/global.css';
+import "react-toastify/dist/ReactToastify.css"
+import "@/styles/global.css"
 
 // Load Inter font with specific subsets
 const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+})
 
 /**
  * Metadata for the application
  */
 export const metadata = {
   title: {
-    default: 'Klararety Healthcare Platform',
-    template: '%s | Klararety Healthcare'
+    default: "Klararety Healthcare Platform",
+    template: "%s | Klararety Healthcare",
   },
-  description: 'Secure healthcare platform for patients and providers',
-  keywords: ['healthcare', 'telehealth', 'medical records', 'HIPAA compliant'],
-  authors: [{ name: 'Klararety Healthcare' }],
+  description: "Secure healthcare platform for patients and providers",
+  keywords: ["healthcare", "telehealth", "medical records", "HIPAA compliant"],
+  authors: [{ name: "Klararety Healthcare" }],
   robots: {
-    index: process.env.NODE_ENV === 'production',
-    follow: process.env.NODE_ENV === 'production',
+    index: process.env.NODE_ENV === "production",
+    follow: process.env.NODE_ENV === "production",
   },
-  applicationName: 'Klararety Healthcare',
-  manifest: '/site.webmanifest',
+  applicationName: "Klararety Healthcare",
+  manifest: "/site.webmanifest",
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
+    icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
+    apple: "/apple-touch-icon.png",
   },
-  creator: 'Klararety Healthcare Team',
-  publisher: 'Klararety Healthcare',
+  creator: "Klararety Healthcare Team",
+  publisher: "Klararety Healthcare",
   formatDetection: {
-    telephone: 'yes',
-    date: 'yes',
-    address: 'yes',
-    email: 'yes',
-    url: 'yes',
+    telephone: "yes",
+    date: "yes",
+    address: "yes",
+    email: "yes",
+    url: "yes",
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || 'https://klararety.com'
-  ),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://klararety.com"),
   openGraph: {
-    title: 'Klararety Healthcare Platform',
-    description: 'Secure healthcare platform for patients and providers',
-    url: 'https://klararety.com',
-    siteName: 'Klararety Healthcare',
-    locale: 'en_US',
-    type: 'website',
+    title: "Klararety Healthcare Platform",
+    description: "Secure healthcare platform for patients and providers",
+    url: "https://klararety.com",
+    siteName: "Klararety Healthcare",
+    locale: "en_US",
+    type: "website",
   },
-};
+    generator: 'v0.dev'
+}
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   intialScale: 1,
-};
+}
 
-export const themeColor = '#0066cc';
+export const themeColor = "#0066cc"
 /**
  * Root layout component that wraps all pages
  * This provides the authentication context, React Query, and Toast notifications
@@ -89,7 +87,7 @@ export default function RootLayout({ children }) {
             theme="light"
           />
         </Providers>
-        
+
         {/* Security headers script */}
         <script
           dangerouslySetInnerHTML={{
@@ -115,5 +113,5 @@ export default function RootLayout({ children }) {
         />
       </body>
     </html>
-  );
+  )
 }

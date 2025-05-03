@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'react-toastify';
+import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "react-toastify"
 
 /**
  * Client component for telemedicine page
@@ -10,28 +10,28 @@ import { toast } from 'react-toastify';
  */
 export default function TelemedicineClient() {
   // Authentication and state
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+
   // Appointment data state
-  const [appointments, setAppointments] = useState([]);
-  const [providers, setProviders] = useState([]);
-  
+  const [appointments, setAppointments] = useState([])
+  const [providers, setProviders] = useState([])
+
   // Form state
-  const [selectedProvider, setSelectedProvider] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [appointmentReason, setAppointmentReason] = useState('');
-  const [availableTimes, setAvailableTimes] = useState([]);
-  
+  const [selectedProvider, setSelectedProvider] = useState("")
+  const [selectedDate, setSelectedDate] = useState("")
+  const [selectedTime, setSelectedTime] = useState("")
+  const [appointmentReason, setAppointmentReason] = useState("")
+  const [availableTimes, setAvailableTimes] = useState([])
+
   // UI state
-  const [activeTab, setActiveTab] = useState('upcoming');
-  const [isScheduling, setIsScheduling] = useState(false);
+  const [activeTab, setActiveTab] = useState("upcoming")
+  const [isScheduling, setIsScheduling] = useState(false)
 
   // Fetch appointments and providers
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      setLoading(true)
       try {
         // This would be replaced with actual API calls
         setTimeout(() => {
@@ -40,165 +40,165 @@ export default function TelemedicineClient() {
               id: 1,
               provider: {
                 id: 1,
-                name: 'Dr. Sarah Smith',
-                specialty: 'Cardiology',
-                image: null
+                name: "Dr. Sarah Smith",
+                specialty: "Cardiology",
+                image: null,
               },
-              scheduled_time: '2023-07-15T14:30:00Z',
-              end_time: '2023-07-15T15:00:00Z',
-              status: 'scheduled',
-              appointment_type: 'video_consultation',
-              reason: 'Follow-up for hypertension',
-              notes: '',
-              join_url: 'https://zoom.us/j/123456789',
-              meeting_id: '123456789'
+              scheduled_time: "2023-07-15T14:30:00Z",
+              end_time: "2023-07-15T15:00:00Z",
+              status: "scheduled",
+              appointment_type: "video_consultation",
+              reason: "Follow-up for hypertension",
+              notes: "",
+              join_url: "https://zoom.us/j/123456789",
+              meeting_id: "123456789",
             },
             {
               id: 2,
               provider: {
                 id: 2,
-                name: 'Dr. Michael Johnson',
-                specialty: 'Endocrinology',
-                image: null
+                name: "Dr. Michael Johnson",
+                specialty: "Endocrinology",
+                image: null,
               },
-              scheduled_time: '2023-08-05T10:15:00Z',
-              end_time: '2023-08-05T10:45:00Z',
-              status: 'scheduled',
-              appointment_type: 'initial_consultation',
-              reason: 'Diabetes management',
-              notes: 'Bring recent lab results',
-              join_url: 'https://zoom.us/j/987654321',
-              meeting_id: '987654321'
+              scheduled_time: "2023-08-05T10:15:00Z",
+              end_time: "2023-08-05T10:45:00Z",
+              status: "scheduled",
+              appointment_type: "initial_consultation",
+              reason: "Diabetes management",
+              notes: "Bring recent lab results",
+              join_url: "https://zoom.us/j/987654321",
+              meeting_id: "987654321",
             },
             {
               id: 3,
               provider: {
                 id: 1,
-                name: 'Dr. Sarah Smith',
-                specialty: 'Cardiology',
-                image: null
+                name: "Dr. Sarah Smith",
+                specialty: "Cardiology",
+                image: null,
               },
-              scheduled_time: '2023-06-10T13:00:00Z',
-              end_time: '2023-06-10T13:30:00Z',
-              status: 'completed',
-              appointment_type: 'follow_up',
-              reason: 'Blood pressure check',
-              notes: 'Medication adjustment recommended',
-              join_url: 'https://zoom.us/j/111222333',
-              meeting_id: '111222333'
-            }
-          ]);
-          
+              scheduled_time: "2023-06-10T13:00:00Z",
+              end_time: "2023-06-10T13:30:00Z",
+              status: "completed",
+              appointment_type: "follow_up",
+              reason: "Blood pressure check",
+              notes: "Medication adjustment recommended",
+              join_url: "https://zoom.us/j/111222333",
+              meeting_id: "111222333",
+            },
+          ])
+
           setProviders([
             {
               id: 1,
-              name: 'Dr. Sarah Smith',
-              specialty: 'Cardiology',
+              name: "Dr. Sarah Smith",
+              specialty: "Cardiology",
               image: null,
-              available_days: ['Monday', 'Wednesday', 'Friday'],
+              available_days: ["Monday", "Wednesday", "Friday"],
               rating: 4.8,
-              reviews: 42
+              reviews: 42,
             },
             {
               id: 2,
-              name: 'Dr. Michael Johnson',
-              specialty: 'Endocrinology',
+              name: "Dr. Michael Johnson",
+              specialty: "Endocrinology",
               image: null,
-              available_days: ['Tuesday', 'Thursday'],
+              available_days: ["Tuesday", "Thursday"],
               rating: 4.9,
-              reviews: 37
+              reviews: 37,
             },
             {
               id: 3,
-              name: 'Dr. Emily Chen',
-              specialty: 'Neurology',
+              name: "Dr. Emily Chen",
+              specialty: "Neurology",
               image: null,
-              available_days: ['Monday', 'Tuesday', 'Friday'],
+              available_days: ["Monday", "Tuesday", "Friday"],
               rating: 4.7,
-              reviews: 28
+              reviews: 28,
             },
             {
               id: 4,
-              name: 'Dr. Robert Williams',
-              specialty: 'Pulmonology',
+              name: "Dr. Robert Williams",
+              specialty: "Pulmonology",
               image: null,
-              available_days: ['Wednesday', 'Thursday', 'Friday'],
+              available_days: ["Wednesday", "Thursday", "Friday"],
               rating: 4.6,
-              reviews: 31
-            }
-          ]);
-          
-          setLoading(false);
-        }, 1000);
+              reviews: 31,
+            },
+          ])
+
+          setLoading(false)
+        }, 1000)
       } catch (error) {
-        console.error('Error fetching telemedicine data:', error);
-        toast.error('Failed to load telemedicine data');
-        setLoading(false);
+        console.error("Error fetching telemedicine data:", error)
+        toast.error("Failed to load telemedicine data")
+        setLoading(false)
       }
-    };
+    }
 
     if (user) {
-      fetchData();
+      fetchData()
     }
-  }, [user]);
+  }, [user])
 
   /**
    * Handles the selection of a provider from the dropdown
    */
   const handleProviderSelect = (e) => {
-    setSelectedProvider(e.target.value);
-  };
+    setSelectedProvider(e.target.value)
+  }
 
   /**
    * Handles the selection of a date and generates available time slots
    */
   const handleDateSelect = (e) => {
-    setSelectedDate(e.target.value);
-    
+    setSelectedDate(e.target.value)
+
     // Generate available times based on selected date
     // This would be replaced with actual API call to get provider availability
-    const times = [];
-    const startHour = 9;
-    const endHour = 17;
-    
+    const times = []
+    const startHour = 9
+    const endHour = 17
+
     for (let hour = startHour; hour < endHour; hour++) {
-      times.push(`${hour}:00`);
-      times.push(`${hour}:30`);
+      times.push(`${hour}:00`)
+      times.push(`${hour}:30`)
     }
-    
-    setAvailableTimes(times);
-  };
+
+    setAvailableTimes(times)
+  }
 
   /**
    * Handles the selection of a time slot
    */
   const handleTimeSelect = (e) => {
-    setSelectedTime(e.target.value);
-  };
+    setSelectedTime(e.target.value)
+  }
 
   /**
    * Handles changes to the appointment reason
    */
   const handleReasonChange = (e) => {
-    setAppointmentReason(e.target.value);
-  };
+    setAppointmentReason(e.target.value)
+  }
 
   /**
    * Handles the submission of a new appointment
    */
   const handleScheduleAppointment = async () => {
     if (!selectedProvider || !selectedDate || !selectedTime || !appointmentReason) {
-      toast.warning('Please fill in all appointment details');
-      return;
+      toast.warning("Please fill in all appointment details")
+      return
     }
 
-    setIsScheduling(true);
+    setIsScheduling(true)
     try {
       // This would be replaced with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const provider = providers.find(p => p.id === parseInt(selectedProvider));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      const provider = providers.find((p) => p.id === Number.parseInt(selectedProvider))
+
       // Create new appointment
       const newAppointment = {
         id: appointments.length + 1,
@@ -206,37 +206,37 @@ export default function TelemedicineClient() {
           id: provider.id,
           name: provider.name,
           specialty: provider.specialty,
-          image: provider.image
+          image: provider.image,
         },
         scheduled_time: new Date(`${selectedDate}T${selectedTime}`).toISOString(),
         end_time: new Date(`${selectedDate}T${selectedTime}`).toISOString(),
-        status: 'scheduled',
-        appointment_type: 'video_consultation',
+        status: "scheduled",
+        appointment_type: "video_consultation",
         reason: appointmentReason,
-        notes: '',
-        join_url: 'https://zoom.us/j/000000000',
-        meeting_id: '000000000'
-      };
-      
-      setAppointments([...appointments, newAppointment]);
-      toast.success('Appointment scheduled successfully');
-      
+        notes: "",
+        join_url: "https://zoom.us/j/000000000",
+        meeting_id: "000000000",
+      }
+
+      setAppointments([...appointments, newAppointment])
+      toast.success("Appointment scheduled successfully")
+
       // Reset form
-      setSelectedProvider('');
-      setSelectedDate('');
-      setSelectedTime('');
-      setAppointmentReason('');
-      setAvailableTimes([]);
-      
+      setSelectedProvider("")
+      setSelectedDate("")
+      setSelectedTime("")
+      setAppointmentReason("")
+      setAvailableTimes([])
+
       // Switch to upcoming appointments tab
-      setActiveTab('upcoming');
+      setActiveTab("upcoming")
     } catch (error) {
-      console.error('Error scheduling appointment:', error);
-      toast.error('Failed to schedule appointment');
+      console.error("Error scheduling appointment:", error)
+      toast.error("Failed to schedule appointment")
     } finally {
-      setIsScheduling(false);
+      setIsScheduling(false)
     }
-  };
+  }
 
   /**
    * Handles cancellation of an appointment
@@ -244,79 +244,81 @@ export default function TelemedicineClient() {
   const handleCancelAppointment = async (appointmentId) => {
     try {
       // This would be replaced with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
       // Update appointment status
-      setAppointments(appointments.map(appointment => {
-        if (appointment.id === appointmentId) {
-          return { ...appointment, status: 'cancelled' };
-        }
-        return appointment;
-      }));
-      
-      toast.success('Appointment cancelled successfully');
+      setAppointments(
+        appointments.map((appointment) => {
+          if (appointment.id === appointmentId) {
+            return { ...appointment, status: "cancelled" }
+          }
+          return appointment
+        }),
+      )
+
+      toast.success("Appointment cancelled successfully")
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
-      toast.error('Failed to cancel appointment');
+      console.error("Error cancelling appointment:", error)
+      toast.error("Failed to cancel appointment")
     }
-  };
+  }
 
   /**
    * Handles rescheduling of an appointment
    */
   const handleRescheduleAppointment = (appointmentId) => {
     // Find the appointment to reschedule
-    const appointment = appointments.find(a => a.id === appointmentId);
-    
+    const appointment = appointments.find((a) => a.id === appointmentId)
+
     // Pre-fill the scheduling form
-    setSelectedProvider(appointment.provider.id.toString());
-    setAppointmentReason(appointment.reason);
-    
+    setSelectedProvider(appointment.provider.id.toString())
+    setAppointmentReason(appointment.reason)
+
     // Switch to schedule tab
-    setActiveTab('schedule');
-    
+    setActiveTab("schedule")
+
     // Scroll to scheduling form
-    document.getElementById('scheduling-form')?.scrollIntoView({ behavior: 'smooth' });
-  };
+    document.getElementById("scheduling-form")?.scrollIntoView({ behavior: "smooth" })
+  }
 
   /**
    * Opens the meeting URL in a new tab
    */
   const handleJoinAppointment = (joinUrl) => {
-    window.open(joinUrl, '_blank');
-  };
+    window.open(joinUrl, "_blank")
+  }
 
   /**
    * Formats a date string for display
    */
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+    return new Date(dateString).toLocaleDateString()
+  }
 
   /**
    * Formats a time string for display
    */
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+    return new Date(dateString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  }
 
   /**
    * Gets upcoming appointments
    */
   const getUpcomingAppointments = () => {
-    return appointments.filter(appointment => 
-      appointment.status === 'scheduled' && new Date(appointment.scheduled_time) > new Date()
-    );
-  };
+    return appointments.filter(
+      (appointment) => appointment.status === "scheduled" && new Date(appointment.scheduled_time) > new Date(),
+    )
+  }
 
   /**
    * Gets past appointments
    */
   const getPastAppointments = () => {
-    return appointments.filter(appointment => 
-      appointment.status === 'completed' || new Date(appointment.scheduled_time) < new Date()
-    );
-  };
+    return appointments.filter(
+      (appointment) => appointment.status === "completed" || new Date(appointment.scheduled_time) < new Date(),
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -324,12 +326,21 @@ export default function TelemedicineClient() {
         <h1 className="text-3xl font-bold">Telemedicine</h1>
         <p className="text-gray-600">Schedule and manage your virtual appointments</p>
       </div>
-      
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <svg className="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg
+            className="animate-spin h-8 w-8 text-primary-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
           </svg>
           <span className="ml-2 text-gray-600">Loading telemedicine data...</span>
         </div>
@@ -340,31 +351,31 @@ export default function TelemedicineClient() {
             <nav className="-mb-px flex space-x-8">
               <button
                 className={`${
-                  activeTab === 'upcoming'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  activeTab === "upcoming"
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                onClick={() => setActiveTab('upcoming')}
+                onClick={() => setActiveTab("upcoming")}
               >
                 Upcoming Appointments
               </button>
               <button
                 className={`${
-                  activeTab === 'past'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  activeTab === "past"
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                onClick={() => setActiveTab('past')}
+                onClick={() => setActiveTab("past")}
               >
                 Past Appointments
               </button>
               <button
                 className={`${
-                  activeTab === 'schedule'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  activeTab === "schedule"
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                onClick={() => setActiveTab('schedule')}
+                onClick={() => setActiveTab("schedule")}
               >
                 Schedule New Appointment
               </button>
@@ -372,21 +383,21 @@ export default function TelemedicineClient() {
           </div>
 
           {/* Tab Content */}
-          {activeTab === 'upcoming' && (
+          {activeTab === "upcoming" && (
             <div>
               <div className="bg-white shadow overflow-hidden sm:rounded-lg">
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">Upcoming Appointments</h3>
                   <p className="mt-1 max-w-2xl text-sm text-gray-500">Your scheduled telemedicine consultations.</p>
                 </div>
-                
+
                 {getUpcomingAppointments().length === 0 ? (
                   <div className="px-4 py-5 sm:p-6 text-center">
                     <p className="text-gray-500">No upcoming appointments</p>
                     <button
                       type="button"
                       className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                      onClick={() => setActiveTab('schedule')}
+                      onClick={() => setActiveTab("schedule")}
                     >
                       Schedule an Appointment
                     </button>
@@ -400,7 +411,10 @@ export default function TelemedicineClient() {
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
                                 <span className="text-primary-800 text-lg font-medium">
-                                  {appointment.provider.name.split(' ').map(n => n[0]).join('')}
+                                  {appointment.provider.name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")}
                                 </span>
                               </div>
                               <div className="ml-4">
@@ -417,7 +431,7 @@ export default function TelemedicineClient() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="mt-4">
                             <div className="text-sm text-gray-500">
                               <span className="font-medium text-gray-900">Reason:</span> {appointment.reason}
@@ -428,7 +442,7 @@ export default function TelemedicineClient() {
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="mt-4 flex justify-end space-x-4">
                             <button
                               type="button"
@@ -458,7 +472,7 @@ export default function TelemedicineClient() {
                   </div>
                 )}
               </div>
-              
+
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Preparing for Your Telemedicine Visit</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -489,13 +503,13 @@ export default function TelemedicineClient() {
             </div>
           )}
 
-          {activeTab === 'past' && (
+          {activeTab === "past" && (
             <div className="bg-white shadow overflow-hidden sm:rounded-lg">
               <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Past Appointments</h3>
                 <p className="mt-1 max-w-2xl text-sm text-gray-500">History of your telemedicine consultations.</p>
               </div>
-              
+
               {getPastAppointments().length === 0 ? (
                 <div className="px-4 py-5 sm:p-6 text-center">
                   <p className="text-gray-500">No past appointments</p>
@@ -505,19 +519,34 @@ export default function TelemedicineClient() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Provider
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Date & Time
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Reason
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Status
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Actions
                         </th>
                       </tr>
@@ -529,7 +558,10 @@ export default function TelemedicineClient() {
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                                 <span className="text-primary-800 font-medium">
-                                  {appointment.provider.name.split(' ').map(n => n[0]).join('')}
+                                  {appointment.provider.name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")}
                                 </span>
                               </div>
                               <div className="ml-4">
@@ -546,11 +578,15 @@ export default function TelemedicineClient() {
                             <div className="text-sm text-gray-900">{appointment.reason}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              appointment.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                              appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                appointment.status === "completed"
+                                  ? "bg-green-100 text-green-800"
+                                  : appointment.status === "cancelled"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
                               {appointment.status}
                             </span>
                           </td>
@@ -560,7 +596,7 @@ export default function TelemedicineClient() {
                               className="text-primary-600 hover:text-primary-900"
                               onClick={() => {
                                 // View appointment details or notes
-                                toast.info('Viewing appointment details will be implemented in a future update');
+                                toast.info("Viewing appointment details will be implemented in a future update")
                               }}
                             >
                               View Details
@@ -575,11 +611,13 @@ export default function TelemedicineClient() {
             </div>
           )}
 
-          {activeTab === 'schedule' && (
+          {activeTab === "schedule" && (
             <div id="scheduling-form" className="bg-white shadow overflow-hidden sm:rounded-lg">
               <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Schedule New Appointment</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Book a telemedicine consultation with a healthcare provider.</p>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  Book a telemedicine consultation with a healthcare provider.
+                </p>
               </div>
               <div className="px-4 py-5 sm:p-6">
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -612,7 +650,7 @@ export default function TelemedicineClient() {
                         type="date"
                         name="date"
                         id="date"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toISOString().split("T")[0]}
                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         value={selectedDate}
                         onChange={handleDateSelect}
@@ -664,27 +702,32 @@ export default function TelemedicineClient() {
                     <div className="flex items-start">
                       <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                         <span className="text-primary-800 font-medium">
-                          {providers.find(p => p.id === parseInt(selectedProvider))?.name.split(' ').map(n => n[0]).join('')}
+                          {providers
+                            .find((p) => p.id === Number.parseInt(selectedProvider))
+                            ?.name.split(" ")
+                            .map((n) => n[0])
+                            .join("")}
                         </span>
                       </div>
                       <div className="ml-4">
                         <h5 className="text-sm font-medium text-gray-900">
-                          {providers.find(p => p.id === parseInt(selectedProvider))?.name}
+                          {providers.find((p) => p.id === Number.parseInt(selectedProvider))?.name}
                         </h5>
                         <p className="text-sm text-gray-500">
-                          {providers.find(p => p.id === parseInt(selectedProvider))?.specialty}
+                          {providers.find((p) => p.id === Number.parseInt(selectedProvider))?.specialty}
                         </p>
                         <div className="mt-1 flex items-center">
                           <svg className="text-yellow-400 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            
                           </svg>
                           <span className="ml-1 text-sm text-gray-500">
-                            {providers.find(p => p.id === parseInt(selectedProvider))?.rating} ({providers.find(p => p.id === parseInt(selectedProvider))?.reviews} reviews)
+                            {providers.find((p) => p.id === Number.parseInt(selectedProvider))?.rating} (
+                            {providers.find((p) => p.id === Number.parseInt(selectedProvider))?.reviews} reviews)
                           </span>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">
-                          Available on: {providers.find(p => p.id === parseInt(selectedProvider))?.available_days.join(', ')}
+                          Available on:{" "}
+                          {providers.find((p) => p.id === Number.parseInt(selectedProvider))?.available_days.join(", ")}
                         </p>
                       </div>
                     </div>
@@ -700,14 +743,30 @@ export default function TelemedicineClient() {
                   >
                     {isScheduling ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         Scheduling...
                       </>
                     ) : (
-                      'Schedule Appointment'
+                      "Schedule Appointment"
                     )}
                   </button>
                 </div>
@@ -724,31 +783,36 @@ export default function TelemedicineClient() {
                 <div>
                   <dt className="text-base font-medium text-gray-900">What is telemedicine?</dt>
                   <dd className="mt-1 text-sm text-gray-500">
-                    Telemedicine allows you to consult with healthcare providers remotely using video conferencing technology. It's convenient, secure, and provides access to care from the comfort of your home.
+                    Telemedicine allows you to consult with healthcare providers remotely using video conferencing
+                    technology. It's convenient, secure, and provides access to care from the comfort of your home.
                   </dd>
                 </div>
                 <div>
                   <dt className="text-base font-medium text-gray-900">What equipment do I need?</dt>
                   <dd className="mt-1 text-sm text-gray-500">
-                    You'll need a device with a camera and microphone (smartphone, tablet, or computer), a stable internet connection, and a quiet, well-lit space for your appointment.
+                    You'll need a device with a camera and microphone (smartphone, tablet, or computer), a stable
+                    internet connection, and a quiet, well-lit space for your appointment.
                   </dd>
                 </div>
                 <div>
                   <dt className="text-base font-medium text-gray-900">Is telemedicine secure and private?</dt>
                   <dd className="mt-1 text-sm text-gray-500">
-                    Yes, our telemedicine platform is HIPAA-compliant and uses encryption to protect your privacy. Your consultation is confidential, just like an in-person visit.
+                    Yes, our telemedicine platform is HIPAA-compliant and uses encryption to protect your privacy. Your
+                    consultation is confidential, just like an in-person visit.
                   </dd>
                 </div>
                 <div>
                   <dt className="text-base font-medium text-gray-900">What if I need lab work or a physical exam?</dt>
                   <dd className="mt-1 text-sm text-gray-500">
-                    Your provider will determine if you need in-person care. They can order lab tests or refer you for an in-person visit if necessary after your telemedicine consultation.
+                    Your provider will determine if you need in-person care. They can order lab tests or refer you for
+                    an in-person visit if necessary after your telemedicine consultation.
                   </dd>
                 </div>
                 <div>
                   <dt className="text-base font-medium text-gray-900">How do I get prescriptions?</dt>
                   <dd className="mt-1 text-sm text-gray-500">
-                    Providers can prescribe medications during your telemedicine visit. Prescriptions will be sent electronically to your preferred pharmacy for pickup.
+                    Providers can prescribe medications during your telemedicine visit. Prescriptions will be sent
+                    electronically to your preferred pharmacy for pickup.
                   </dd>
                 </div>
               </dl>
@@ -757,5 +821,5 @@ export default function TelemedicineClient() {
         </>
       )}
     </div>
-  );
+  )
 }

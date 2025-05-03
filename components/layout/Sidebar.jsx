@@ -1,224 +1,126 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import {
-  FaHome,
-  FaCalendarAlt,
-  FaFileMedical,
-  FaComments,
-  FaHospitalUser,
-  FaPrescriptionBottleAlt,
-  FaChartLine,
-  FaUserLock,
-  FaHeartbeat,
-  FaCog,
-  FaAngleRight,
-  FaAngleDown,
-} from "react-icons/fa"
+import { useAuth } from "@/contexts/AuthContext"
+import { APP_ROUTES } from "@/lib/config"
 
-// Define navigation for different user roles
-const roleNavigation = {
-  patient: [
-    { name: "Dashboard", href: "/dashboard", icon: FaHome },
-    { name: "Appointments", href: "/appointments", icon: FaCalendarAlt },
-    { name: "Medical Records", href: "/medical-records", icon: FaFileMedical },
-    { name: "Messages", href: "/messages", icon: FaComments },
-    { name: "Prescriptions", href: "/prescriptions", icon: FaPrescriptionBottleAlt },
-    { name: "Health Devices", href: "/health-devices", icon: FaHeartbeat },
-  ],
-  provider: [
-    { name: "Dashboard", href: "/dashboard", icon: FaHome },
-    { name: "Appointments", href: "/appointments", icon: FaCalendarAlt },
-    { name: "Patients", href: "/patients", icon: FaHospitalUser },
-    { name: "Messages", href: "/messages", icon: FaComments },
-    { name: "Prescriptions", href: "/prescriptions", icon: FaPrescriptionBottleAlt },
-    { name: "Analytics", href: "/analytics", icon: FaChartLine },
-  ],
-  pharmco: [
-    { name: "Dashboard", href: "/dashboard", icon: FaHome },
-    { name: "Prescriptions", href: "/prescriptions", icon: FaPrescriptionBottleAlt },
-    { name: "Messages", href: "/messages", icon: FaComments },
-    { name: "Analytics", href: "/analytics", icon: FaChartLine },
-  ],
-  insurer: [
-    { name: "Dashboard", href: "/dashboard", icon: FaHome },
-    { name: "Members", href: "/members", icon: FaHospitalUser },
-    { name: "Claims", href: "/claims", icon: FaFileMedical },
-    { name: "Messages", href: "/messages", icon: FaComments },
-    { name: "Analytics", href: "/analytics", icon: FaChartLine },
-  ],
-  admin: [
-    { name: "Dashboard", href: "/dashboard", icon: FaHome },
-    { name: "Users", href: "/admin/users", icon: FaHospitalUser },
-    { name: "Audit Logs", href: "/admin/audit", icon: FaUserLock },
-    { name: "System Settings", href: "/admin/settings", icon: FaCog },
-    { name: "Analytics", href: "/analytics", icon: FaChartLine },
-  ],
-}
-
-const SubMenu = ({ item, pathname, isActive, onClick }) => {
-  return (
-    <div className="py-1">
-      <button
-        className={`w-full text-left group flex items-center py-2 px-3 text-sm rounded-md ${
-          isActive ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-        }`}
-        onClick={onClick}
-      >
-        {item.icon && <item.icon className="mr-3 h-5 w-5" />}
-        <span className="flex-1">{item.name}</span>
-        {isActive ? <FaAngleDown className="h-4 w-4" /> : <FaAngleRight className="h-4 w-4" />}
-      </button>
-
-      {isActive && item.children && (
-        <div className="ml-7 mt-1 space-y-1">
-          {item.children.map((subItem) => (
-            <Link
-              key={subItem.name}
-              href={subItem.href}
-              className={`${
-                pathname === subItem.href
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              } group flex items-center py-2 px-3 text-sm rounded-md`}
-            >
-              {subItem.name}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default function Sidebar({ user }) {
+export default function Sidebar() {
   const router = useRouter()
-  const { pathname } = router
-  const [navigation, setNavigation] = useState([])
-  const [expandedMenu, setExpandedMenu] = useState(null)
+  const pathname = usePathname()
+  const { user } = useAuth()
 
-  // Set navigation based on user role
-  useEffect(() => {
-    if (user && user.role) {
-      // Get navigation for the user's role or fallback to patient
-      const roleNav = roleNavigation[user.role] || roleNavigation.patient
+  // Define navigation items based on user role
+  const getNavigationItems = () => {
+    if (!user) return []
 
-      // Enhance navigation with submenu items
-      const enhancedNav = roleNav.map((item) => {
-        const hasSubmenu = item.children && item.children.length > 0
-
-        if (item.name === "Medical Records") {
-          return {
-            ...item,
-            hasSubmenu,
-            children: [
-              { name: "Overview", href: "/medical-records" },
-              { name: "Medications", href: "/medical-records/medications" },
-              { name: "Allergies", href: "/medical-records/allergies" },
-              { name: "Conditions", href: "/medical-records/conditions" },
-              { name: "Lab Results", href: "/medical-records/lab-results" },
-            ],
-          }
-        }
-
-        if (item.name === "Appointments") {
-          return {
-            ...item,
-            hasSubmenu,
-            children: [
-              { name: "Upcoming", href: "/appointments" },
-              { name: "Past", href: "/appointments/past" },
-              { name: "Schedule New", href: "/appointments/new" },
-            ],
-          }
-        }
-
-        if (user.role === "provider" && item.name === "Patients") {
-          return {
-            ...item,
-            hasSubmenu,
-            children: [
-              { name: "All Patients", href: "/patients" },
-              { name: "Recent", href: "/patients/recent" },
-              { name: "Add Patient", href: "/patients/add" },
-            ],
-          }
-        }
-
-        return item
-      })
-
-      setNavigation(enhancedNav)
-
-      // Set initial expanded menu based on current path
-      const currentMainMenu = enhancedNav.find(
-        (item) =>
-          pathname === item.href || (item.children && item.children.some((subItem) => pathname === subItem.href)),
-      )
-
-      if (currentMainMenu && currentMainMenu.hasSubmenu) {
-        setExpandedMenu(currentMainMenu.name)
-      }
+    switch (user.role) {
+      case "patient":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.PATIENT, icon: "dashboard" },
+          { name: "Appointments", href: APP_ROUTES.APPOINTMENTS, icon: "calendar" },
+          { name: "Medical Records", href: APP_ROUTES.MEDICAL_RECORDS, icon: "folder" },
+          { name: "Medications", href: APP_ROUTES.MEDICATIONS, icon: "pill" },
+          { name: "Messages", href: APP_ROUTES.MESSAGES, icon: "message" },
+          { name: "Health Tracking", href: APP_ROUTES.HEALTH_TRACKING, icon: "activity" },
+          { name: "Community", href: APP_ROUTES.COMMUNITY.BASE, icon: "users" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "provider":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.PROVIDER, icon: "dashboard" },
+          { name: "Patients", href: "/patients", icon: "users" },
+          { name: "Appointments", href: APP_ROUTES.APPOINTMENTS, icon: "calendar" },
+          { name: "Telemedicine", href: APP_ROUTES.TELEMEDICINE, icon: "video" },
+          { name: "EHR", href: APP_ROUTES.EHR.PATIENT_VIEWER, icon: "folder" },
+          { name: "Messages", href: APP_ROUTES.MESSAGES, icon: "message" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "admin":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.ADMIN, icon: "dashboard" },
+          { name: "Users", href: "/admin-dashboard/users", icon: "users" },
+          { name: "Approvals", href: "/admin-dashboard/approvals", icon: "check-circle" },
+          { name: "Alerts", href: "/admin-dashboard/alerts", icon: "alert-circle" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "compliance":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.COMPLIANCE, icon: "dashboard" },
+          { name: "Audit Log", href: "/compliance-dashboard/audit-log", icon: "list" },
+          { name: "Reports", href: "/compliance-dashboard/reports", icon: "file-text" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "caregiver":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.CAREGIVER, icon: "dashboard" },
+          { name: "Patients", href: "/patients", icon: "users" },
+          { name: "Medications", href: APP_ROUTES.MEDICATIONS, icon: "pill" },
+          { name: "Appointments", href: APP_ROUTES.APPOINTMENTS, icon: "calendar" },
+          { name: "Messages", href: APP_ROUTES.MESSAGES, icon: "message" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "pharmco":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.PHARMCO, icon: "dashboard" },
+          { name: "Medications", href: "/medications-management", icon: "pill" },
+          { name: "Patients", href: "/patient-data", icon: "users" },
+          { name: "Reports", href: "/medication-reports", icon: "bar-chart" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "researcher":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.RESEARCHER, icon: "dashboard" },
+          { name: "Studies", href: "/research/studies", icon: "clipboard" },
+          { name: "Participants", href: "/research/participants", icon: "users" },
+          { name: "Data", href: "/research/data", icon: "database" },
+          { name: "Reports", href: "/research/reports", icon: "bar-chart" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      case "superadmin":
+        return [
+          { name: "Dashboard", href: APP_ROUTES.DASHBOARD.SUPERADMIN, icon: "dashboard" },
+          { name: "Security", href: "/superadmin-dashboard/security", icon: "shield" },
+          { name: "Compliance", href: "/superadmin-dashboard/security/compliance", icon: "check-square" },
+          { name: "Vulnerabilities", href: "/superadmin-dashboard/security/vulnerabilities", icon: "alert-triangle" },
+          { name: "System", href: "/superadmin-dashboard/system", icon: "server" },
+          { name: "Settings", href: APP_ROUTES.SETTINGS, icon: "settings" },
+        ]
+      default:
+        return []
     }
-  }, [user, pathname])
+  }
 
-  const toggleSubmenu = (itemName) => {
-    setExpandedMenu(expandedMenu === itemName ? null : itemName)
+  const navigationItems = getNavigationItems()
+
+  // If no user or navigation items, don't render the sidebar
+  if (!user || navigationItems.length === 0) {
+    return null
   }
 
   return (
-    <div className="hidden md:flex md:flex-shrink-0">
-      <div className="flex flex-col w-64">
-        <div className="flex flex-col h-0 flex-1 bg-white border-r border-gray-200">
-          <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4">
-              <span className="text-xl font-bold text-blue-600">Klararety</span>
-            </div>
-
-            <nav className="mt-5 flex-1 px-3 space-y-1">
-              {navigation.map((item) =>
-                item.hasSubmenu ? (
-                  <SubMenu
-                    key={item.name}
-                    item={item}
-                    pathname={pathname}
-                    isActive={expandedMenu === item.name}
-                    onClick={() => toggleSubmenu(item.name)}
-                  />
-                ) : (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`${
-                      pathname === item.href
-                        ? "bg-blue-100 text-blue-600"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    } group flex items-center py-2 px-3 text-sm rounded-md`}
-                  >
-                    {item.icon && <item.icon className="mr-3 h-5 w-5" />}
-                    {item.name}
-                  </Link>
-                ),
-              )}
-            </nav>
-          </div>
-
-          <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <Link href="/settings" className="flex-shrink-0 w-full group block">
-              <div className="flex items-center">
-                <div>
-                  <FaCog className="h-5 w-5 text-gray-500" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-gray-700 group-hover:text-gray-900">Settings</p>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
+    <aside className="bg-white w-64 min-h-screen shadow-md hidden md:block">
+      <div className="p-4">
+        <h2 className="text-xl font-bold text-gray-800">Klararety Health</h2>
+        <p className="text-sm text-gray-600">{user.role.charAt(0).toUpperCase() + user.role.slice(1)} Portal</p>
       </div>
-    </div>
+      <nav className="mt-6">
+        <ul>
+          {navigationItems.map((item) => (
+            <li key={item.name} className="px-4 py-2">
+              <Link
+                href={item.href}
+                className={`flex items-center space-x-2 ${
+                  pathname === item.href ? "text-blue-600 font-medium" : "text-gray-600 hover:text-blue-600"
+                }`}
+              >
+                <span className="material-icons-outlined text-xl">{item.icon}</span>
+                <span>{item.name}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
   )
 }

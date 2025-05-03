@@ -58,11 +58,11 @@
 
 /* Improved spacing between elements */
 .mobile-optimized p,
-.mobile-optimized h1, 
-.mobile-optimized h2, 
+.mobile-optimized h1,
+.mobile-optimized h2,
 .mobile-optimized h3,
-.mobile-optimized h4, 
-.mobile-optimized h5, 
+.mobile-optimized h4,
+.mobile-optimized h5,
 .mobile-optimized h6 {
   margin-bottom: var(--mobile-spacing);
 }
@@ -229,11 +229,7 @@
 
 /* Skeleton loading placeholders */
 .mobile-optimized .skeleton-loader {
-  background: linear-gradient(90deg, 
-    hsl(var(--muted)) 25%, 
-    hsl(var(--muted)/0.8) 50%, 
-    hsl(var(--muted)) 75%
-  );
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted) / 0.8) 50%, hsl(var(--muted)) 75%);
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
   border-radius: var(--radius);
@@ -375,11 +371,11 @@
   .mobile-optimized .hide-xs {
     display: none;
   }
-  
+
   .mobile-optimized .dashboard-content {
     padding: 12px;
   }
-  
+
   .mobile-optimized .chart-container {
     height: 200px;
   }
@@ -394,7 +390,7 @@
 
 /* Add helper class to show when mobile optimization is active */
 .mobile-optimized::before {
-  content: '';
+  content: "";
   position: fixed;
   bottom: 0;
   left: 0;

@@ -1,3 +1,5 @@
+"use client"
+
 import DashboardClient from "./components/DashboardClient"
 import { withRoleAccess } from "@/components/hoc/withRoleAccess"
 

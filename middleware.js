@@ -1,104 +1,115 @@
-// middleware.js
 import { NextResponse } from "next/server"
+import { isMaintenanceMode } from "./lib/env"
 
-// Public paths that don't require authentication
-const publicPaths = [
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/api/auth/login",
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/me",
-  "/api/auth/verify-2fa",
-  "/api/auth/forgot-password",
-  "/api/auth/reset-password",
-  "/api/auth/setup-2fa",
-  "/api/auth/confirm-2fa",
-  "/api/auth/disable-2fa",
-]
-
-// This middleware runs on every request
+/**
+ * Middleware function for Next.js
+ * Handles authentication, maintenance mode, and role-based access control
+ */
 export function middleware(request) {
   const { pathname } = request.nextUrl
 
-  // Check if the path is public or requires authentication
-  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
+  // Check if the site is in maintenance mode
+  if (isMaintenanceMode() && !pathname.startsWith("/maintenance")) {
+    // Allow static assets and API routes
+    if (pathname.startsWith("/_next") || pathname.startsWith("/api")) {
+      return NextResponse.next()
+    }
 
-  // Check for authentication token in cookies
-  const authToken = request.cookies.get("auth_token")?.value
-  const refreshToken = request.cookies.get("refresh_token")?.value
+    // Redirect to maintenance page
+    return NextResponse.redirect(new URL("/maintenance", request.url))
+  }
 
-  // Create the response
-  let response
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    "/auth/login",
+    "/auth/register",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+    "/auth/verify-email",
+    "/auth/request-verification",
+    "/maintenance",
+    "/",
+    "/about",
+    "/contact",
+  ]
 
-  // If the path requires authentication and no token exists, redirect to login
-  if (!isPublicPath && !authToken && !refreshToken) {
-    const url = new URL("/login", request.url)
-    url.searchParams.set("from", pathname)
+  // Check if the current route is public
+  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+
+  // Allow access to public routes and static assets
+  if (isPublicRoute || pathname.startsWith("/_next") || pathname.startsWith("/api")) {
+    return NextResponse.next()
+  }
+
+  // Check for authentication token
+  const token = request.cookies.get("access_token")?.value
+
+  // If no token is found, redirect to login
+  if (!token) {
+    const url = new URL("/auth/login", request.url)
+    url.searchParams.set("redirect", encodeURIComponent(pathname))
     return NextResponse.redirect(url)
   }
 
-  // If user is authenticated and trying to access login page, redirect to dashboard
-  if ((pathname === "/login" || pathname === "/") && authToken) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
+  // Role-based access control for specific routes
+  const userRole = request.cookies.get("user_role")?.value
 
-  // Get the response for the original request
-  response = NextResponse.next()
+  if (userRole) {
+    // Define role-specific route patterns
+    const roleRoutePatterns = {
+      patient: [
+        "/dashboard/patient",
+        "/appointments",
+        "/medical-records",
+        "/medications",
+        "/messages",
+        "/health-tracking",
+        "/community",
+        "/patient-dashboard",
+        "/settings",
+      ],
+      provider: ["/dashboard/provider", "/patients", "/appointments", "/telemedicine", "/ehr"],
+      admin: ["/dashboard/admin", "/admin-dashboard"],
+      compliance: ["/dashboard/compliance", "/compliance-dashboard"],
+      caregiver: ["/dashboard/caregiver", "/patients", "/medications", "/appointments"],
+      pharmco: ["/dashboard/pharmco", "/medications-management", "/patient-data", "/medication-reports"],
+      researcher: ["/dashboard/researcher", "/research"],
+      superadmin: ["/dashboard/superadmin", "/superadmin-dashboard"],
+    }
 
-  // Add CORS headers for all origins we want to support
-  const allowedOrigins = [
-    "https://klararety.com",
-    "https://api.klararety.com",
-    "http://localhost:3000",
-    "http://localhost:8000",
-  ]
+    // Check if user is trying to access a route they don't have permission for
+    const hasAccess = Object.entries(roleRoutePatterns).some(([role, patterns]) => {
+      // If this is the user's role, they should have access to these patterns
+      if (role === userRole) return true
 
-  const origin = request.headers.get("origin")
-
-  // If the origin is in our allowed list, set it specifically
-  if (origin && allowedOrigins.includes(origin)) {
-    response.headers.set("Access-Control-Allow-Origin", origin)
-  } else if (process.env.NODE_ENV === "development") {
-    // Use wildcard only in development
-    response.headers.set("Access-Control-Allow-Origin", "*")
-  }
-
-  // Add security headers for healthcare applications
-  response.headers.set("X-Content-Type-Options", "nosniff")
-  response.headers.set("X-Frame-Options", "DENY")
-  response.headers.set("X-XSS-Protection", "1; mode=block")
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-
-  // Set other CORS headers
-  response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-  response.headers.set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization")
-  response.headers.set("Access-Control-Allow-Credentials", "true")
-
-  // Handle preflight OPTIONS requests
-  if (request.method === "OPTIONS") {
-    return new NextResponse(null, {
-      status: 200,
-      headers: response.headers,
+      // If this is not the user's role, check if they're trying to access a route for this role
+      return !patterns.some((pattern) => pathname.startsWith(pattern))
     })
+
+    if (!hasAccess) {
+      // Redirect to appropriate dashboard based on role
+      const dashboardRoute = `/dashboard/${userRole}`
+      return NextResponse.redirect(new URL(dashboardRoute, request.url))
+    }
   }
 
-  return response
+  // Continue to the requested page
+  return NextResponse.next()
 }
 
-// Configure the middleware to run on all paths excluding static files
+/**
+ * Configure which paths should trigger this middleware
+ */
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images/ (public image files)
+     * Match all request paths except:
+     * 1. /_next (Next.js internals)
+     * 2. /api (API routes)
+     * 3. /static (static files)
+     * 4. /_vercel (Vercel internals)
+     * 5. All files in the public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|images/).*)",
+    "/((?!_next|api|static|_vercel|favicon.ico|robots.txt).*)",
   ],
 }

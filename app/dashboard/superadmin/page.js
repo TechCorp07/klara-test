@@ -1,3 +1,5 @@
+"use client"
+
 import SuperadminClient from "./components/SuperadminClient"
 import { withRoleAccess } from "@/components/hoc/withRoleAccess"
 

@@ -1,70 +1,67 @@
-import React, { useState } from 'react';
-import { toast } from 'react-toastify';
-import { ehr } from '../../api';
+"use client"
+
+import React, { useState } from "react"
+import { toast } from "react-toastify"
 
 /**
  * EHR Data Mapping Component
  * Allows users to configure data mappings between EHR systems and FHIR
  */
 const EHRDataMapping = ({ systemId }) => {
-  const [mappings, setMappings] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [mappings, setMappings] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Fetch data mappings when component mounts or systemId changes
   React.useEffect(() => {
     if (systemId) {
-      fetchDataMappings(systemId);
+      fetchDataMappings(systemId)
     }
-  }, [systemId]);
+  }, [systemId])
 
   const fetchDataMappings = async (id) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await ehrAPI.getDataMappings(id);
-      setMappings(response.mappings || {});
+      const response = await ehrAPI.getDataMappings(id)
+      setMappings(response.mappings || {})
     } catch (error) {
-      console.error('Error fetching data mappings:', error);
-      toast.error(error.message || 'Failed to fetch data mappings');
+      console.error("Error fetching data mappings:", error)
+      toast.error(error.message || "Failed to fetch data mappings")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleMappingChange = (resourceType, field, value) => {
-    setMappings(prev => ({
+    setMappings((prev) => ({
       ...prev,
       [resourceType]: {
         ...prev[resourceType],
-        [field]: value
-      }
-    }));
-  };
+        [field]: value,
+      },
+    }))
+  }
 
   const handleSaveMappings = async () => {
     if (!systemId) {
-      toast.error('No EHR system selected');
-      return;
+      toast.error("No EHR system selected")
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
     try {
-      await ehrAPI.updateDataMappings(systemId, mappings);
-      toast.success('Data mappings updated successfully');
+      await ehrAPI.updateDataMappings(systemId, mappings)
+      toast.success("Data mappings updated successfully")
     } catch (error) {
-      console.error('Error updating data mappings:', error);
-      toast.error(error.message || 'Failed to update data mappings');
+      console.error("Error updating data mappings:", error)
+      toast.error(error.message || "Failed to update data mappings")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (!systemId) {
-    return (
-      <div className="alert alert-info">
-        Please select an EHR system to configure data mappings.
-      </div>
-    );
+    return <div className="alert alert-info">Please select an EHR system to configure data mappings.</div>
   }
 
   if (loading) {
@@ -75,27 +72,19 @@ const EHRDataMapping = ({ systemId }) => {
         </div>
         <p className="mt-2">Loading data mappings...</p>
       </div>
-    );
+    )
   }
 
   if (!mappings) {
-    return (
-      <div className="alert alert-warning">
-        No data mappings available for this EHR system.
-      </div>
-    );
+    return <div className="alert alert-warning">No data mappings available for this EHR system.</div>
   }
 
   return (
     <div className="ehr-data-mapping">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Data Field Mappings</h3>
-        <button
-          className="btn btn-primary"
-          onClick={handleSaveMappings}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : 'Save Mappings'}
+        <button className="btn btn-primary" onClick={handleSaveMappings} disabled={saving}>
+          {saving ? "Saving..." : "Save Mappings"}
         </button>
       </div>
 
@@ -153,16 +142,16 @@ const EHRDataMapping = ({ systemId }) => {
       <div className="alert alert-info mt-4">
         <h5>Mapping Instructions</h5>
         <p>
-          Map FHIR fields to their corresponding fields in your EHR system. 
-          This ensures data is correctly synchronized between systems.
+          Map FHIR fields to their corresponding fields in your EHR system. This ensures data is correctly synchronized
+          between systems.
         </p>
         <p>
-          For example, if your EHR system uses "PatientName" for patient names, 
-          map the FHIR "name" field to "PatientName".
+          For example, if your EHR system uses "PatientName" for patient names, map the FHIR "name" field to
+          "PatientName".
         </p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default EHRDataMapping;
+export default EHRDataMapping

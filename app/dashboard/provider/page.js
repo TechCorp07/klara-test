@@ -1,3 +1,5 @@
+"use client"
+
 import ProviderClient from "./components/ProviderClient"
 import { withRoleAccess } from "@/components/hoc/withRoleAccess"
 

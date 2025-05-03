@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { BASE_URLS } from "@/lib/config"
 
 /**
  * API client for making requests to the backend
@@ -10,23 +12,23 @@
  */
 export const getApiBaseUrl = () => {
   // Check if we're in the browser environment
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname
+
     // Local development
-    if (hostname === 'localhost' || hostname.includes('127.0.0.1')) {
-      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    if (hostname === "localhost" || hostname.includes("127.0.0.1")) {
+      return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
     }
-    
+
     // Production environment - main domain
-    if (hostname === 'klararety.com' || hostname.includes('klararety.com')) {
-      return 'https://api.klararety.com/api';
+    if (hostname === "klararety.com" || hostname.includes("klararety.com")) {
+      return "https://api.klararety.com/api"
     }
   }
-  
+
   // Default or server-side rendering
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.klararety.com/api';
-};
+  return BASE_URLS.API
+}
 
 /**
  * Make an API request
@@ -37,49 +39,76 @@ export const getApiBaseUrl = () => {
  * @returns {Promise<Object>} Response data
  */
 export const apiRequest = async (method, endpoint, data = null, options = {}) => {
-  const { errorMessage = 'Request failed', successMessage = '' } = options;
-  
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${endpoint}`;
-  
+  const { errorMessage = "Request failed", successMessage = "" } = options
+
+  const baseUrl = getApiBaseUrl()
+  const url = `${baseUrl}${endpoint}`
+
   const headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
     // Add CORS headers for cross-domain requests
-    'Origin': typeof window !== 'undefined' ? window.location.origin : 'https://klararety.com',
-  };
-  
-  // Add auth token if available
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    Origin: typeof window !== "undefined" ? window.location.origin : BASE_URLS.APP,
   }
-  
+
+  // Add auth token if available
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+
   const config = {
     method,
     headers,
-    credentials: 'include',
-    mode: 'cors', // Explicitly set CORS mode
-  };
-  
-  if (data && (method === 'POST' || method === 'PUT')) {
-    config.body = JSON.stringify(data);
+    credentials: "include",
+    mode: "cors", // Explicitly set CORS mode
   }
-  
+
+  if (data && (method === "POST" || method === "PUT")) {
+    config.body = JSON.stringify(data)
+  }
+
   try {
-    const response = await fetch(url, config);
-    
+    const response = await fetch(url, config)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorMessage);
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || errorMessage)
     }
-    
-    return await response.json();
+
+    return await response.json()
   } catch (error) {
-    console.error(`API Error (${endpoint}):`, error);
-    throw error;
+    console.error(`API Error (${endpoint}):`, error)
+    throw error
   }
-};
+}
+
+/**
+ * Make an authenticated API request with fetch
+ * @param {string} url - The URL to fetch
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Response>} The fetch response
+ */
+export const fetchWithAuth = async (url, options = {}) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+
+  const headers = {
+    ...options.headers,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  }
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: "include",
+    mode: "cors",
+  })
+}
 
 /**
  * Create an API service with predefined endpoints
@@ -88,37 +117,37 @@ export const apiRequest = async (method, endpoint, data = null, options = {}) =>
  */
 export const createApiService = (baseEndpoint) => {
   return {
-    getAll: (params = {}) => 
-      apiRequest('GET', baseEndpoint, null, { 
+    getAll: (params = {}) =>
+      apiRequest("GET", baseEndpoint, null, {
         params,
-        errorMessage: `Failed to fetch ${baseEndpoint} data` 
+        errorMessage: `Failed to fetch ${baseEndpoint} data`,
       }),
-    
-    getById: (id, params = {}) => 
-      apiRequest('GET', `${baseEndpoint}/${id}`, null, { 
+
+    getById: (id, params = {}) =>
+      apiRequest("GET", `${baseEndpoint}/${id}`, null, {
         params,
-        errorMessage: `Failed to fetch ${baseEndpoint} item` 
+        errorMessage: `Failed to fetch ${baseEndpoint} item`,
       }),
-    
-    create: (data) => 
-      apiRequest('POST', baseEndpoint, data, {
+
+    create: (data) =>
+      apiRequest("POST", baseEndpoint, data, {
         errorMessage: `Failed to create ${baseEndpoint} item`,
-        successMessage: 'Item created successfully'
+        successMessage: "Item created successfully",
       }),
-    
-    update: (id, data) => 
-      apiRequest('PUT', `${baseEndpoint}/${id}`, data, {
+
+    update: (id, data) =>
+      apiRequest("PUT", `${baseEndpoint}/${id}`, data, {
         errorMessage: `Failed to update ${baseEndpoint} item`,
-        successMessage: 'Item updated successfully'
+        successMessage: "Item updated successfully",
       }),
-    
-    delete: (id) => 
-      apiRequest('DELETE', `${baseEndpoint}/${id}`, null, {
+
+    delete: (id) =>
+      apiRequest("DELETE", `${baseEndpoint}/${id}`, null, {
         errorMessage: `Failed to delete ${baseEndpoint} item`,
-        successMessage: 'Item deleted successfully'
-      })
-  };
-};
+        successMessage: "Item deleted successfully",
+      }),
+  }
+}
 
 /**
  * Pre-configured API client instance
@@ -127,12 +156,12 @@ export const apiClient = {
   request: apiRequest,
   getBaseUrl: getApiBaseUrl,
   createService: createApiService,
-  
+
   // Common API endpoints
-  users: createApiService('/users'),
-  patients: createApiService('/patients'),
-  providers: createApiService('/providers'),
-  appointments: createApiService('/appointments'),
-  medications: createApiService('/medications'),
-  wearables: createApiService('/wearables')
-};
+  users: createApiService("/users"),
+  patients: createApiService("/patients"),
+  providers: createApiService("/providers"),
+  appointments: createApiService("/appointments"),
+  medications: createApiService("/medications"),
+  wearables: createApiService("/wearables"),
+}

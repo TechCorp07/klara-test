@@ -2,6 +2,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: false,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -18,7 +19,7 @@ const nextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "https://klararety.com, https://api.klararety.com, http://localhost:3000",
+            value: "*",
           },
           {
             key: "Access-Control-Allow-Methods",

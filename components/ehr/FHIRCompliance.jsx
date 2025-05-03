@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useMobileOptimization } from '../../contexts/MobileOptimizationContext';
+"use client"
+
+import { useState, useEffect } from "react"
+import { useMobileOptimization } from "../../contexts/MobileOptimizationContext"
 
 /**
  * FHIRCompliance Component
@@ -10,321 +12,321 @@ const FHIRCompliance = ({
  * @typedef {null,    // Optional filter for specific patient
   onValidate = () => {},
   onExport = () => {}
-}) => {
-  const { isMobile } = useMobileOptimization()} patientId
- */
-  const [resources, setResources] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedResource, setSelectedResource] = useState(null);
-  const [validationResults, setValidationResults] = useState(null);
-  const [exportFormat, setExportFormat] = useState('json');
-  const [exportStatus, setExportStatus] = useState(null);
+})
+=>
+{
+  const { isMobile } = useMobileOptimization()
+}
+patientId * /
+const [resources, setResources] = useState([])
+const [loading, setLoading] = useState(true)
+const [error, setError] = useState(null)
+const [selectedResource, setSelectedResource] = useState(null)
+const [validationResults, setValidationResults] = useState(null)
+const [exportFormat, setExportFormat] = useState("json")
+const [exportStatus, setExportStatus] = useState(null)
 
-  useEffect(() => {
-    fetchFHIRResources();
-  }, [resourceType, patientId]);
+useEffect(() => {
+  fetchFHIRResources()
+}, [resourceType, patientId])
 
-  const fetchFHIRResources = async () => {
-    setLoading(true);
-    try {
-      // This would be an actual API call in a real implementation
-      // const response = await fhirAPI.getResources({ resourceType, patientId });
-      
-      // Simulated response for demonstration
-      const mockResponse = {
-        resources: [
-          {
-            id: 'patient-1',
-            resourceType: 'Patient',
-            lastUpdated: '2025-04-15T10:30:00Z',
-            version: '1.2',
-            status: 'active',
-            validationStatus: 'valid',
-            content: {
-              resourceType: 'Patient',
-              id: 'patient-1',
-              meta: {
-                versionId: '1.2',
-                lastUpdated: '2025-04-15T10:30:00Z'
+const fetchFHIRResources = async () => {
+  setLoading(true)
+  try {
+    // This would be an actual API call in a real implementation
+    // const response = await fhirAPI.getResources({ resourceType, patientId });
+
+    // Simulated response for demonstration
+    const mockResponse = {
+      resources: [
+        {
+          id: "patient-1",
+          resourceType: "Patient",
+          lastUpdated: "2025-04-15T10:30:00Z",
+          version: "1.2",
+          status: "active",
+          validationStatus: "valid",
+          content: {
+            resourceType: "Patient",
+            id: "patient-1",
+            meta: {
+              versionId: "1.2",
+              lastUpdated: "2025-04-15T10:30:00Z",
+            },
+            active,
+            name: [
+              {
+                use: "official",
+                family: "Smith",
+                given: ["John", "Edward"],
               },
-              active,
-              name: [
-                {
-                  use: 'official',
-                  family: 'Smith',
-                  given: ['John', 'Edward']
-                }
-              ],
-              gender: 'male',
-              birthDate: '1970-01-25',
-              address: [
-                {
-                  use: 'home',
-                  line: ['123 Main St'],
-                  city: 'Anytown',
-                  state: 'CA',
-                  postalCode: '12345',
-                  country: 'USA'
-                }
-              ]
-            }
+            ],
+            gender: "male",
+            birthDate: "1970-01-25",
+            address: [
+              {
+                use: "home",
+                line: ["123 Main St"],
+                city: "Anytown",
+                state: "CA",
+                postalCode: "12345",
+                country: "USA",
+              },
+            ],
           },
-          {
-            id: 'observation-1',
-            resourceType: 'Observation',
-            lastUpdated: '2025-04-16T14:20:00Z',
-            version: '1.0',
-            status: 'final',
-            validationStatus: 'warning',
-            validationMessage: 'Missing recommended code system',
-            content: {
-              resourceType: 'Observation',
-              id: 'observation-1',
-              meta: {
-                versionId: '1.0',
-                lastUpdated: '2025-04-16T14:20:00Z'
-              },
-              status: 'final',
-              category: [
-                {
-                  coding: [
-                    {
-                      system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-                      code: 'vital-signs',
-                      display: 'Vital Signs'
-                    }
-                  ]
-                }
-              ],
-              code: {
+        },
+        {
+          id: "observation-1",
+          resourceType: "Observation",
+          lastUpdated: "2025-04-16T14:20:00Z",
+          version: "1.0",
+          status: "final",
+          validationStatus: "warning",
+          validationMessage: "Missing recommended code system",
+          content: {
+            resourceType: "Observation",
+            id: "observation-1",
+            meta: {
+              versionId: "1.0",
+              lastUpdated: "2025-04-16T14:20:00Z",
+            },
+            status: "final",
+            category: [
+              {
                 coding: [
                   {
-                    system: 'http://loinc.org',
-                    code: '8867-4',
-                    display: 'Heart rate'
-                  }
+                    system: "http://terminology.hl7.org/CodeSystem/observation-category",
+                    code: "vital-signs",
+                    display: "Vital Signs",
+                  },
                 ],
-                text: 'Heart rate'
               },
-              subject: {
-                reference: 'Patient/patient-1'
-              },
-              effectiveDateTime: '2025-04-16T14:15:00Z',
-              valueQuantity: {
-                value,
-                unit: 'beats/minute',
-                system: 'http://unitsofmeasure.org',
-                code: '/min'
-              }
-            }
+            ],
+            code: {
+              coding: [
+                {
+                  system: "http://loinc.org",
+                  code: "8867-4",
+                  display: "Heart rate",
+                },
+              ],
+              text: "Heart rate",
+            },
+            subject: {
+              reference: "Patient/patient-1",
+            },
+            effectiveDateTime: "2025-04-16T14:15:00Z",
+            valueQuantity: {
+              value,
+              unit: "beats/minute",
+              system: "http://unitsofmeasure.org",
+              code: "/min",
+            },
           },
-          {
-            id: 'medication-1',
-            resourceType: 'MedicationRequest',
-            lastUpdated: '2025-04-14T09:45:00Z',
-            version: '2.1',
-            status: 'active',
-            validationStatus: 'error',
-            validationMessage: 'Missing required dosage instructions',
-            content: {
-              resourceType: 'MedicationRequest',
-              id: 'medication-1',
-              meta: {
-                versionId: '2.1',
-                lastUpdated: '2025-04-14T09:45:00Z'
-              },
-              status: 'active',
-              intent: 'order',
-              medicationCodeableConcept: {
-                coding: [
-                  {
-                    system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
-                    code: '1191',
-                    display: 'Aspirin'
-                  }
-                ],
-                text: 'Aspirin'
-              },
-              subject: {
-                reference: 'Patient/patient-1'
-              },
-              authoredOn: '2025-04-14T09:30:00Z'
-              // Missing dosageInstruction which is causing the validation error
-            }
-          }
-        ]
-      };
-      
-      // Filter resources based on resourceType if provided
-      let filteredResources = mockResponse.resources;
-      if (resourceType) {
-        filteredResources = filteredResources.filter(
-          resource => resource.resourceType === resourceType
-        );
-      }
-      
-      // Filter resources based on patientId if provided
-      if (patientId) {
-        filteredResources = filteredResources.filter(
-          resource => resource.content.subject?.reference === `Patient/${patientId}` ||
-                     resource.id === patientId
-        );
-      }
-      
-      setResources(filteredResources);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching FHIR resources:', err);
-      setError('Failed to load FHIR resources. Please try again.');
-    } finally {
-      setLoading(false);
+        },
+        {
+          id: "medication-1",
+          resourceType: "MedicationRequest",
+          lastUpdated: "2025-04-14T09:45:00Z",
+          version: "2.1",
+          status: "active",
+          validationStatus: "error",
+          validationMessage: "Missing required dosage instructions",
+          content: {
+            resourceType: "MedicationRequest",
+            id: "medication-1",
+            meta: {
+              versionId: "2.1",
+              lastUpdated: "2025-04-14T09:45:00Z",
+            },
+            status: "active",
+            intent: "order",
+            medicationCodeableConcept: {
+              coding: [
+                {
+                  system: "http://www.nlm.nih.gov/research/umls/rxnorm",
+                  code: "1191",
+                  display: "Aspirin",
+                },
+              ],
+              text: "Aspirin",
+            },
+            subject: {
+              reference: "Patient/patient-1",
+            },
+            authoredOn: "2025-04-14T09:30:00Z",
+            // Missing dosageInstruction which is causing the validation error
+          },
+        },
+      ],
     }
-  };
 
-  const handleResourceSelect = (resource) => {
-    setSelectedResource(resource);
-    setValidationResults(null);
-  };
+    // Filter resources based on resourceType if provided
+    let filteredResources = mockResponse.resources
+    if (resourceType) {
+      filteredResources = filteredResources.filter((resource) => resource.resourceType === resourceType)
+    }
 
-  const handleValidateResource = async () => {
-    if (!selectedResource) return;
-    
-    try {
-      // This would be an actual API call in a real implementation
-      // const results = await fhirAPI.validateResource(selectedResource.resourceType, selectedResource.content);
-      
-      // Simulated validation for demonstration
-      let mockResults;
-      
-      if (selectedResource.validationStatus === 'valid') {
-        mockResults = {
-          valid,
-          issues: []
-        };
-      } else if (selectedResource.validationStatus === 'warning') {
-        mockResults = {
-          valid,
-          issues: [
-            {
-              severity: 'warning',
-              code: 'incomplete',
-              details: 'Missing recommended code system',
-              location: 'Observation.code.coding'
-            }
-          ]
-        };
-      } else {
-        mockResults = {
-          valid,
-          issues: [
-            {
-              severity: 'error',
-              code: 'required',
-              details: 'Missing required dosage instructions',
-              location: 'MedicationRequest.dosageInstruction'
-            }
-          ]
-        };
+    // Filter resources based on patientId if provided
+    if (patientId) {
+      filteredResources = filteredResources.filter(
+        (resource) => resource.content.subject?.reference === `Patient/${patientId}` || resource.id === patientId,
+      )
+    }
+
+    setResources(filteredResources)
+    setError(null)
+  } catch (err) {
+    console.error("Error fetching FHIR resources:", err)
+    setError("Failed to load FHIR resources. Please try again.")
+  } finally {
+    setLoading(false)
+  }
+}
+
+const handleResourceSelect = (resource) => {
+  setSelectedResource(resource)
+  setValidationResults(null)
+}
+
+const handleValidateResource = async () => {
+  if (!selectedResource) return
+
+  try {
+    // This would be an actual API call in a real implementation
+    // const results = await fhirAPI.validateResource(selectedResource.resourceType, selectedResource.content);
+
+    // Simulated validation for demonstration
+    let mockResults
+
+    if (selectedResource.validationStatus === "valid") {
+      mockResults = {
+        valid,
+        issues: [],
       }
-      
-      setValidationResults(mockResults);
-      onValidate(selectedResource.id, mockResults);
-    } catch (err) {
-      console.error('Error validating FHIR resource:', err);
-      setValidationResults({
+    } else if (selectedResource.validationStatus === "warning") {
+      mockResults = {
         valid,
         issues: [
           {
-            severity: 'error',
-            code: 'exception',
-            details: 'Validation service error: ' + err.message
-          }
-        ]
-      });
+            severity: "warning",
+            code: "incomplete",
+            details: "Missing recommended code system",
+            location: "Observation.code.coding",
+          },
+        ],
+      }
+    } else {
+      mockResults = {
+        valid,
+        issues: [
+          {
+            severity: "error",
+            code: "required",
+            details: "Missing required dosage instructions",
+            location: "MedicationRequest.dosageInstruction",
+          },
+        ],
+      }
     }
-  };
 
-  const handleExportResource = async () => {
-    if (!selectedResource) return;
-    
-    setExportStatus('processing');
-    
-    try {
-      // This would be an actual API call in a real implementation
-      // const result = await fhirAPI.exportResource(selectedResource.id, exportFormat);
-      
-      // Simulated export for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const mockResult = {
-        success,
-        downloadUrl: `#mock-download-${selectedResource.id}.${exportFormat}`,
-        format: exportFormat
-      };
-      
-      setExportStatus('success');
-      onExport(selectedResource.id, mockResult);
-      
-      // Reset status after a delay
-      setTimeout(() => {
-        setExportStatus(null);
-      }, 3000);
-    } catch (err) {
-      console.error('Error exporting FHIR resource:', err);
-      setExportStatus('error');
-      
-      // Reset status after a delay
-      setTimeout(() => {
-        setExportStatus(null);
-      }, 3000);
+    setValidationResults(mockResults)
+    onValidate(selectedResource.id, mockResults)
+  } catch (err) {
+    console.error("Error validating FHIR resource:", err)
+    setValidationResults({
+      valid,
+      issues: [
+        {
+          severity: "error",
+          code: "exception",
+          details: "Validation service error: " + err.message,
+        },
+      ],
+    })
+  }
+}
+
+const handleExportResource = async () => {
+  if (!selectedResource) return
+
+  setExportStatus("processing")
+
+  try {
+    // This would be an actual API call in a real implementation
+    // const result = await fhirAPI.exportResource(selectedResource.id, exportFormat);
+
+    // Simulated export for demonstration
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    const mockResult = {
+      success,
+      downloadUrl: `#mock-download-${selectedResource.id}.${exportFormat}`,
+      format: exportFormat,
     }
-  };
 
-  const getValidationStatusBadge = (status) => {
-    switch (status) {
-      case 'valid':
-        return <span className="badge bg-success">Valid</span>;
-      case 'warning':
-        return <span className="badge bg-warning text-dark">Warning</span>;
-      case 'error':
-        return <span className="badge bg-danger">Error</span>;
-      default:
-        return <span className="badge bg-secondary">{status}</span>;
-    }
-  };
+    setExportStatus("success")
+    onExport(selectedResource.id, mockResult)
 
-  const formatJSON = (json) => {
-    return JSON.stringify(json, null, 2);
-  };
+    // Reset status after a delay
+    setTimeout(() => {
+      setExportStatus(null)
+    }, 3000)
+  } catch (err) {
+    console.error("Error exporting FHIR resource:", err)
+    setExportStatus("error")
 
-  if (loading && resources.length === 0) {
-    return (
+    // Reset status after a delay
+    setTimeout(() => {
+      setExportStatus(null)
+    }, 3000)
+  }
+}
+
+const getValidationStatusBadge = (status) => {
+  switch (status) {
+    case "valid":
+      return <span className="badge bg-success">Valid</span>
+    case "warning":
+      return <span className="badge bg-warning text-dark">Warning</span>
+    case "error":
+      return <span className="badge bg-danger">Error</span>
+    default:
+      return <span className="badge bg-secondary">{status}</span>
+  }
+}
+
+const formatJSON = (json) => {
+  return JSON.stringify(json, null, 2)
+}
+
+if (loading && resources.length === 0) {
+  return (
       <div className="d-flex justify-content-center my-4">
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading FHIR resources...</span>
         </div>
       </div>
     );
-  }
+}
 
-  if (error && resources.length === 0) {
-    return (
+if (error && resources.length === 0) {
+  return (
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
     );
-  }
+}
 
-  if (resources.length === 0) {
-    return (
+if (resources.length === 0) {
+  return (
       <div className="alert alert-info" role="alert">
         No FHIR resources found matching the criteria.
       </div>
     );
-  }
+}
 
-  return (
+return (
     <div className="fhir-compliance">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h4>
@@ -493,6 +495,6 @@ const FHIRCompliance = ({
       </div>
     </div>
   );
-};
+}
 
-export default FHIRCompliance;
+export default FHIRCompliance

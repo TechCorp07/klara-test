@@ -10,6 +10,6 @@ export default function Home() {
   if (accessToken) {
     redirect("/dashboard")
   } else {
-    redirect("/login")
+    redirect("/auth/login")
   }
 }

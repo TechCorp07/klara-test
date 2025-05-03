@@ -1,3 +1,5 @@
+"use client"
+
 import PharmcoClient from "./components/PharmcoClient"
 import { withRoleAccess } from "@/components/hoc/withRoleAccess"
 

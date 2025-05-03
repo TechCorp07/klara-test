@@ -1,77 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import { community } from '../../api';
-import { toast } from 'react-toastify';
+"use client"
+
+import { useState, useEffect } from "react"
+import { toast } from "react-toastify"
 
 /**
  * TopicDetail Component
  * Displays topic details and posts within a topic
  */
 const TopicDetail = ({ topicId }) => {
-  const [topic, setTopic] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [newPost, setNewPost] = useState({ content: '' });
+  const [topic, setTopic] = useState(null)
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [newPost, setNewPost] = useState({ content: "" })
 
   useEffect(() => {
     if (topicId) {
-      fetchTopicDetails();
-      fetchTopicPosts();
+      fetchTopicDetails()
+      fetchTopicPosts()
     }
-  }, [topicId]);
+  }, [topicId])
 
   const fetchTopicDetails = async () => {
     try {
-      const response = await communityAPI.getTopic(topicId);
-      setTopic(response);
-      setError(null);
+      const response = await communityAPI.getTopic(topicId)
+      setTopic(response)
+      setError(null)
     } catch (err) {
-      console.error('Error fetching topic details:', err);
-      setError('Failed to load topic details. Please try again.');
-      toast.error('Failed to load topic details');
+      console.error("Error fetching topic details:", err)
+      setError("Failed to load topic details. Please try again.")
+      toast.error("Failed to load topic details")
     }
-  };
+  }
 
   const fetchTopicPosts = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await communityAPI.getTopicPosts(topicId);
-      setPosts(response.posts || []);
-      setError(null);
+      const response = await communityAPI.getTopicPosts(topicId)
+      setPosts(response.posts || [])
+      setError(null)
     } catch (err) {
-      console.error('Error fetching topic posts:', err);
-      setError('Failed to load topic posts. Please try again.');
-      toast.error('Failed to load topic posts');
+      console.error("Error fetching topic posts:", err)
+      setError("Failed to load topic posts. Please try again.")
+      toast.error("Failed to load topic posts")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setNewPost({
       ...newPost,
-      [name]: value
-    });
-  };
+      [name]: value,
+    })
+  }
 
   const handleSubmitPost = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!newPost.content.trim()) {
-      toast.error('Please provide content for your post');
-      return;
+      toast.error("Please provide content for your post")
+      return
     }
 
     try {
-      await communityAPI.createPost(topicId, newPost);
-      toast.success('Post created successfully');
-      setNewPost({ content: '' });
-      fetchTopicPosts();
+      await communityAPI.createPost(topicId, newPost)
+      toast.success("Post created successfully")
+      setNewPost({ content: "" })
+      fetchTopicPosts()
     } catch (err) {
-      console.error('Error creating post:', err);
-      toast.error('Failed to create post');
+      console.error("Error creating post:", err)
+      toast.error("Failed to create post")
     }
-  };
+  }
 
   if (loading && !topic) {
     return (
@@ -80,7 +81,7 @@ const TopicDetail = ({ topicId }) => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    );
+    )
   }
 
   if (error && !topic) {
@@ -88,7 +89,7 @@ const TopicDetail = ({ topicId }) => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    );
+    )
   }
 
   if (!topic) {
@@ -96,7 +97,7 @@ const TopicDetail = ({ topicId }) => {
       <div className="alert alert-info" role="alert">
         Topic not found.
       </div>
-    );
+    )
   }
 
   return (
@@ -106,7 +107,7 @@ const TopicDetail = ({ topicId }) => {
           <div className="d-flex justify-content-between align-items-center">
             <h2 className="mb-0">{topic.title}</h2>
             <span className="badge bg-primary">
-              {posts.length} {posts.length === 1 ? 'post' : 'posts'}
+              {posts.length} {posts.length === 1 ? "post" : "posts"}
             </span>
           </div>
         </div>
@@ -119,9 +120,7 @@ const TopicDetail = ({ topicId }) => {
               <strong>Created:</strong> {new Date(topic.createdAt).toLocaleString()}
             </div>
           </div>
-          <div className="topic-content">
-            {topic.content}
-          </div>
+          <div className="topic-content">{topic.content}</div>
         </div>
       </div>
 
@@ -146,15 +145,11 @@ const TopicDetail = ({ topicId }) => {
                   <div>
                     <strong>{post.author.name}</strong>
                   </div>
-                  <div>
-                    {new Date(post.createdAt).toLocaleString()}
-                  </div>
+                  <div>{new Date(post.createdAt).toLocaleString()}</div>
                 </div>
               </div>
               <div className="card-body">
-                <div className="post-content">
-                  {post.content}
-                </div>
+                <div className="post-content">{post.content}</div>
               </div>
             </div>
           ))}
@@ -179,7 +174,9 @@ const TopicDetail = ({ topicId }) => {
                 required
               ></textarea>
             </div>
-            <button type="submit" className="btn btn-primary">Post Response</button>
+            <button type="submit" className="btn btn-primary">
+              Post Response
+            </button>
           </form>
         </div>
       </div>
@@ -190,7 +187,7 @@ const TopicDetail = ({ topicId }) => {
         </a>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TopicDetail;
+export default TopicDetail

@@ -1,67 +1,67 @@
-"use client";
+"use client"
 
-import React, { useState } from 'react';
-import { useRouter } from "next/navigation";
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'react-toastify';
-import Image from "next/image";
-import Link from "next/link";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "react-toastify"
+import Image from "next/image"
+import Link from "next/link"
 
 /**
  * Client component for login page that handles authentication
  */
 export default function LoginClient() {
   // Form state
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [twoFactorCode, setTwoFactorCode] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+
   // Auth context and router
-  const { login, verify2FA, requiresTwoFactor } = useAuth();
-  const router = useRouter();
+  const { login, verify2FA, requiresTwoFactor } = useAuth()
+  const router = useRouter()
 
   /**
    * Handle form submission for both regular login and 2FA verification
    */
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+    e.preventDefault()
+    setIsLoading(true)
 
     try {
       if (requiresTwoFactor) {
         // Handle 2FA verification
-        const result = await verify2FA(twoFactorCode);
+        const result = await verify2FA(twoFactorCode)
         if (result.success) {
-          toast.success("Login successful");
+          toast.success("Login successful")
 
           // Check if there's a redirect URL in the query params
-          const params = new URLSearchParams(window.location.search);
-          const redirectTo = params.get("from") || "/dashboard";
-          router.push(redirectTo);
+          const params = new URLSearchParams(window.location.search)
+          const redirectTo = params.get("from") || "/dashboard"
+          router.push(redirectTo)
         }
       } else {
         // Handle regular login
-        const result = await login({ username, password });
+        const result = await login({ username, password })
 
         if (result.requires2FA) {
-          toast.info("Please enter your two-factor authentication code");
+          toast.info("Please enter your two-factor authentication code")
         } else if (result.success) {
-          toast.success("Login successful");
+          toast.success("Login successful")
 
           // Check if there's a redirect URL in the query params
-          const params = new URLSearchParams(window.location.search);
-          const redirectTo = params.get("from") || "/dashboard";
-          router.push(redirectTo);
+          const params = new URLSearchParams(window.location.search)
+          const redirectTo = params.get("from") || "/dashboard"
+          router.push(redirectTo)
         }
       }
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error(error.response?.data?.detail || "Login failed. Please check your credentials.");
+      console.error("Login error:", error)
+      toast.error(error.response?.data?.detail || "Login failed. Please check your credentials.")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="auth-form-container">
@@ -205,5 +205,5 @@ export default function LoginClient() {
         </div>
       </div>
     </div>
-  );
+  )
 }

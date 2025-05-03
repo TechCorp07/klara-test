@@ -1,53 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { reports } from '../../api';
-import { toast } from 'react-toastify';
+"use client"
+
+import { useState, useEffect } from "react"
+import { toast } from "react-toastify"
 
 /**
  * DashboardDetail Component
  * Displays a specific dashboard with its charts and metrics
  */
 const DashboardDetail = ({ dashboardId }) => {
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [timeRange, setTimeRange] = useState('week'); // 'day', 'week', 'month', 'year'
-  const [refreshInterval, setRefreshInterval] = useState(null);
+  const [dashboard, setDashboard] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [timeRange, setTimeRange] = useState("week") // 'day', 'week', 'month', 'year'
+  const [refreshInterval, setRefreshInterval] = useState(null)
 
   useEffect(() => {
     if (dashboardId) {
-      fetchDashboardData();
+      fetchDashboardData()
     }
 
     // Set up auto-refresh if enabled
     if (refreshInterval) {
-      const intervalId = setInterval(fetchDashboardData, refreshInterval * 1000);
-      return () => clearInterval(intervalId);
+      const intervalId = setInterval(fetchDashboardData, refreshInterval * 1000)
+      return () => clearInterval(intervalId)
     }
-  }, [dashboardId, timeRange, refreshInterval]);
+  }, [dashboardId, timeRange, refreshInterval])
 
   const fetchDashboardData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await reportsAPI.getDashboardData(dashboardId, { timeRange });
-      setDashboard(response);
-      setError(null);
+      const response = await reportsAPI.getDashboardData(dashboardId, { timeRange })
+      setDashboard(response)
+      setError(null)
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data. Please try again.');
-      toast.error('Failed to load dashboard data');
+      console.error("Error fetching dashboard data:", err)
+      setError("Failed to load dashboard data. Please try again.")
+      toast.error("Failed to load dashboard data")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleTimeRangeChange = (range) => {
-    setTimeRange(range);
-  };
+    setTimeRange(range)
+  }
 
   const handleRefreshIntervalChange = (e) => {
-    const value = parseInt(e.target.value, 10);
-    setRefreshInterval(value || null);
-  };
+    const value = Number.parseInt(e.target.value, 10)
+    setRefreshInterval(value || null)
+  }
 
   if (loading && !dashboard) {
     return (
@@ -56,7 +57,7 @@ const DashboardDetail = ({ dashboardId }) => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    );
+    )
   }
 
   if (error && !dashboard) {
@@ -64,7 +65,7 @@ const DashboardDetail = ({ dashboardId }) => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    );
+    )
   }
 
   if (!dashboard) {
@@ -72,7 +73,7 @@ const DashboardDetail = ({ dashboardId }) => {
       <div className="alert alert-info" role="alert">
         Dashboard not found.
       </div>
-    );
+    )
   }
 
   return (
@@ -81,43 +82,45 @@ const DashboardDetail = ({ dashboardId }) => {
         <h2>{dashboard.name}</h2>
         <div className="d-flex">
           <div className="btn-group me-3" role="group">
-            <button 
-              type="button" 
-              className={`btn btn-outline-primary ${timeRange === 'day' ? 'active' : ''}`}
-              onClick={() => handleTimeRangeChange('day')}
+            <button
+              type="button"
+              className={`btn btn-outline-primary ${timeRange === "day" ? "active" : ""}`}
+              onClick={() => handleTimeRangeChange("day")}
             >
               Day
             </button>
-            <button 
-              type="button" 
-              className={`btn btn-outline-primary ${timeRange === 'week' ? 'active' : ''}`}
-              onClick={() => handleTimeRangeChange('week')}
+            <button
+              type="button"
+              className={`btn btn-outline-primary ${timeRange === "week" ? "active" : ""}`}
+              onClick={() => handleTimeRangeChange("week")}
             >
               Week
             </button>
-            <button 
-              type="button" 
-              className={`btn btn-outline-primary ${timeRange === 'month' ? 'active' : ''}`}
-              onClick={() => handleTimeRangeChange('month')}
+            <button
+              type="button"
+              className={`btn btn-outline-primary ${timeRange === "month" ? "active" : ""}`}
+              onClick={() => handleTimeRangeChange("month")}
             >
               Month
             </button>
-            <button 
-              type="button" 
-              className={`btn btn-outline-primary ${timeRange === 'year' ? 'active' : ''}`}
-              onClick={() => handleTimeRangeChange('year')}
+            <button
+              type="button"
+              className={`btn btn-outline-primary ${timeRange === "year" ? "active" : ""}`}
+              onClick={() => handleTimeRangeChange("year")}
             >
               Year
             </button>
           </div>
           <div className="d-flex align-items-center">
-            <label htmlFor="refreshInterval" className="me-2">Auto-refresh:</label>
-            <select 
-              id="refreshInterval" 
-              className="form-select form-select-sm" 
-              value={refreshInterval || ''} 
+            <label htmlFor="refreshInterval" className="me-2">
+              Auto-refresh:
+            </label>
+            <select
+              id="refreshInterval"
+              className="form-select form-select-sm"
+              value={refreshInterval || ""}
               onChange={handleRefreshIntervalChange}
-              style={{ width: '120px' }}
+              style={{ width: "120px" }}
             >
               <option value="">Off</option>
               <option value="30">30 seconds</option>
@@ -129,11 +132,7 @@ const DashboardDetail = ({ dashboardId }) => {
         </div>
       </div>
 
-      {dashboard.description && (
-        <div className="alert alert-info mb-4">
-          {dashboard.description}
-        </div>
-      )}
+      {dashboard.description && <div className="alert alert-info mb-4">{dashboard.description}</div>}
 
       {/* Key Metrics Section */}
       {dashboard.metrics && dashboard.metrics.length > 0 && (
@@ -145,8 +144,8 @@ const DashboardDetail = ({ dashboardId }) => {
                   <h6 className="card-subtitle mb-2 text-muted">{metric.name}</h6>
                   <h3 className="card-title mb-0">{metric.value}</h3>
                   {metric.change !== undefined && (
-                    <div className={`mt-2 ${metric.change >= 0 ? 'text-success' : 'text-danger'}`}>
-                      <i className={`bi bi-arrow-${metric.change >= 0 ? 'up' : 'down'}`}></i>
+                    <div className={`mt-2 ${metric.change >= 0 ? "text-success" : "text-danger"}`}>
+                      <i className={`bi bi-arrow-${metric.change >= 0 ? "up" : "down"}`}></i>
                       {Math.abs(metric.change)}% from previous {timeRange}
                     </div>
                   )}
@@ -162,9 +161,8 @@ const DashboardDetail = ({ dashboardId }) => {
         <div className="row">
           {dashboard.charts.map((chart, index) => {
             // Determine column width based on chart size
-            const colClass = chart.size === 'large' ? 'col-md-12' : 
-                            chart.size === 'medium' ? 'col-md-6' : 'col-md-4';
-            
+            const colClass = chart.size === "large" ? "col-md-12" : chart.size === "medium" ? "col-md-6" : "col-md-4"
+
             return (
               <div key={index} className={`${colClass} mb-4`}>
                 <div className="card h-100">
@@ -173,27 +171,21 @@ const DashboardDetail = ({ dashboardId }) => {
                   </div>
                   <div className="card-body">
                     {loading ? (
-                      <div className="d-flex justify-content-center align-items-center" style={{ height: '200px' }}>
+                      <div className="d-flex justify-content-center align-items-center" style={{ height: "200px" }}>
                         <div className="spinner-border" role="status">
                           <span className="visually-hidden">Loading...</span>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <img 
-                          src={chart.imageUrl} 
-                          alt={chart.title} 
-                          className="img-fluid" 
-                        />
-                        {chart.description && (
-                          <p className="mt-3 text-muted small">{chart.description}</p>
-                        )}
+                        <img src={chart.imageUrl} alt={chart.title} className="img-fluid" />
+                        {chart.description && <p className="mt-3 text-muted small">{chart.description}</p>}
                       </>
                     )}
                   </div>
                 </div>
               </div>
-            );
+            )
           })}
         </div>
       )}
@@ -240,7 +232,7 @@ const DashboardDetail = ({ dashboardId }) => {
         </a>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default DashboardDetail;
+export default DashboardDetail

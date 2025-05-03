@@ -1,136 +1,139 @@
-import React, { useState, useEffect } from 'react';
-import { reports } from '../../api';
-import { toast } from 'react-toastify';
+"use client"
+
+import { useState, useEffect } from "react"
+import { toast } from "react-toastify"
 
 /**
  * ReportsList Component
  * Displays a list of available reports and allows generation of new reports
  */
 const ReportsList = () => {
-  const [reportTypes, setReportTypes] = useState([]);
-  const [userReports, setUserReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [typesLoading, setTypesLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showNewReportForm, setShowNewReportForm] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState('');
-  const [reportParameters, setReportParameters] = useState({});
+  const [reportTypes, setReportTypes] = useState([])
+  const [userReports, setUserReports] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [typesLoading, setTypesLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showNewReportForm, setShowNewReportForm] = useState(false)
+  const [selectedReportType, setSelectedReportType] = useState("")
+  const [reportParameters, setReportParameters] = useState({})
 
   useEffect(() => {
-    fetchReportTypes();
-    fetchUserReports();
-  }, []);
+    fetchReportTypes()
+    fetchUserReports()
+  }, [])
 
   const fetchReportTypes = async () => {
-    setTypesLoading(true);
+    setTypesLoading(true)
     try {
-      const response = await reportsAPI.getReportTypes();
-      setReportTypes(response.types || []);
+      const response = await reportsAPI.getReportTypes()
+      setReportTypes(response.types || [])
     } catch (err) {
-      console.error('Error fetching report types:', err);
-      toast.error('Failed to load report types');
+      console.error("Error fetching report types:", err)
+      toast.error("Failed to load report types")
     } finally {
-      setTypesLoading(false);
+      setTypesLoading(false)
     }
-  };
+  }
 
   const fetchUserReports = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await reportsAPI.getUserReports();
-      setUserReports(response.reports || []);
-      setError(null);
+      const response = await reportsAPI.getUserReports()
+      setUserReports(response.reports || [])
+      setError(null)
     } catch (err) {
-      console.error('Error fetching user reports:', err);
-      setError('Failed to load reports. Please try again.');
-      toast.error('Failed to load reports');
+      console.error("Error fetching user reports:", err)
+      setError("Failed to load reports. Please try again.")
+      toast.error("Failed to load reports")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleReportTypeChange = (e) => {
-    setSelectedReportType(e.target.value);
+    setSelectedReportType(e.target.value)
     // Reset parameters when report type changes
-    setReportParameters({});
-  };
+    setReportParameters({})
+  }
 
   const handleParameterChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setReportParameters({
       ...reportParameters,
-      [name]: value
-    });
-  };
+      [name]: value,
+    })
+  }
 
   const handleGenerateReport = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!selectedReportType) {
-      toast.error('Please select a report type');
-      return;
+      toast.error("Please select a report type")
+      return
     }
 
     try {
-      await reportsAPI.generateReport(selectedReportType, reportParameters);
-      toast.success('Report generation initiated');
-      setShowNewReportForm(false);
-      setSelectedReportType('');
-      setReportParameters({});
+      await reportsAPI.generateReport(selectedReportType, reportParameters)
+      toast.success("Report generation initiated")
+      setShowNewReportForm(false)
+      setSelectedReportType("")
+      setReportParameters({})
       // Refresh the reports list after a short delay to allow for processing
       setTimeout(() => {
-        fetchUserReports();
-      }, 2000);
+        fetchUserReports()
+      }, 2000)
     } catch (err) {
-      console.error('Error generating report:', err);
-      toast.error('Failed to generate report');
+      console.error("Error generating report:", err)
+      toast.error("Failed to generate report")
     }
-  };
+  }
 
   const handleExportReport = async (reportId, format) => {
     try {
-      const response = await reportsAPI.exportReport(reportId, format);
+      const response = await reportsAPI.exportReport(reportId, format)
       if (response && response.downloadUrl) {
-        window.open(response.downloadUrl, '_blank');
+        window.open(response.downloadUrl, "_blank")
       } else {
-        toast.error('Export URL not available');
+        toast.error("Export URL not available")
       }
     } catch (err) {
-      console.error('Error exporting report:', err);
-      toast.error(`Failed to export report to ${format}`);
+      console.error("Error exporting report:", err)
+      toast.error(`Failed to export report to ${format}`)
     }
-  };
+  }
 
   // Get parameter fields for the selected report type
   const getParameterFields = () => {
-    if (!selectedReportType) return null;
-    
-    const reportType = reportTypes.find(type => type.id === selectedReportType);
-    if (!reportType || !reportType.parameters) return null;
-    
-    return reportType.parameters.map(param => (
+    if (!selectedReportType) return null
+
+    const reportType = reportTypes.find((type) => type.id === selectedReportType)
+    if (!reportType || !reportType.parameters) return null
+
+    return reportType.parameters.map((param) => (
       <div className="mb-3" key={param.name}>
-        <label htmlFor={param.name} className="form-label">{param.label}</label>
-        {param.type === 'date' ? (
+        <label htmlFor={param.name} className="form-label">
+          {param.label}
+        </label>
+        {param.type === "date" ? (
           <input
             type="date"
             className="form-control"
             id={param.name}
             name={param.name}
-            value={reportParameters[param.name] || ''}
+            value={reportParameters[param.name] || ""}
             onChange={handleParameterChange}
             required={param.required}
           />
-        ) : param.type === 'select' ? (
+        ) : param.type === "select" ? (
           <select
             className="form-select"
             id={param.name}
             name={param.name}
-            value={reportParameters[param.name] || ''}
+            value={reportParameters[param.name] || ""}
             onChange={handleParameterChange}
             required={param.required}
           >
             <option value="">Select {param.label}</option>
-            {param.options.map(option => (
+            {param.options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -142,33 +145,31 @@ const ReportsList = () => {
             className="form-control"
             id={param.name}
             name={param.name}
-            value={reportParameters[param.name] || ''}
+            value={reportParameters[param.name] || ""}
             onChange={handleParameterChange}
-            placeholder={param.placeholder || ''}
+            placeholder={param.placeholder || ""}
             required={param.required}
           />
         )}
-        {param.description && (
-          <div className="form-text">{param.description}</div>
-        )}
+        {param.description && <div className="form-text">{param.description}</div>}
       </div>
-    ));
-  };
+    ))
+  }
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'completed':
-        return <span className="badge bg-success">Completed</span>;
-      case 'processing':
-        return <span className="badge bg-primary">Processing</span>;
-      case 'failed':
-        return <span className="badge bg-danger">Failed</span>;
-      case 'queued':
-        return <span className="badge bg-secondary">Queued</span>;
+      case "completed":
+        return <span className="badge bg-success">Completed</span>
+      case "processing":
+        return <span className="badge bg-primary">Processing</span>
+      case "failed":
+        return <span className="badge bg-danger">Failed</span>
+      case "queued":
+        return <span className="badge bg-secondary">Queued</span>
       default:
-        return <span className="badge bg-info">{status}</span>;
+        return <span className="badge bg-info">{status}</span>
     }
-  };
+  }
 
   if (loading && typesLoading) {
     return (
@@ -177,7 +178,7 @@ const ReportsList = () => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    );
+    )
   }
 
   if (error && userReports.length === 0) {
@@ -185,18 +186,15 @@ const ReportsList = () => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    );
+    )
   }
 
   return (
     <div className="reports-list">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Reports</h3>
-        <button 
-          className="btn btn-primary" 
-          onClick={() => setShowNewReportForm(!showNewReportForm)}
-        >
-          {showNewReportForm ? 'Cancel' : 'Generate New Report'}
+        <button className="btn btn-primary" onClick={() => setShowNewReportForm(!showNewReportForm)}>
+          {showNewReportForm ? "Cancel" : "Generate New Report"}
         </button>
       </div>
 
@@ -213,13 +211,13 @@ const ReportsList = () => {
                 </div>
               </div>
             ) : reportTypes.length === 0 ? (
-              <div className="alert alert-info">
-                No report types available.
-              </div>
+              <div className="alert alert-info">No report types available.</div>
             ) : (
               <form onSubmit={handleGenerateReport}>
                 <div className="mb-3">
-                  <label htmlFor="reportType" className="form-label">Report Type</label>
+                  <label htmlFor="reportType" className="form-label">
+                    Report Type
+                  </label>
                   <select
                     className="form-select"
                     id="reportType"
@@ -228,7 +226,7 @@ const ReportsList = () => {
                     required
                   >
                     <option value="">Select a report type</option>
-                    {reportTypes.map(type => (
+                    {reportTypes.map((type) => (
                       <option key={type.id} value={type.id}>
                         {type.name}
                       </option>
@@ -265,9 +263,7 @@ const ReportsList = () => {
               </div>
             </div>
           ) : userReports.length === 0 ? (
-            <div className="alert alert-info">
-              You haven't generated any reports yet.
-            </div>
+            <div className="alert alert-info">You haven't generated any reports yet.</div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover">
@@ -281,47 +277,44 @@ const ReportsList = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {userReports.map(report => (
+                  {userReports.map((report) => (
                     <tr key={report.id}>
                       <td>{report.name}</td>
                       <td>{report.type}</td>
                       <td>{new Date(report.createdAt).toLocaleString()}</td>
                       <td>{getStatusBadge(report.status)}</td>
                       <td>
-                        {report.status === 'completed' ? (
+                        {report.status === "completed" ? (
                           <div className="btn-group" role="group">
-                            <button 
+                            <button
                               className="btn btn-sm btn-outline-primary"
-                              onClick={() => window.location.href = `/reports/${report.id}`}
+                              onClick={() => (window.location.href = `/reports/${report.id}`)}
                             >
                               View
                             </button>
-                            <button 
+                            <button
                               className="btn btn-sm btn-outline-secondary"
-                              onClick={() => handleExportReport(report.id, 'pdf')}
+                              onClick={() => handleExportReport(report.id, "pdf")}
                             >
                               PDF
                             </button>
-                            <button 
+                            <button
                               className="btn btn-sm btn-outline-secondary"
-                              onClick={() => handleExportReport(report.id, 'csv')}
+                              onClick={() => handleExportReport(report.id, "csv")}
                             >
                               CSV
                             </button>
                           </div>
-                        ) : report.status === 'failed' ? (
-                          <button 
+                        ) : report.status === "failed" ? (
+                          <button
                             className="btn btn-sm btn-outline-danger"
-                            onClick={() => window.location.href = `/reports/${report.id}`}
+                            onClick={() => (window.location.href = `/reports/${report.id}`)}
                           >
                             View Error
                           </button>
                         ) : (
-                          <button 
-                            className="btn btn-sm btn-outline-secondary"
-                            disabled
-                          >
-                            {report.status === 'processing' ? 'Processing...' : 'Queued'}
+                          <button className="btn btn-sm btn-outline-secondary" disabled>
+                            {report.status === "processing" ? "Processing..." : "Queued"}
                           </button>
                         )}
                       </td>
@@ -334,7 +327,7 @@ const ReportsList = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ReportsList;
+export default ReportsList
