@@ -1,50 +1,52 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { toast } from "react-toastify"
-import Image from "next/image"
-import Link from "next/link"
+import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'react-toastify';
+import Image from 'next/image';
+import Link from 'next/link';
 
 /**
  * Client component for disable two-factor page
  */
 export default function DisableClient() {
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isDisabled, setIsDisabled] = useState(false)
-  const { user, disable2FA } = useAuth()
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
+  const { user, disable2FA } = useAuth();
 
   const handleDisable = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-
+    e.preventDefault();
+    setIsLoading(true);
+    
     try {
-      await disable2FA(password)
-      setIsDisabled(true)
-      toast.success("Two-factor authentication has been disabled successfully")
+      await disable2FA(password);
+      setIsDisabled(true);
+      toast.success('Two-factor authentication has been disabled successfully');
     } catch (error) {
-      console.error("2FA disabling error:", error)
-      toast.error("Failed to disable two-factor authentication. Please check your password and try again.")
+      console.error('2FA disabling error:', error);
+      toast.error('Failed to disable two-factor authentication. Please check your password and try again.');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="auth-form-container">
       <div className="auth-form">
         <div className="flex flex-col items-center">
-          <Image
-            src="/images/klararety-logo.png"
-            alt="Klararety Logo"
-            width={250}
-            height={70}
+          <Image 
+            src="/images/klararety-logo.png" 
+            alt="Klararety Logo" 
+            width={250} 
+            height={70} 
             className="auth-form-logo"
             priority
           />
           <h2 className="auth-form-title">Disable Two-Factor Authentication</h2>
-          <p className="auth-form-subtitle">Please confirm your password to disable two-factor authentication</p>
+          <p className="auth-form-subtitle">
+            Please confirm your password to disable two-factor authentication
+          </p>
         </div>
 
         <div className="mt-8 space-y-6">
@@ -53,25 +55,16 @@ export default function DisableClient() {
               <div className="bg-yellow-50 rounded-lg p-6 mb-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg
-                      className="h-6 w-6 text-yellow-400"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
+                    <svg className="h-6 w-6 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="ml-3">
                     <h3 className="text-lg font-medium text-yellow-800">Warning: Reduced Security</h3>
                     <div className="mt-2 text-yellow-700">
                       <p>
-                        Disabling two-factor authentication will make your account less secure. You will only need your
-                        password to sign in, which could put your healthcare data at risk.
+                        Disabling two-factor authentication will make your account less secure. 
+                        You will only need your password to sign in, which could put your healthcare data at risk.
                       </p>
                     </div>
                   </div>
@@ -98,13 +91,13 @@ export default function DisableClient() {
                 </div>
 
                 <div className="mt-6 flex items-center justify-between">
-                  <Link
-                    href="/settings"
+                  <Link 
+                    href="/settings" 
                     className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   >
                     Cancel
                   </Link>
-
+                  
                   <button
                     type="submit"
                     disabled={isLoading || !password}
@@ -112,30 +105,14 @@ export default function DisableClient() {
                   >
                     {isLoading ? (
                       <span className="flex items-center">
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         Processing...
                       </span>
                     ) : (
-                      "Disable Two-Factor Authentication"
+                      'Disable Two-Factor Authentication'
                     )}
                   </button>
                 </div>
@@ -145,32 +122,20 @@ export default function DisableClient() {
             <div className="bg-green-50 rounded-lg p-6 mb-6">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <svg
-                    className="h-6 w-6 text-green-400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
+                  <svg className="h-6 w-6 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="ml-3">
                   <h3 className="text-lg font-medium text-green-800">Two-factor authentication disabled</h3>
                   <div className="mt-2 text-green-700">
                     <p>
-                      Two-factor authentication has been disabled for your account. You can now sign in with just your
-                      password.
+                      Two-factor authentication has been disabled for your account. 
+                      You can now sign in with just your password.
                     </p>
                   </div>
                   <div className="mt-4">
-                    <Link
-                      href="/settings"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
+                    <Link href="/settings" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                       Back to Settings
                     </Link>
                   </div>
@@ -189,5 +154,5 @@ export default function DisableClient() {
         </div>
       </div>
     </div>
-  )
+  );
 }

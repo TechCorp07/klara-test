@@ -1,44 +1,42 @@
-"use client"
-
-import { useState } from "react"
-import { toast } from "react-toastify"
-import { fhirService } from "../../lib/services/ehr/fhirService"
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
+import { fhirService } from '../../lib/services/ehr/fhirService';
 
 /**
  * FHIR Data Converter Component
  * Allows users to convert data to FHIR format
  */
 const FHIRConverter = () => {
-  const [sourceFormat, setSourceFormat] = useState("hl7")
-  const [sourceData, setSourceData] = useState("")
-  const [convertedData, setConvertedData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [sourceFormat, setSourceFormat] = useState('hl7');
+  const [sourceData, setSourceData] = useState('');
+  const [convertedData, setConvertedData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleConvert = async (e) => {
-    e.preventDefault()
-
+    e.preventDefault();
+    
     if (!sourceData.trim()) {
-      toast.error("Please enter source data to convert")
-      return
+      toast.error('Please enter source data to convert');
+      return;
     }
-
-    setLoading(true)
-    setError(null)
-    setConvertedData(null)
-
+    
+    setLoading(true);
+    setError(null);
+    setConvertedData(null);
+    
     try {
-      const result = await fhirService.convertToFHIR(sourceFormat, { data: sourceData })
-      setConvertedData(result)
-      toast.success(`Successfully converted ${sourceFormat} to FHIR`)
+      const result = await fhirService.convertToFHIR(sourceFormat, { data: sourceData });
+      setConvertedData(result);
+      toast.success(`Successfully converted ${sourceFormat} to FHIR`);
     } catch (error) {
-      console.error("Conversion error:", error)
-      setError(error.message || `Failed to convert ${sourceFormat} to FHIR`)
-      toast.error(error.message || `Failed to convert ${sourceFormat} to FHIR`)
+      console.error('Conversion error:', error);
+      setError(error.message || `Failed to convert ${sourceFormat} to FHIR`);
+      toast.error(error.message || `Failed to convert ${sourceFormat} to FHIR`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="fhir-converter card">
@@ -48,9 +46,7 @@ const FHIRConverter = () => {
       <div className="card-body">
         <form onSubmit={handleConvert}>
           <div className="mb-3">
-            <label htmlFor="sourceFormat" className="form-label">
-              Source Format
-            </label>
+            <label htmlFor="sourceFormat" className="form-label">Source Format</label>
             <select
               id="sourceFormat"
               className="form-select"
@@ -64,11 +60,9 @@ const FHIRConverter = () => {
               <option value="xml">XML</option>
             </select>
           </div>
-
+          
           <div className="mb-3">
-            <label htmlFor="sourceData" className="form-label">
-              Source Data
-            </label>
+            <label htmlFor="sourceData" className="form-label">Source Data</label>
             <textarea
               id="sourceData"
               className="form-control"
@@ -79,19 +73,23 @@ const FHIRConverter = () => {
               placeholder={`Enter ${sourceFormat} data to convert to FHIR...`}
             ></textarea>
           </div>
-
-          <button type="submit" className="btn btn-primary" disabled={loading || !sourceData.trim()}>
-            {loading ? "Converting..." : "Convert to FHIR"}
+          
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading || !sourceData.trim()}
+          >
+            {loading ? 'Converting...' : 'Convert to FHIR'}
           </button>
         </form>
-
+        
         {error && (
           <div className="alert alert-danger mt-4">
             <h4>Conversion Error</h4>
             <p>{error}</p>
           </div>
         )}
-
+        
         {convertedData && (
           <div className="mt-4">
             <h4>Converted FHIR Data</h4>
@@ -104,7 +102,7 @@ const FHIRConverter = () => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default FHIRConverter
+export default FHIRConverter;

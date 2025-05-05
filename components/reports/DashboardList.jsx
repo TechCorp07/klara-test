@@ -1,35 +1,34 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { toast } from "react-toastify"
+import React, { useState, useEffect } from 'react';
+import { reports } from '../../api';
+import { toast } from 'react-toastify';
 
 /**
  * DashboardList Component
  * Displays a list of available dashboards and allows navigation to them
  */
 const DashboardList = () => {
-  const [dashboards, setDashboards] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [dashboards, setDashboards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchDashboards()
-  }, [])
+    fetchDashboards();
+  }, []);
 
   const fetchDashboards = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await reportsAPI.getDashboards()
-      setDashboards(response.dashboards || [])
-      setError(null)
+      const response = await reportsAPI.getDashboards();
+      setDashboards(response.dashboards || []);
+      setError(null);
     } catch (err) {
-      console.error("Error fetching dashboards:", err)
-      setError("Failed to load dashboards. Please try again.")
-      toast.error("Failed to load dashboards")
+      console.error('Error fetching dashboards:', err);
+      setError('Failed to load dashboards. Please try again.');
+      toast.error('Failed to load dashboards');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -38,7 +37,7 @@ const DashboardList = () => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -46,7 +45,7 @@ const DashboardList = () => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    )
+    );
   }
 
   if (dashboards.length === 0) {
@@ -54,7 +53,7 @@ const DashboardList = () => {
       <div className="alert alert-info" role="alert">
         No dashboards are currently available.
       </div>
-    )
+    );
   }
 
   return (
@@ -65,7 +64,11 @@ const DashboardList = () => {
           <div key={dashboard.id} className="col-md-6 col-lg-4 mb-4">
             <div className="card h-100">
               {dashboard.thumbnailUrl && (
-                <img src={dashboard.thumbnailUrl} className="card-img-top" alt={dashboard.name} />
+                <img 
+                  src={dashboard.thumbnailUrl} 
+                  className="card-img-top" 
+                  alt={dashboard.name} 
+                />
               )}
               <div className="card-body">
                 <h5 className="card-title">{dashboard.name}</h5>
@@ -86,7 +89,7 @@ const DashboardList = () => {
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DashboardList
+export default DashboardList;

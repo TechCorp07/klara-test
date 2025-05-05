@@ -1,8 +1,8 @@
-import TelemedicineClient from "./components/TelemedicineClient"
+import TelemedicineClient from './components/TelemedicineClient';
 
 /**
  * Server component for telemedicine page
  */
 export default function Page() {
-  return <TelemedicineClient />
+  return <TelemedicineClient />;
 }

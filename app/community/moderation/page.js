@@ -1,8 +1,8 @@
-import ModerationClient from "./components/ModerationClient"
+import ModerationClient from './components/ModerationClient';
 
 /**
  * Server component for moderation page
  */
 export default function Page() {
-  return <ModerationClient />
+  return <ModerationClient />;
 }

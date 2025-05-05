@@ -1,4 +1,6 @@
-import EmailVerification from "../auth/EmailVerification"
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import EmailVerification from '../auth/EmailVerification';
 
 /**
  * Email Verification Confirmation Page
@@ -17,7 +19,7 @@ const VerifyEmailPage = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default VerifyEmailPage
+export default VerifyEmailPage;

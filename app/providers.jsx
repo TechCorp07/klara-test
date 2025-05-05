@@ -1,35 +1,18 @@
-"use client"
+// app/providers.jsx
+"use client";
 
-import { ToastContainer } from "react-toastify"
-import { AuthProvider } from "@/contexts/AuthContext"
-import { ApiProvider } from "@/contexts/ApiContext"
-import { NotificationProvider } from "@/contexts/NotificationContext"
-import "react-toastify/dist/ReactToastify.css"
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { queryClient } from "@/lib/queryClient";
 
-/**
- * Global providers for the application
- */
 export function Providers({ children }) {
   return (
-    <ApiProvider>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <NotificationProvider>
-          {children}
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-          />
-        </NotificationProvider>
+        {children}
       </AuthProvider>
-    </ApiProvider>
-  )
+      {process.env.NODE_ENV !== 'production' && <ReactQueryDevtools initialIsOpen={false} />}
+    </QueryClientProvider>
+  );
 }
-
-export default Providers

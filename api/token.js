@@ -1,5 +1,5 @@
 // api/token.js
-import { apiRequest } from "./client"
+import { apiRequest } from './client';
 
 /**
  * Token API service
@@ -13,12 +13,12 @@ const tokenAPI = {
    */
   refreshToken: async (refreshToken) => {
     try {
-      const response = await apiRequest("POST", "/token/refresh", { refresh: refreshToken })
-      return response
+      const response = await apiRequest('POST', '/token/refresh', { refresh: refreshToken });
+      return response;
     } catch (error) {
-      throw error
+      throw error;
     }
-  },
-}
+  }
+};
 
-export default tokenAPI
+export default tokenAPI;

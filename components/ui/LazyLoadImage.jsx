@@ -91,13 +91,13 @@ const LazyLoadImage = ({
   }
   // Styles for the actual image
   const imageStyle = {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-    transition: "opacity 0.3s, filter 0.3s",
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    transition: 'opacity 0.3s, filter 0.3s',
     opacity: isLoaded ? 1 : 0,
-    filter: isLoaded || !blur ? "none" : "blur(8px)",
-  }
+    filter: (isLoaded || !blur) ? 'none' : 'blur(8px)'
+  };
 
   // Loading indicator styles
   const loaderStyle = {

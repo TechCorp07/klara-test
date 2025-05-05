@@ -1,8 +1,6 @@
-"use client"
-
-export const dynamic = "force-dynamic"
-import { useState, useEffect } from "react"
-import { toast } from "react-toastify"
+export const dynamic = 'force-dynamic';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 
 /**
  * ProfileEmailVerification Component
@@ -13,86 +11,88 @@ const ProfileEmailVerification = ({ user }) => {
     isVerified: user?.email_verified || false,
     verificationSent: false,
     isLoading: false,
-    error: null,
-  })
+    error: null  
+  });
 
   // Request email verification
   const requestVerification = async () => {
     try {
-      setVerificationStatus((prev) => ({
+      setVerificationStatus(prev => ({
         ...prev,
         isLoading,
-        error: null,
-      }))
-
-      const response = await fetch("/api/auth/request-verification", {
-        method: "POST",
+        error: null
+      }));
+      
+      const response = await fetch('/api/auth/request-verification', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        credentials: "same-origin",
-      })
-
+        credentials: 'same-origin'
+      });
+      
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to request email verification")
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to request email verification');
       }
-
-      setVerificationStatus((prev) => ({
+      
+      setVerificationStatus(prev => ({
         ...prev,
-        verificationSent: true,
-      }))
-
-      toast.success("Verification email sent. Please check your inbox.")
+        verificationSent: true
+      }));
+      
+      toast.success('Verification email sent. Please check your inbox.');
+      
     } catch (error) {
-      console.error("Error requesting verification:", error)
-      setVerificationStatus((prev) => ({
+      console.error('Error requesting verification:', error);
+      setVerificationStatus(prev => ({
         ...prev,
-        error: error.message || "Failed to request verification. Please try again.",
-      }))
-      toast.error(error.message || "Failed to request verification. Please try again.")
+        error: error.message || 'Failed to request verification. Please try again.'
+      }));
+      toast.error(error.message || 'Failed to request verification. Please try again.');
     } finally {
-      setVerificationStatus((prev) => ({
+      setVerificationStatus(prev => ({
         ...prev,
-        isLoading: false,
-      }))
+        isLoading: false
+      }));
     }
-  }
+  };
 
   // Check verification status
   const checkVerificationStatus = async () => {
     try {
-      const response = await fetch("/api/users/me", {
-        method: "GET",
+      const response = await fetch('/api/users/me', {
+        method: 'GET',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        credentials: "same-origin",
-      })
-
+        credentials: 'same-origin'
+      });
+      
       if (!response.ok) {
-        throw new Error("Failed to fetch user data")
+        throw new Error('Failed to fetch user data');
       }
-
-      const userData = await response.json()
-
-      setVerificationStatus((prev) => ({
+      
+      const userData = await response.json();
+      
+      setVerificationStatus(prev => ({
         ...prev,
-        isVerified: userData.email_verified || false,
-      }))
+        isVerified: userData.email_verified || false
+      }));
+      
     } catch (error) {
-      console.error("Error checking verification status:", error)
+      console.error('Error checking verification status:', error);
     }
-  }
+  };
 
   // Check status when verification sent is true
   useEffect(() => {
     if (verificationStatus.verificationSent) {
-      const interval = setInterval(checkVerificationStatus, 10000) // Check every 10 seconds
-
-      return () => clearInterval(interval)
+      const interval = setInterval(checkVerificationStatus, 10000); // Check every 10 seconds
+      
+      return () => clearInterval(interval);
     }
-  }, [verificationStatus.verificationSent])
+  }, [verificationStatus.verificationSent]);
 
   return (
     <div className="profile-email-verification card mb-4">
@@ -119,7 +119,7 @@ const ProfileEmailVerification = ({ user }) => {
                 <p className="text-muted mb-0">Please verify your email address to access all features.</p>
               </div>
             </div>
-
+            
             {verificationStatus.verificationSent ? (
               <div className="alert alert-info">
                 <p className="mb-0">
@@ -131,18 +131,20 @@ const ProfileEmailVerification = ({ user }) => {
                 </p>
               </div>
             ) : (
-              <button className="btn btn-primary" onClick={requestVerification} disabled={verificationStatus.isLoading}>
+              <button 
+                className="btn btn-primary"
+                onClick={requestVerification}
+                disabled={verificationStatus.isLoading}
+              >
                 {verificationStatus.isLoading ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                     Sending...
                   </>
-                ) : (
-                  "Verify Email"
-                )}
+                ) : 'Verify Email'}
               </button>
             )}
-
+            
             {verificationStatus.error && (
               <div className="alert alert-danger mt-3">
                 <p className="mb-0">{verificationStatus.error}</p>
@@ -152,7 +154,7 @@ const ProfileEmailVerification = ({ user }) => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ProfileEmailVerification
+export default ProfileEmailVerification;

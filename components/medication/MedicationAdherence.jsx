@@ -1,53 +1,52 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { toast } from "react-toastify"
+import React, { useState, useEffect } from 'react';
+import { medication } from '../../api';
+import { toast } from 'react-toastify';
 
 /**
  * MedicationAdherence Component
  * Displays medication adherence data and tracking
  */
 const MedicationAdherence = ({ patientId }) => {
-  const [adherenceData, setAdherenceData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [dateRange, setDateRange] = useState("week") // 'week', 'month', 'year'
+  const [adherenceData, setAdherenceData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState('week'); // 'week', 'month', 'year'
 
   useEffect(() => {
     if (patientId) {
-      fetchAdherenceData()
+      fetchAdherenceData();
     }
-  }, [patientId, dateRange])
+  }, [patientId, dateRange]);
 
   const fetchAdherenceData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await medicationAPI.getAdherenceData(patientId, { period: dateRange })
-      setAdherenceData(response)
-      setError(null)
+      const response = await medicationAPI.getAdherenceData(patientId, { period: dateRange });
+      setAdherenceData(response);
+      setError(null);
     } catch (err) {
-      console.error("Error fetching adherence data:", err)
-      setError("Failed to load medication adherence data. Please try again.")
-      toast.error("Failed to load medication adherence data")
+      console.error('Error fetching adherence data:', err);
+      setError('Failed to load medication adherence data. Please try again.');
+      toast.error('Failed to load medication adherence data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const calculateOverallAdherence = () => {
-    if (!adherenceData || !adherenceData.medications) return 0
-
-    const totalDoses = adherenceData.medications.reduce((sum, med) => sum + med.totalDoses, 0)
-    const takenDoses = adherenceData.medications.reduce((sum, med) => sum + med.takenDoses, 0)
-
-    return totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0
-  }
+    if (!adherenceData || !adherenceData.medications) return 0;
+    
+    const totalDoses = adherenceData.medications.reduce((sum, med) => sum + med.totalDoses, 0);
+    const takenDoses = adherenceData.medications.reduce((sum, med) => sum + med.takenDoses, 0);
+    
+    return totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0;
+  };
 
   const getAdherenceColorClass = (percentage) => {
-    if (percentage >= 90) return "success"
-    if (percentage >= 70) return "warning"
-    return "danger"
-  }
+    if (percentage >= 90) return 'success';
+    if (percentage >= 70) return 'warning';
+    return 'danger';
+  };
 
   if (loading) {
     return (
@@ -56,7 +55,7 @@ const MedicationAdherence = ({ patientId }) => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -64,7 +63,7 @@ const MedicationAdherence = ({ patientId }) => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    )
+    );
   }
 
   if (!adherenceData || !adherenceData.medications || adherenceData.medications.length === 0) {
@@ -72,35 +71,35 @@ const MedicationAdherence = ({ patientId }) => {
       <div className="alert alert-info" role="alert">
         No medication adherence data available for this patient.
       </div>
-    )
+    );
   }
 
-  const overallAdherence = calculateOverallAdherence()
-  const adherenceColorClass = getAdherenceColorClass(overallAdherence)
+  const overallAdherence = calculateOverallAdherence();
+  const adherenceColorClass = getAdherenceColorClass(overallAdherence);
 
   return (
     <div className="medication-adherence">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Medication Adherence</h3>
         <div className="btn-group" role="group">
-          <button
-            type="button"
-            className={`btn btn-outline-primary ${dateRange === "week" ? "active" : ""}`}
-            onClick={() => setDateRange("week")}
+          <button 
+            type="button" 
+            className={`btn btn-outline-primary ${dateRange === 'week' ? 'active' : ''}`}
+            onClick={() => setDateRange('week')}
           >
             Week
           </button>
-          <button
-            type="button"
-            className={`btn btn-outline-primary ${dateRange === "month" ? "active" : ""}`}
-            onClick={() => setDateRange("month")}
+          <button 
+            type="button" 
+            className={`btn btn-outline-primary ${dateRange === 'month' ? 'active' : ''}`}
+            onClick={() => setDateRange('month')}
           >
             Month
           </button>
-          <button
-            type="button"
-            className={`btn btn-outline-primary ${dateRange === "year" ? "active" : ""}`}
-            onClick={() => setDateRange("year")}
+          <button 
+            type="button" 
+            className={`btn btn-outline-primary ${dateRange === 'year' ? 'active' : ''}`}
+            onClick={() => setDateRange('year')}
           >
             Year
           </button>
@@ -125,22 +124,18 @@ const MedicationAdherence = ({ patientId }) => {
             <div className="col-md-8">
               <div className="adherence-summary">
                 <p>
-                  <strong>Period:</strong>{" "}
-                  {adherenceData.startDate ? new Date(adherenceData.startDate).toLocaleDateString() : ""} -{" "}
-                  {adherenceData.endDate ? new Date(adherenceData.endDate).toLocaleDateString() : ""}
+                  <strong>Period:</strong> {adherenceData.startDate ? new Date(adherenceData.startDate).toLocaleDateString() : ''} - {adherenceData.endDate ? new Date(adherenceData.endDate).toLocaleDateString() : ''}
                 </p>
                 <p>
                   <strong>Total Medications:</strong> {adherenceData.medications.length}
                 </p>
                 <p>
-                  <strong>Doses Taken:</strong>{" "}
-                  {adherenceData.medications.reduce((sum, med) => sum + med.takenDoses, 0)} of{" "}
-                  {adherenceData.medications.reduce((sum, med) => sum + med.totalDoses, 0)} prescribed doses
+                  <strong>Doses Taken:</strong> {adherenceData.medications.reduce((sum, med) => sum + med.takenDoses, 0)} of {adherenceData.medications.reduce((sum, med) => sum + med.totalDoses, 0)} prescribed doses
                 </p>
                 <p>
-                  <strong>Adherence Status:</strong>
+                  <strong>Adherence Status:</strong> 
                   <span className={`badge bg-${adherenceColorClass} ms-2`}>
-                    {overallAdherence >= 90 ? "Excellent" : overallAdherence >= 70 ? "Good" : "Needs Improvement"}
+                    {overallAdherence >= 90 ? 'Excellent' : overallAdherence >= 70 ? 'Good' : 'Needs Improvement'}
                   </span>
                 </p>
               </div>
@@ -163,26 +158,25 @@ const MedicationAdherence = ({ patientId }) => {
           </thead>
           <tbody>
             {adherenceData.medications.map((medication) => {
-              const adherencePercentage =
-                medication.totalDoses > 0 ? Math.round((medication.takenDoses / medication.totalDoses) * 100) : 0
-              const colorClass = getAdherenceColorClass(adherencePercentage)
-
+              const adherencePercentage = medication.totalDoses > 0 
+                ? Math.round((medication.takenDoses / medication.totalDoses) * 100) 
+                : 0;
+              const colorClass = getAdherenceColorClass(adherencePercentage);
+              
               return (
                 <tr key={medication.id}>
                   <td>{medication.name}</td>
                   <td>{medication.dosage}</td>
                   <td>{medication.frequency}</td>
-                  <td>
-                    {medication.takenDoses} of {medication.totalDoses}
-                  </td>
+                  <td>{medication.takenDoses} of {medication.totalDoses}</td>
                   <td>
                     <div className="progress">
-                      <div
-                        className={`progress-bar bg-${colorClass}`}
-                        role="progressbar"
+                      <div 
+                        className={`progress-bar bg-${colorClass}`} 
+                        role="progressbar" 
                         style={{ width: `${adherencePercentage}%` }}
-                        aria-valuenow={adherencePercentage}
-                        aria-valuemin="0"
+                        aria-valuenow={adherencePercentage} 
+                        aria-valuemin="0" 
                         aria-valuemax="100"
                       >
                         {adherencePercentage}%
@@ -190,24 +184,24 @@ const MedicationAdherence = ({ patientId }) => {
                     </div>
                   </td>
                   <td>
-                    {medication.trend === "improving" && (
+                    {medication.trend === 'improving' && (
                       <span className="text-success">
                         <i className="bi bi-arrow-up-circle-fill"></i> Improving
                       </span>
                     )}
-                    {medication.trend === "declining" && (
+                    {medication.trend === 'declining' && (
                       <span className="text-danger">
                         <i className="bi bi-arrow-down-circle-fill"></i> Declining
                       </span>
                     )}
-                    {medication.trend === "stable" && (
+                    {medication.trend === 'stable' && (
                       <span className="text-secondary">
                         <i className="bi bi-dash-circle-fill"></i> Stable
                       </span>
                     )}
                   </td>
                 </tr>
-              )
+              );
             })}
           </tbody>
         </table>
@@ -228,7 +222,7 @@ const MedicationAdherence = ({ patientId }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default MedicationAdherence
+export default MedicationAdherence;

@@ -1,35 +1,34 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { toast } from "react-toastify"
+import React, { useState, useEffect } from 'react';
+import { community } from '../../api';
+import { toast } from 'react-toastify';
 
 /**
  * ForumList Component
  * Displays a list of available forums in the community
  */
 const ForumList = () => {
-  const [forums, setForums] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [forums, setForums] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchForums()
-  }, [])
+    fetchForums();
+  }, []);
 
   const fetchForums = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await communityAPI.getForums()
-      setForums(response.forums || [])
-      setError(null)
+      const response = await communityAPI.getForums();
+      setForums(response.forums || []);
+      setError(null);
     } catch (err) {
-      console.error("Error fetching forums:", err)
-      setError("Failed to load forums. Please try again.")
-      toast.error("Failed to load community forums")
+      console.error('Error fetching forums:', err);
+      setError('Failed to load forums. Please try again.');
+      toast.error('Failed to load community forums');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -38,7 +37,7 @@ const ForumList = () => {
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -46,7 +45,7 @@ const ForumList = () => {
       <div className="alert alert-danger" role="alert">
         {error}
       </div>
-    )
+    );
   }
 
   if (forums.length === 0) {
@@ -54,7 +53,7 @@ const ForumList = () => {
       <div className="alert alert-info" role="alert">
         No forums are currently available.
       </div>
-    )
+    );
   }
 
   return (
@@ -71,7 +70,9 @@ const ForumList = () => {
                   <small className="text-muted">
                     {forum.topicCount} topics • {forum.postCount} posts
                   </small>
-                  <small className="text-muted">{forum.memberCount} members</small>
+                  <small className="text-muted">
+                    {forum.memberCount} members
+                  </small>
                 </div>
               </div>
               <div className="card-footer bg-transparent">
@@ -84,7 +85,7 @@ const ForumList = () => {
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ForumList
+export default ForumList;

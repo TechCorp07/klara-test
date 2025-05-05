@@ -1,8 +1,8 @@
-import TopicsClient from "./components/TopicsClient"
+import TopicsClient from './components/TopicsClient';
 
 /**
  * Server component for topics page
  */
 export default function Page() {
-  return <TopicsClient />
+  return <TopicsClient />;
 }
