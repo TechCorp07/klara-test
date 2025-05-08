@@ -1,124 +1,177 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "*.{js,ts,jsx,tsx,mdx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        primary: {
-          50: "rgb(235, 248, 250)",
-          100: "rgb(40, 226, 255)",
-          200: "rgb(40, 226, 255)",
-          300: "rgb(38, 213, 239)",
-          400: "rgb(34, 190, 213)",
-          500: "rgb(26, 145, 163)",
-          600: "rgb(21, 122, 137)",
-          700: "rgb(17, 99, 111)",
-          800: "rgb(13, 76, 86)",
-          900: "rgb(9, 54, 60)",
+    content: [
+      './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+      './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+      './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+      './src/lib/**/*.{js,ts,jsx,tsx}',
+    ],
+    theme: {
+      extend: {
+        colors: {
+          // Main brand colors
+          primary: {
+            DEFAULT: '#2563eb', // blue-600
+            50: '#eff6ff',
+            100: '#dbeafe',
+            200: '#bfdbfe',
+            300: '#93c5fd',
+            400: '#60a5fa',
+            500: '#3b82f6',
+            600: '#2563eb',
+            700: '#1d4ed8',
+            800: '#1e40af',
+            900: '#1e3a8a',
+            950: '#172554',
+          },
+          // Secondary color for less emphasis
+          secondary: {
+            DEFAULT: '#64748b', // slate-500
+            50: '#f8fafc',
+            100: '#f1f5f9',
+            200: '#e2e8f0',
+            300: '#cbd5e1',
+            400: '#94a3b8',
+            500: '#64748b',
+            600: '#475569',
+            700: '#334155',
+            800: '#1e293b',
+            900: '#0f172a',
+            950: '#020617',
+          },
+          // Success states
+          success: {
+            DEFAULT: '#16a34a', // green-600
+            50: '#f0fdf4',
+            100: '#dcfce7',
+            200: '#bbf7d0',
+            300: '#86efac',
+            400: '#4ade80',
+            500: '#22c55e',
+            600: '#16a34a',
+            700: '#15803d',
+            800: '#166534',
+            900: '#14532d',
+            950: '#052e16',
+          },
+          // Error and warning states
+          danger: {
+            DEFAULT: '#dc2626', // red-600
+            50: '#fef2f2',
+            100: '#fee2e2',
+            200: '#fecaca',
+            300: '#fca5a5',
+            400: '#f87171',
+            500: '#ef4444',
+            600: '#dc2626',
+            700: '#b91c1c',
+            800: '#991b1b',
+            900: '#7f1d1d',
+            950: '#450a0a',
+          },
+          warning: {
+            DEFAULT: '#ca8a04', // yellow-600
+            50: '#fefce8',
+            100: '#fef9c3',
+            200: '#fef08a',
+            300: '#fde047',
+            400: '#facc15',
+            500: '#eab308',
+            600: '#ca8a04',
+            700: '#a16207',
+            800: '#854d0e',
+            900: '#713f12',
+            950: '#422006',
+          },
+          // Info state
+          info: {
+            DEFAULT: '#0284c7', // sky-600
+            50: '#f0f9ff',
+            100: '#e0f2fe',
+            200: '#bae6fd',
+            300: '#7dd3fc',
+            400: '#38bdf8',
+            500: '#0ea5e9',
+            600: '#0284c7',
+            700: '#0369a1',
+            800: '#075985',
+            900: '#0c4a6e',
+            950: '#082f49',
+          },
         },
-        secondary: {
-          100: "rgb(199, 102, 255)",
-          200: "rgb(199, 102, 255)",
-          300: "rgb(182, 93, 233)",
-          400: "rgb(162, 83, 208)",
-          500: "rgb(123, 63, 157)",
-          600: "rgb(103, 52, 131)",
-          700: "rgb(83, 42, 106)",
-          800: "rgb(63, 32, 80)",
-          900: "rgb(43, 22, 55)",
+        fontFamily: {
+          sans: [
+            'Inter',
+            'ui-sans-serif',
+            'system-ui',
+            '-apple-system',
+            'BlinkMacSystemFont',
+            '"Segoe UI"',
+            'Roboto',
+            '"Helvetica Neue"',
+            'Arial',
+            '"Noto Sans"',
+            'sans-serif',
+            '"Apple Color Emoji"',
+            '"Segoe UI Emoji"',
+            '"Segoe UI Symbol"',
+            '"Noto Color Emoji"',
+          ],
         },
-        accent: {
-          100: "rgb(255, 172, 37)",
-          200: "rgb(255, 172, 37)",
-          300: "rgb(255, 172, 37)",
-          400: "rgb(255, 172, 37)",
-          500: "rgb(249, 168, 37)",
-          600: "rgb(223, 150, 33)",
-          700: "rgb(197, 133, 29)",
-          800: "rgb(172, 116, 25)",
-          900: "rgb(147, 99, 21)",
+        spacing: {
+          '128': '32rem',
+          '144': '36rem',
         },
-        success: {
-          100: "rgb(68, 255, 232)",
-          200: "rgb(68, 255, 232)",
-          300: "rgb(62, 233, 212)",
-          400: "rgb(55, 208, 189)",
-          500: "rgb(42, 157, 143)",
-          600: "rgb(35, 131, 119)",
-          700: "rgb(28, 106, 96)",
-          800: "rgb(21, 80, 73)",
-          900: "rgb(14, 55, 50)",
+        borderRadius: {
+          '4xl': '2rem',
         },
-        warning: {
-          100: "rgb(255, 203, 80)",
-          200: "rgb(255, 203, 80)",
-          300: "rgb(255, 203, 80)",
-          400: "rgb(255, 203, 80)",
-          500: "rgb(249, 199, 79)",
-          600: "rgb(223, 178, 70)",
-          700: "rgb(197, 158, 62)",
-          800: "rgb(172, 137, 54)",
-          900: "rgb(147, 117, 46)",
+        boxShadow: {
+          'inner-lg': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
         },
-        error: {
-          100: "rgb(255, 63, 77)",
-          200: "rgb(255, 63, 77)",
-          300: "rgb(255, 63, 77)",
-          400: "rgb(255, 63, 77)",
-          500: "rgb(230, 57, 70)",
-          600: "rgb(204, 50, 62)",
-          700: "rgb(179, 44, 54)",
-          800: "rgb(153, 38, 46)",
-          900: "rgb(128, 31, 38)",
-        },
-        info: {
-          100: "rgb(255, 169, 101)",
-          200: "rgb(255, 169, 101)",
-          300: "rgb(255, 169, 101)",
-          400: "rgb(255, 169, 101)",
-          500: "rgb(244, 162, 97)",
-          600: "rgb(218, 145, 86)",
-          700: "rgb(193, 128, 76)",
-          800: "rgb(167, 111, 66)",
-          900: "rgb(142, 94, 56)",
-        },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-      },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        typography: (theme) => ({
+          DEFAULT: {
+            css: {
+              color: theme('colors.gray.900'),
+              a: {
+                color: theme('colors.primary.600'),
+                '&:hover': {
+                  color: theme('colors.primary.700'),
+                },
+              },
+              h1: {
+                color: theme('colors.gray.900'),
+              },
+              h2: {
+                color: theme('colors.gray.900'),
+              },
+              h3: {
+                color: theme('colors.gray.900'),
+              },
+              h4: {
+                color: theme('colors.gray.900'),
+              },
+            },
+          },
+        }),
       },
     },
-  },
-  plugins: [],
-}
+    plugins: [],
+    safelist: [
+      // Add any classes that might be dynamically generated and need to be included
+      'bg-primary-50',
+      'bg-primary-100',
+      'bg-success-50',
+      'bg-success-100',
+      'bg-danger-50',
+      'bg-danger-100',
+      'bg-warning-50',
+      'bg-warning-100',
+      'bg-info-50',
+      'bg-info-100',
+      'text-primary-600',
+      'text-success-600',
+      'text-danger-600',
+      'text-warning-600',
+      'text-info-600',
+    ],
+  }

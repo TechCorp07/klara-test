@@ -1,14 +1,24 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+/.nyc_output
 
 # next.js
 /.next/
 /out/
+/build
 
 # production
-/build
+/dist
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -16,8 +26,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env*
+# local env files
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 .vercel
@@ -25,3 +39,65 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE and editor folders
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# logs
+logs
+*.log
+
+# temp directories
+.temp
+.tmp
+.cache
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# deployment
+.netlify
+_static
+
+# storybook
+/storybook-static
+
+# Certificate files
+*.crt
+*.key
+*.pem
+
+# Large media files
+*.mp4
+*.tiff
+*.avi
+*.flv
+*.mov
+*.wmv
+
+# PHI/PII data (HIPAA compliance)
+*.phi
+*.pii
+*credentials.json
+*secrets.json
