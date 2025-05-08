@@ -145,12 +145,10 @@ const nextConfig = {
     
     // Configure internationalization if needed
     i18n: {
-      // These are all the locales supported in the application
       locales: ['en-US', 'es-US', 'fr-CA'],
-      // Default locale used for all API routes
       defaultLocale: 'en-US',
       // Set to true to automatically detect user locale from browser/headers
-      localeDetection: true,
+      localeDetection: false,
     },
     
     // Configure compiler options
@@ -198,13 +196,9 @@ const nextConfig = {
     
     // Experimental features
     experimental: {
-      // Opt in to newer Next.js features if needed
-      serverActions: false,
       serverComponentsExternalPackages: [],
     },
     
-    // Enable Next.js telemetry - set to false if you want to opt out
-    telemetry: false,
   };
   
   module.exports = nextConfig;

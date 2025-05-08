@@ -130,19 +130,19 @@ apiClient.interceptors.response.use(
       }
       
       // In production, sanitize error details
-      if (typeof sanitizedError.response?.data === 'object') {
+      if (typeof sanitizedError.response?.data === 'object' && sanitizedError.response.data !== null) {
         // Keep structure but sanitize any potentially sensitive fields
         const sensitiveFields = ['medical_records', 'diagnosis', 'treatment', 'health_data'];
         
         for (const field of sensitiveFields) {
           if (field in sanitizedError.response.data) {
-            sanitizedError.response.data[field] = '[REDACTED]';
+            (sanitizedError.response.data as Record<string, any>)[field] = '[REDACTED]';
           }
         }
       }
-      
+
       return Promise.reject(sanitizedError);
-    }
+      }
     
     return Promise.reject(error);
   }

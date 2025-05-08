@@ -216,7 +216,7 @@ const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ token: propToken, ema
         <p className="text-sm text-gray-600 mb-4">
           {user?.email
             ? `We need to verify your email address (${user.email}). If you haven't received the verification email, you can request a new one.`
-            : 'We need to verify your email address. If you haven't received the verification email, you can request a new one.'}
+            : 'We need to verify your email address. If you have not received the verification email, you can request a new one.'}
         </p>
 
         <FormButton

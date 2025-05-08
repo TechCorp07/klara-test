@@ -1,7 +1,7 @@
 // src/lib/api/services/auth.service.ts
 import apiClient from '../client';
 import { ENDPOINTS } from '../endpoints';
-import { config } from '@/lib/config';
+//import { config } from '@/lib/config';
 import type { 
   LoginRequest, 
   LoginResponse, 

@@ -1,5 +1,6 @@
 // src/lib/api/endpoints.ts
-import { config } from '@/lib/config';
+// import { config } from '@/lib/config';
+
 /**
  * Centralized repository of API endpoints
  * This makes it easier to update endpoint paths in one place

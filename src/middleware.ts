@@ -1,6 +1,6 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { config } from './lib/config';
+import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
 
 // Define route permissions by role
@@ -142,10 +142,10 @@ export function middleware(request: NextRequest) {
   }
   
   // Check if user is authenticated (using cookies)
-  const token = request.cookies.get(config.authCookieName)?.value;
-  const userRole = request.cookies.get(config.userRoleCookieName)?.value as UserRole | undefined;
-  const isEmailVerified = request.cookies.get(config.emailVerifiedCookieName)?.value === 'true';
-  const isApproved = request.cookies.get(config.isApprovedCookieName)?.value !== 'false';
+  const token = request.cookies.get(appConfig.authCookieName)?.value;
+  const userRole = request.cookies.get(appConfig.userRoleCookieName)?.value as UserRole | undefined;
+  const isEmailVerified = request.cookies.get(appConfig.emailVerifiedCookieName)?.value === 'true';
+  const isApproved = request.cookies.get(appConfig.isApprovedCookieName)?.value !== 'false';
   
   // If no token, redirect to login
   if (!token) {
