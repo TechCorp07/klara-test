@@ -1,8 +1,9 @@
 // src/app/(auth)/verify-email/page.tsx
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-import VerifyEmailForm from '@/components/auth/VerifyEmailForm/VerifyEmailForm';
+import { Suspense } from 'react';
+import { AppLogo } from '@/components/ui/AppLogo';
+import VerifyEmailContent from './VerifyEmailContent';
 
 /**
  * Email verification page component.
@@ -12,24 +13,16 @@ import VerifyEmailForm from '@/components/auth/VerifyEmailForm/VerifyEmailForm';
  * - If accessed via a verification link, it automatically processes the token
  */
 export default function VerifyEmailPage() {
-  const searchParams = useSearchParams();
-  
-  // Get token and email from URL parameters if available
-  const token = searchParams.get('token') || '';
-  const email = searchParams.get('email') || '';
-  
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img 
-            className="h-16 w-auto" 
-            src="/images/logo.svg" 
-            alt="Klararety Healthcare Platform" 
-          />
+          <AppLogo size='lg' />
         </div>
         
-        <VerifyEmailForm token={token} email={email} />
+        <Suspense fallback={<div className="text-center">Loading...</div>}>
+          <VerifyEmailContent />
+        </Suspense>
         
         <p className="mt-8 text-center text-sm text-gray-500">
           <span>Protected health information is handled in accordance with HIPAA regulations.</span>

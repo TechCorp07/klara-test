@@ -2,6 +2,7 @@
 export type UserRole = 'patient' | 'provider' | 'pharmco' | 'caregiver' | 'researcher' | 'admin' | 'superadmin' | 'compliance';
 
 export interface User {
+  date_joined: any;
   id: number;
   username: string;
   email: string;

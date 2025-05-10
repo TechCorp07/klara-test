@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { FormInput, FormButton, FormAlert } from '@/components/auth/common';
-import { useAuth } from '@/lib/auth/use-auth';
+//import { useAuth } from '@/lib/auth/use-auth';
 import { authService } from '@/lib/api/services/auth.service';
 import { config } from '@/lib/config';
 
@@ -59,7 +59,7 @@ type PasswordChangeFormValues = z.infer<typeof passwordSchema>;
  */
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { isLoading } = useAuth();
+  //const { isLoading } = useAuth();
   const [isChanging, setIsChanging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -241,7 +241,7 @@ export default function ChangePasswordPage() {
           <h3 className="text-lg leading-6 font-medium text-gray-900">Password Security Tips</h3>
           <div className="mt-2 max-w-xl text-sm text-gray-500">
             <ul className="list-disc pl-5 space-y-1">
-              <li>Use a unique password that you don't use for other accounts</li>
+              <li>Use a unique password that you don&apos;t use for other accounts</li>
               <li>Include a mix of uppercase and lowercase letters, numbers, and special characters</li>
               <li>Avoid using easily guessable information like your name or birthday</li>
               <li>Consider using a password manager to generate and store strong passwords</li>

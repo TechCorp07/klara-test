@@ -12,7 +12,7 @@ import type {
   SetupTwoFactorResponse, 
   TokenRefreshRequest, 
   TokenRefreshResponse,
-  ConsentUpdate,
+  //ConsentUpdate,
   User
 } from '@/types/auth.types';
 

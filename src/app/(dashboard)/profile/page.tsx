@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/lib/auth/use-auth';
@@ -55,7 +55,6 @@ export default function ProfilePage() {
     register,
     handleSubmit,
     reset,
-    control,
     formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -255,7 +254,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Role-specific information section */}
-      {user.role !== 'patient' && (
+      {profileData.role !== 'patient' && (
         <div className="mt-8 bg-white shadow rounded-lg overflow-hidden">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 className="text-lg font-medium leading-6 text-gray-900">
@@ -268,7 +267,7 @@ export default function ProfilePage() {
 
           <div className="px-4 py-5 sm:p-6">
             <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-              {user.role === 'provider' && (
+              {profileData.role === 'provider' && (
                 <>
                   <div className="sm:col-span-1">
                     <dt className="text-sm font-medium text-gray-500">License Number</dt>
@@ -289,7 +288,7 @@ export default function ProfilePage() {
                 </>
               )}
 
-              {user.role === 'researcher' && (
+              {profileData.role === 'researcher' && (
                 <>
                   <div className="sm:col-span-1">
                     <dt className="text-sm font-medium text-gray-500">Institution</dt>
@@ -308,7 +307,7 @@ export default function ProfilePage() {
                 </>
               )}
 
-              {user.role === 'pharmco' && (
+              {profileData.role === 'pharmco' && (
                 <>
                   <div className="sm:col-span-1">
                     <dt className="text-sm font-medium text-gray-500">Company Name</dt>
@@ -326,7 +325,7 @@ export default function ProfilePage() {
               )}
 
               {/* Default professional information display for other roles */}
-              {!['provider', 'researcher', 'pharmco'].includes(user.role) && (
+              {!['provider', 'researcher', 'pharmco'].includes(profileData.role) && (
                 <div className="sm:col-span-2">
                   <p className="text-sm text-gray-500">
                     Professional information is available for this role but not displayed in this view.
@@ -394,7 +393,7 @@ export default function ProfilePage() {
       </div>
 
       {/* HIPAA consent and privacy section for patients */}
-      {user.role === 'patient' && (
+      {profileData.role === 'patient' && (
         <div className="mt-8 bg-white shadow rounded-lg overflow-hidden">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 className="text-lg font-medium leading-6 text-gray-900">

@@ -11,6 +11,7 @@ import {
   ProviderRegisterForm,
   ResearcherRegisterForm 
 } from '@/components/auth/RegisterForm';
+import { AppLogo } from '@/components/ui/AppLogo';
 
 /**
  * Registration page component.
@@ -65,11 +66,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="w-full max-w-3xl">
         <div className="flex justify-center mb-8">
-          <img 
-            className="h-16 w-auto" 
-            src="/images/logo.svg" 
-            alt="Klararety Healthcare Platform" 
-          />
+          <AppLogo size='lg' />
         </div>
         
         <div className="bg-white p-8 rounded-lg shadow-md">

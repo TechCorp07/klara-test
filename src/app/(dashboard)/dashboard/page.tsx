@@ -12,9 +12,11 @@ import { Spinner } from '@/components/ui/spinner';
  * This component provides a personalized dashboard experience based on the user's role,
  * displaying different information and functionality for patients, providers, researchers, etc.
  */
+type StatsRecord = Record<string, string | number>;
+
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsRecord | null>(null);
   const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function DashboardPage() {
   }, [user]);
 
   // Get mock statistics based on user role
-  const getMockStats = (role?: UserRole) => {
+  const getMockStats = (role?: UserRole): StatsRecord => {
     switch (role) {
       case 'patient':
         return {
@@ -188,7 +190,7 @@ export default function DashboardPage() {
                 <li key={activity.id} className="p-4 hover:bg-gray-50">
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
-                      <span className="inline-block h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                      <span className="inline-block h-10 w-10 rounded-full bg-blue-100 text-blue-600 items-center justify-center">
                         {activity.type[0].toUpperCase()}
                       </span>
                     </div>

@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth/use-auth';
 import { AuthGuard } from '@/lib/auth/guards/auth-guard';
 import { Spinner } from '@/components/ui/spinner';
-import { config } from '@/lib/config';
+import { AppLogo } from '@/components/ui/AppLogo';
+//import { config } from '@/lib/config';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -228,11 +229,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         >
           <div className="flex items-center justify-center h-16 border-b border-gray-200">
             <Link href="/dashboard" className="flex items-center">
-              <img
-                className="h-8 w-auto"
-                src="/images/logo.svg"
-                alt="Klararety Healthcare Platform"
-              />
+              <AppLogo size='sm' />
               <span className="ml-2 text-xl font-semibold text-gray-900">Klararety</span>
             </Link>
           </div>

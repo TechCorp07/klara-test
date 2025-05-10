@@ -27,7 +27,7 @@ export default function ApprovalsPage() {
 }
 
 function ApprovalManagement() {
-  const { user } = useAuth();
+  //const { user } = useAuth();
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -293,7 +293,7 @@ function ApprovalManagement() {
               Please follow these guidelines when reviewing registration requests:
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li>Verify the user's identity and credentials before approval</li>
+              <li>Verify the user&apos;s identity and credentials before approval</li>
               <li>For healthcare providers, verify their license number and NPI</li>
               <li>For researchers, verify their institutional affiliation</li>
               <li>For pharmaceutical companies, verify their regulatory ID</li>

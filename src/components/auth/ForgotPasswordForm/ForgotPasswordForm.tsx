@@ -89,7 +89,7 @@ const ForgotPasswordForm: React.FC = () => {
 
         <div className="mt-6">
           <p className="text-sm text-gray-600 mb-4">
-            Please check your email for instructions on how to reset your password. If you don't receive an email within a few minutes, please check your spam folder.
+            Please check your email for instructions on how to reset your password. If you don&apos;t receive an email within a few minutes, please check your spam folder.
           </p>
           
           <p className="text-sm text-gray-600">
@@ -117,7 +117,7 @@ const ForgotPasswordForm: React.FC = () => {
       </h2>
 
       <p className="text-sm text-gray-600 mb-6">
-        Enter your email address below, and we'll send you a link to reset your password.
+        Enter your email address below, and we&apos;ll send you a link to reset your password.
       </p>
 
       <FormAlert

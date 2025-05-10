@@ -2,6 +2,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { config } from '@/lib/config';
+import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: `Authentication | ${config.appName}`,
@@ -29,9 +30,11 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center">
-              <img 
+              <Image 
                 src="/images/logo.svg" 
-                alt={config.appName} 
+                alt={config.appName}
+                width={32} 
+                height={32}
                 className="h-8 w-auto" 
               />
             </div>

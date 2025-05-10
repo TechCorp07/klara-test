@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/use-auth';
+import { AppLogo } from '@/components/ui/AppLogo';
 
 /**
  * Unauthorized access page.
@@ -28,11 +29,7 @@ export default function UnauthorizedPage() {
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img 
-            className="h-16 w-auto" 
-            src="/images/logo.svg" 
-            alt="Klararety Healthcare Platform" 
-          />
+          <AppLogo size='lg' />
         </div>
         
         <div className="bg-white p-6 shadow-md rounded-lg text-center">
@@ -60,12 +57,12 @@ export default function UnauthorizedPage() {
           </h1>
           
           <p className="mt-3 text-gray-600">
-            You don't have permission to access this page. This could be because:
+            You do not have permission to access this page. This could be because:
           </p>
           
           <ul className="mt-4 text-left text-gray-600 pl-6 list-disc">
-            <li className="mt-1">Your account role doesn't have the required permissions</li>
-            <li className="mt-1">You're trying to access a restricted resource</li>
+            <li className="mt-1">Your account role does not have the required permissions</li>
+            <li className="mt-1">You are trying to access a restricted resource</li>
             <li className="mt-1">This feature requires additional authorization</li>
           </ul>
           

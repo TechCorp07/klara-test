@@ -11,7 +11,7 @@ import { config } from '@/lib/config';
  * Both HttpOnly secure cookies (containing tokens) and non-HttpOnly cookies
  * (containing user info for UI) are cleared.
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Create the response
     const response = NextResponse.json({ 

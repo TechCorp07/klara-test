@@ -8,6 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { FormInput, FormButton, FormAlert } from '../common';
 import { useAuth } from '@/lib/auth/use-auth';
+import Image from 'next/image';
 
 // Validation schema for 2FA verification code
 const twoFactorCodeSchema = z.object({
@@ -289,10 +290,12 @@ const TwoFactorForm: React.FC = () => {
           
           <div className="flex justify-center mb-4">
             <div className="p-2 bg-white border rounded-md shadow-sm">
-              <img
+              <Image
                 src={qrCodeUrl}
                 alt="QR Code for Two-Factor Authentication"
                 className="w-48 h-48"
+                width = {48}
+                height = {48}
               />
             </div>
           </div>
@@ -303,7 +306,7 @@ const TwoFactorForm: React.FC = () => {
               {secret}
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              If you can't scan the QR code, you can manually enter this code into your authenticator app.
+              If you can&apos;t scan the QR code, you can manually enter this code into your authenticator app.
             </p>
           </div>
         </div>
@@ -379,14 +382,14 @@ const TwoFactorForm: React.FC = () => {
             <li>Set up an authenticator app on your phone (like Google Authenticator, Authy, or Microsoft Authenticator)</li>
             <li>Scan the QR code or enter the setup key into your app</li>
             <li>Enter the verification code from your app to complete setup</li>
-            <li>For future logins, you'll need to provide a code from your app</li>
+            <li>For future logins, you&apos;ll need to provide a code from your app</li>
           </ol>
         </div>
         
         <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
           <h4 className="text-sm font-semibold text-yellow-800 mb-1">Important:</h4>
           <p className="text-sm text-yellow-700">
-            You'll need access to your authenticator app every time you log in. Make sure to save your recovery codes in case you lose your device.
+            You&apos;ll need access to your authenticator app every time you log in. Make sure to save your recovery codes in case you lose your device.
           </p>
         </div>
       </div>

@@ -1,11 +1,20 @@
 // src/app/(auth)/two-factor/page.tsx
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import TwoFactorForm from '@/components/auth/TwoFactorForm';
-import { useAuth } from '@/lib/auth/use-auth';
-import { AuthGuard } from '@/lib/auth/guards/auth-guard';
+import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
+import { AppLogo } from '@/components/ui/AppLogo';
+
+// Dynamically import components that may use client-side hooks
+const TwoFactorForm = dynamic(() => import('@/components/auth/TwoFactorForm'), {
+  loading: () => <div className="text-center">Loading...</div>,
+  ssr: false
+});
+
+const AuthGuard = dynamic(() => import('@/lib/auth/guards/auth-guard').then(mod => mod.AuthGuard), {
+  loading: () => <div className="text-center">Loading...</div>,
+  ssr: false
+});
 
 /**
  * Two-factor authentication setup page component.
@@ -16,24 +25,24 @@ import { AuthGuard } from '@/lib/auth/guards/auth-guard';
  */
 export default function TwoFactorPage() {
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="w-full max-w-md">
-          <div className="flex justify-center mb-8">
-            <img 
-              className="h-16 w-auto" 
-              src="/images/logo.svg" 
-              alt="Klararety Healthcare Platform" 
-            />
-          </div>
-          
-          <TwoFactorForm />
-          
-          <p className="mt-8 text-center text-sm text-gray-500">
-            <span>Enhanced security for sensitive healthcare information.</span>
-          </p>
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="w-full max-w-md">
+        <div className="flex justify-center mb-8">
+          <AppLogo size='lg' />
         </div>
+        
+        <Suspense fallback={<div className="text-center">Loading...</div>}>
+          <AuthGuard>
+            <Suspense fallback={<div className="text-center">Loading form...</div>}>
+              <TwoFactorForm />
+            </Suspense>
+          </AuthGuard>
+        </Suspense>
+        
+        <p className="mt-8 text-center text-sm text-gray-500">
+          <span>Enhanced security for sensitive healthcare information.</span>
+        </p>
       </div>
-    </AuthGuard>
+    </div>
   );
 }

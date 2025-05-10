@@ -3,6 +3,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import VerifyEmailForm from '@/components/auth/VerifyEmailForm/VerifyEmailForm';
+import Image from 'next/image';
 
 interface VerifyEmailTokenPageProps {
   params: {
@@ -30,10 +31,13 @@ export default function VerifyEmailTokenPage({ params }: VerifyEmailTokenPagePro
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img 
+          <Image 
             className="h-16 w-auto" 
             src="/images/logo.svg" 
-            alt="Klararety Healthcare Platform" 
+            alt="Klararety Healthcare Platform"
+            width={64}
+            height={64}
+            priority
           />
         </div>
         

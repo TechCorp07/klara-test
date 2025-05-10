@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FormButton, FormAlert } from '../common';
 import { useAuth } from '@/lib/auth/use-auth';
+import Image from 'next/image';
 
 // Validation schema for HIPAA consent
 const hipaaConsentSchema = z.object({
@@ -138,10 +139,12 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
               </p>
             </div>
             <div className="flex-shrink-0">
-              <img 
+              <Image 
                 className="h-16 w-auto" 
                 src="/images/hipaa-badge.svg"
-                alt="HIPAA Compliant" 
+                alt="HIPAA Compliant"
+                width = {64}
+                height = {64}
               />
             </div>
           </div>

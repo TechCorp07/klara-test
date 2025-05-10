@@ -1,10 +1,9 @@
 // src/app/(auth)/login/page.tsx
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import LoginForm from '@/components/auth/LoginForm';
-import { useAuth } from '@/lib/auth/use-auth';
+import { Suspense } from 'react';
+import LoginContent from './LoginContent';
+import { AppLogo } from '@/components/ui/AppLogo';
 
 /**
  * Login page component.
@@ -15,28 +14,16 @@ import { useAuth } from '@/lib/auth/use-auth';
  * - Metadata for SEO
  */
 export default function LoginPage() {
-  const { isAuthenticated, isInitialized } = useAuth();
-  const router = useRouter();
-  
-  // Redirect to dashboard if already authenticated
-  useEffect(() => {
-    if (isInitialized && isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, isInitialized, router]);
-  
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img 
-            className="h-16 w-auto" 
-            src="/images/logo.svg" 
-            alt="Klararety Healthcare Platform" 
-          />
+          <AppLogo size='lg' />
         </div>
         
-        <LoginForm />
+        <Suspense fallback={<div className="text-center">Loading...</div>}>
+          <LoginContent />
+        </Suspense>
         
         <p className="mt-8 text-center text-sm text-gray-500">
           <span>Protected health information is handled in accordance with HIPAA regulations.</span>
