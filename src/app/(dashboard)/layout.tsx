@@ -72,6 +72,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       { name: 'Profile', href: '/profile', icon: 'user' },
       { name: 'Settings', href: '/settings', icon: 'settings' },
       { name: 'Messages', href: '/messages', icon: 'mail' },
+      { name: 'Support', href: '/contact', icon: 'life-buoy' },
     ];
     
     // Role-specific navigation items

@@ -61,6 +61,7 @@ export default function ApprovalPendingPage() {
   
   // Define messages based on user role
   const approvalMessages = {
+    patient: 'As a patient, we need to verify your account information to ensure the security and integrity of our platform. This typically involves confirming your identity and contact information.',
     provider: 'As a healthcare provider, we need to verify your credentials to ensure the security and integrity of our platform. This typically involves verifying your medical license, NPI number, and other professional information.',
     researcher: 'As a researcher, we need to verify your institutional affiliation and research credentials to ensure the security and integrity of our platform.',
     pharmco: 'As a pharmaceutical company representative, we need to verify your company credentials and regulatory information to ensure the security and integrity of our platform.',

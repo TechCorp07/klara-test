@@ -40,9 +40,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             </div>
             <div className="flex items-center space-x-4">
               <a 
-                href="https://klararety.com/contact" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                href="/contact" 
                 className="text-sm font-medium text-gray-600 hover:text-gray-900"
               >
                 Support

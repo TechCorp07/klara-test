@@ -1,4 +1,4 @@
-// src/components/auth/RegisterForm/PatientRegisterForm.tsx
+// src/components/auth/RegisterForm/ComplianceRegisterForm.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -11,8 +11,8 @@ import { FormInput, FormButton, FormAlert } from '../common';
 import { useAuth } from '@/lib/auth/use-auth';
 import { config } from '@/lib/config';
 
-// Validation schema for patient registration
-const patientRegisterSchema = z.object({
+// Validation schema for compliance officer registration
+const complianceRegisterSchema = z.object({
   email: z
     .string()
     .email('Please enter a valid email address')
@@ -43,35 +43,39 @@ const patientRegisterSchema = z.object({
     .string()
     .min(1, 'Last name is required')
     .max(50, 'Last name cannot exceed 50 characters'),
-  date_of_birth: z
+  compliance_certification: z
     .string()
-    .refine((dob) => {
-      // Basic date validation
-      const date = new Date(dob);
-      return !isNaN(date.getTime());
-    }, 'Please enter a valid date of birth')
-    .refine((dob) => {
-      // Must be at least 18 years old
-      const date = new Date(dob);
-      const eighteenYearsAgo = new Date();
-      eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
-      return date <= eighteenYearsAgo;
-    }, 'You must be at least 18 years old to register'),
+    .min(1, 'Certification information is required'),
+  regulatory_experience: z
+    .string()
+    .min(1, 'Regulatory experience is required'),
+  organization: z
+    .string()
+    .min(1, 'Organization name is required'),
   phone_number: z
     .string()
     .min(10, 'Please enter a valid phone number')
     .max(15, 'Please enter a valid phone number')
     .regex(/^[0-9+\-\s()]*$/, 'Please enter a valid phone number'),
+  specialization_areas: z
+    .string()
+    .min(1, 'Specialization areas are required'),
+  job_title: z
+    .string()
+    .min(1, 'Job title is required'),
   terms_accepted: z
     .boolean()
     .refine((val) => val === true, 'You must accept the terms and conditions'),
   hipaa_consent: z
     .boolean()
     .refine((val) => val === true, 'You must acknowledge the HIPAA Notice of Privacy Practices'),
+  confidentiality_agreement: z
+    .boolean()
+    .refine((val) => val === true, 'You must agree to the confidentiality terms'),
 });
 
 // Match passwords
-const patientSchema = patientRegisterSchema.refine(
+const complianceSchema = complianceRegisterSchema.refine(
   (data) => data.password === data.password_confirm,
   {
     message: "Passwords don't match",
@@ -80,18 +84,52 @@ const patientSchema = patientRegisterSchema.refine(
 );
 
 // Type for form values
-type PatientRegisterFormValues = z.infer<typeof patientSchema>;
+type ComplianceRegisterFormValues = z.infer<typeof complianceSchema>;
+
+// Define certification types
+const certificationTypes = [
+  { value: '', label: 'Select a certification' },
+  { value: 'chc', label: 'Certified in Healthcare Compliance (CHC)' },
+  { value: 'chrc', label: 'Certified in Healthcare Research Compliance (CHRC)' },
+  { value: 'chpc', label: 'Certified in Healthcare Privacy Compliance (CHPC)' },
+  { value: 'ccep', label: 'Certified Compliance & Ethics Professional (CCEP)' },
+  { value: 'cipp', label: 'Certified Information Privacy Professional (CIPP)' },
+  { value: 'cissp', label: 'Certified Information Systems Security Professional (CISSP)' },
+  { value: 'chps', label: 'Certified in Healthcare Privacy and Security (CHPS)' },
+  { value: 'cisa', label: 'Certified Information Systems Auditor (CISA)' },
+  { value: 'other', label: 'Other Compliance Certification' },
+  { value: 'none', label: 'No Formal Certification (Experience Only)' },
+];
+
+// Define specialization areas
+const specializationAreas = [
+  { value: '', label: 'Select primary specialization' },
+  { value: 'hipaa_privacy', label: 'HIPAA Privacy' },
+  { value: 'hipaa_security', label: 'HIPAA Security' },
+  { value: 'clinical_compliance', label: 'Clinical Compliance' },
+  { value: 'research_compliance', label: 'Research Compliance' },
+  { value: 'billing_compliance', label: 'Billing & Coding Compliance' },
+  { value: 'regulatory_affairs', label: 'Regulatory Affairs' },
+  { value: 'risk_management', label: 'Risk Management' },
+  { value: 'audit_compliance', label: 'Audit & Compliance' },
+  { value: 'quality_improvement', label: 'Quality Improvement' },
+  { value: 'patient_rights', label: 'Patient Rights & Ethics' },
+  { value: 'data_governance', label: 'Data Governance' },
+  { value: 'other', label: 'Other Specialization' },
+];
 
 /**
- * Patient-specific registration form with validation.
+ * Compliance Officer-specific registration form with validation.
  * 
- * This component handles the complete registration flow for patients, including:
+ * This component handles the complete registration flow for compliance officers, including:
  * - Email, password, and personal information validation
- * - Error handling
- * - Terms and privacy policy acceptance
- * - HIPAA consent
+ * - Compliance certifications and experience
+ * - Specialization areas
+ * - Organization details
+ * - HIPAA and confidentiality agreements
+ * - Error handling and user feedback
  */
-const PatientRegisterForm: React.FC = () => {
+const ComplianceRegisterForm: React.FC = () => {
   // Get auth context for registration function
   const { register: registerUser } = useAuth();
   const router = useRouter();
@@ -107,23 +145,28 @@ const PatientRegisterForm: React.FC = () => {
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<PatientRegisterFormValues>({
-    resolver: zodResolver(patientSchema),
+  } = useForm<ComplianceRegisterFormValues>({
+    resolver: zodResolver(complianceSchema),
     defaultValues: {
       email: '',
       password: '',
       password_confirm: '',
       first_name: '',
       last_name: '',
-      date_of_birth: '',
+      compliance_certification: '',
+      regulatory_experience: '',
+      organization: '',
       phone_number: '',
+      specialization_areas: '',
+      job_title: '',
       terms_accepted: false,
       hipaa_consent: false,
+      confidentiality_agreement: false,
     },
   });
 
   // Handle form submission
-  const onSubmit = async (data: PatientRegisterFormValues) => {
+  const onSubmit = async (data: ComplianceRegisterFormValues) => {
     try {
       // Clear previous messages
       setErrorMessage(null);
@@ -136,14 +179,15 @@ const PatientRegisterForm: React.FC = () => {
         password_confirm: data.password_confirm,
         first_name: data.first_name,
         last_name: data.last_name,
-        role: 'patient',
-        date_of_birth: data.date_of_birth,
+        role: 'compliance',
+        compliance_certification: data.compliance_certification,
+        regulatory_experience: data.regulatory_experience,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
       });
 
       // Show success message and mark registration as complete
-      setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email notification once your account has been approved.');
+      setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email once your account has been approved.');
       setRegistrationComplete(true);
 
       // Redirect to login page after a delay
@@ -186,13 +230,10 @@ const PatientRegisterForm: React.FC = () => {
           dismissible={false}
         />
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600 mb-4">
-          Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
-        </p>
-        <p className="text-sm text-gray-600 mb-4">
-          You will be redirected to the login page in a few seconds...
-        </p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600 mb-4">
+            You will be redirected to the login page in a few seconds...
+          </p>
           <Link
             href="/login"
             className="font-medium text-blue-600 hover:text-blue-500"
@@ -206,14 +247,14 @@ const PatientRegisterForm: React.FC = () => {
 
   // Main registration form
   return (
-    <div className="w-full max-w-lg mx-auto p-6 bg-white rounded-lg shadow-md">
+    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-        Patient Registration
+        Compliance Officer Registration
       </h2>
 
       <FormAlert
         type="info"
-        message="Please fill out the form below to create your patient account. After registration, your account will need to be approved by our administrative team before you can access the platform."
+        message="Please fill out the form below to create your compliance officer account. After registration, your account will need to be approved by our administrative team before you can access the platform."
         dismissible={false}
       />
 
@@ -224,6 +265,7 @@ const PatientRegisterForm: React.FC = () => {
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6">
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Personal Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput
             id="first_name"
@@ -255,28 +297,113 @@ const PatientRegisterForm: React.FC = () => {
           {...register('email')}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput
-            id="date_of_birth"
-            label="Date of Birth"
-            type="date"
-            error={errors.date_of_birth}
-            required
-            disabled={isSubmitting}
-            {...register('date_of_birth')}
-          />
+        <FormInput
+          id="phone_number"
+          label="Phone Number"
+          type="tel"
+          error={errors.phone_number}
+          autoComplete="tel"
+          required
+          disabled={isSubmitting}
+          {...register('phone_number')}
+        />
 
-          <FormInput
-            id="phone_number"
-            label="Phone Number"
-            type="tel"
-            error={errors.phone_number}
-            autoComplete="tel"
-            required
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 pt-4">Professional Information</h3>
+
+        <FormInput
+          id="organization"
+          label="Organization"
+          error={errors.organization}
+          required
+          disabled={isSubmitting}
+          helperText="Healthcare facility, insurance company, or consulting firm"
+          {...register('organization')}
+        />
+
+        <FormInput
+          id="job_title"
+          label="Job Title"
+          error={errors.job_title}
+          required
+          disabled={isSubmitting}
+          {...register('job_title')}
+        />
+
+        <div className="mb-4">
+          <label htmlFor="compliance_certification" className="block text-sm font-medium text-gray-700 mb-1">
+            Compliance Certification<span className="text-red-500 ml-1">*</span>
+          </label>
+          <select
+            id="compliance_certification"
+            className={`
+              block w-full px-4 py-2 rounded-md border 
+              ${errors.compliance_certification 
+                ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
+            `}
             disabled={isSubmitting}
-            {...register('phone_number')}
-          />
+            {...register('compliance_certification')}
+          >
+            {certificationTypes.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.compliance_certification && (
+            <p className="mt-1 text-sm text-red-600">{errors.compliance_certification.message}</p>
+          )}
         </div>
+
+        <div className="mb-4">
+          <label htmlFor="specialization_areas" className="block text-sm font-medium text-gray-700 mb-1">
+            Primary Area of Specialization<span className="text-red-500 ml-1">*</span>
+          </label>
+          <select
+            id="specialization_areas"
+            className={`
+              block w-full px-4 py-2 rounded-md border 
+              ${errors.specialization_areas 
+                ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
+            `}
+            disabled={isSubmitting}
+            {...register('specialization_areas')}
+          >
+            {specializationAreas.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.specialization_areas && (
+            <p className="mt-1 text-sm text-red-600">{errors.specialization_areas.message}</p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label htmlFor="regulatory_experience" className="block text-sm font-medium text-gray-700 mb-1">
+            Regulatory Experience<span className="text-red-500 ml-1">*</span>
+          </label>
+          <textarea
+            id="regulatory_experience"
+            rows={4}
+            className={`
+              block w-full px-4 py-2 rounded-md border 
+              ${errors.regulatory_experience 
+                ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
+            `}
+            placeholder="Briefly describe your experience with healthcare compliance, HIPAA regulations, and related expertise"
+            disabled={isSubmitting}
+            {...register('regulatory_experience')}
+          />
+          {errors.regulatory_experience && (
+            <p className="mt-1 text-sm text-red-600">{errors.regulatory_experience.message}</p>
+          )}
+        </div>
+
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 pt-4">Account Information</h3>
 
         <FormInput
           id="password"
@@ -289,7 +416,7 @@ const PatientRegisterForm: React.FC = () => {
           helperText={`Password must be at least ${config.passwordMinLength} characters${
             config.passwordRequiresUppercase ? ', include an uppercase letter' : ''
           }${config.passwordRequiresNumber ? ', include a number' : ''}${
-            config.passwordRequiresSpecialChar ? ', and include a special character' : ''
+            config.passwordRequiresSpecialChar ? ', include a special character' : ''
           }.`}
           {...register('password')}
         />
@@ -374,13 +501,51 @@ const PatientRegisterForm: React.FC = () => {
                   className="text-blue-600 hover:text-blue-500"
                 >
                   HIPAA Notice of Privacy Practices
-                </Link>
+                </Link>{' '}
+                and will comply with all regulations
               </label>
               {errors.hipaa_consent && (
                 <p className="mt-1 text-sm text-red-600">{errors.hipaa_consent.message}</p>
               )}
             </div>
           </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <Controller
+                name="confidentiality_agreement"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="confidentiality_agreement"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    checked={field.value}
+                    onChange={field.onChange}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="confidentiality_agreement" className="font-medium text-gray-700">
+                I agree to maintain the confidentiality of all patient and organizational data that I access 
+                through this platform and to use such data solely for compliance monitoring purposes
+              </label>
+              {errors.confidentiality_agreement && (
+                <p className="mt-1 text-sm text-red-600">{errors.confidentiality_agreement.message}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <h4 className="text-sm font-semibold text-blue-800 mb-2">Compliance Officer Role</h4>
+          <p className="text-sm text-blue-700">
+            As a compliance officer, you will have access to audit logs, system reports, and user activities for the purpose of
+            ensuring regulatory compliance. Your account will provide specialized tools for monitoring HIPAA compliance, reviewing audit trails,
+            and generating compliance reports. All compliance monitoring activities will be logged for administrative review.
+          </p>
         </div>
 
         <div className="mt-6">
@@ -390,7 +555,7 @@ const PatientRegisterForm: React.FC = () => {
             fullWidth
             isLoading={isSubmitting}
           >
-            Create Account
+            Create Compliance Officer Account
           </FormButton>
         </div>
       </form>
@@ -410,4 +575,4 @@ const PatientRegisterForm: React.FC = () => {
   );
 };
 
-export default PatientRegisterForm;
+export default ComplianceRegisterForm;

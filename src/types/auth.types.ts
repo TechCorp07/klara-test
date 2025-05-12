@@ -54,6 +54,7 @@ export interface RegisterRequest {
   company_name?: string;
   company_role?: string;
   regulatory_id?: string;
+  research_focus?: string;
   // For caregiver
   relationship_to_patient?: string;
   caregiver_type?: string;

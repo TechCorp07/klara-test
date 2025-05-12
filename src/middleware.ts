@@ -122,6 +122,7 @@ const publicRoutes = [
   '/assets',
   '/images',
   '/fonts',
+  '/contact',
 ];
 
 /**

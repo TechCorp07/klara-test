@@ -9,7 +9,10 @@ import {
   RoleSelection, 
   PatientRegisterForm,
   ProviderRegisterForm,
-  ResearcherRegisterForm 
+  ResearcherRegisterForm, 
+  CaregiverRegisterForm,
+  PharmcoRegisterForm,
+  ComplianceRegisterForm
 } from '@/components/auth/RegisterForm';
 import { AppLogo } from '@/components/ui/AppLogo';
 
@@ -42,25 +45,24 @@ export default function RegisterPage() {
   };
   
   // Render the appropriate registration form based on selected role
-  const renderRegistrationForm = () => {
-    switch (selectedRole) {
-      case 'patient':
-        return <PatientRegisterForm />;
-      case 'provider':
-        return <ProviderRegisterForm />;
-      case 'researcher':
-        return <ResearcherRegisterForm />;
-      // You can add more role-specific forms as they're implemented
-      // case 'pharmco':
-      //   return <PharmcoRegisterForm />;
-      // case 'caregiver':
-      //   return <CaregiverRegisterForm />;
-      // case 'compliance':
-      //   return <ComplianceRegisterForm />;
-      default:
-        return null;
-    }
-  };
+const renderRegistrationForm = () => {
+  switch (selectedRole) {
+    case 'patient':
+      return <PatientRegisterForm />;
+    case 'provider':
+      return <ProviderRegisterForm />;
+    case 'researcher':
+      return <ResearcherRegisterForm />;
+    case 'caregiver':
+      return <CaregiverRegisterForm />;
+    case 'pharmco':
+      return <PharmcoRegisterForm />;
+    case 'compliance':
+      return <ComplianceRegisterForm />;
+    default:
+      return null;
+  }
+};
   
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">

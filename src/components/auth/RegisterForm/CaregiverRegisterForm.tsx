@@ -1,4 +1,4 @@
-// src/components/auth/RegisterForm/PatientRegisterForm.tsx
+// src/components/auth/RegisterForm/CaregiverRegisterForm.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -11,8 +11,8 @@ import { FormInput, FormButton, FormAlert } from '../common';
 import { useAuth } from '@/lib/auth/use-auth';
 import { config } from '@/lib/config';
 
-// Validation schema for patient registration
-const patientRegisterSchema = z.object({
+// Validation schema for caregiver registration
+const caregiverRegisterSchema = z.object({
   email: z
     .string()
     .email('Please enter a valid email address')
@@ -43,20 +43,16 @@ const patientRegisterSchema = z.object({
     .string()
     .min(1, 'Last name is required')
     .max(50, 'Last name cannot exceed 50 characters'),
-  date_of_birth: z
+  relationship_to_patient: z
     .string()
-    .refine((dob) => {
-      // Basic date validation
-      const date = new Date(dob);
-      return !isNaN(date.getTime());
-    }, 'Please enter a valid date of birth')
-    .refine((dob) => {
-      // Must be at least 18 years old
-      const date = new Date(dob);
-      const eighteenYearsAgo = new Date();
-      eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
-      return date <= eighteenYearsAgo;
-    }, 'You must be at least 18 years old to register'),
+    .min(1, 'Relationship to patient is required'),
+  caregiver_type: z
+    .string()
+    .min(1, 'Caregiver type is required'),
+  patient_email: z
+    .string()
+    .email('Please enter a valid patient email address')
+    .min(1, 'Patient email is required'),
   phone_number: z
     .string()
     .min(10, 'Please enter a valid phone number')
@@ -68,10 +64,13 @@ const patientRegisterSchema = z.object({
   hipaa_consent: z
     .boolean()
     .refine((val) => val === true, 'You must acknowledge the HIPAA Notice of Privacy Practices'),
+  patient_authorization: z
+    .boolean()
+    .refine((val) => val === true, 'You must confirm that you have patient authorization'),
 });
 
 // Match passwords
-const patientSchema = patientRegisterSchema.refine(
+const caregiverSchema = caregiverRegisterSchema.refine(
   (data) => data.password === data.password_confirm,
   {
     message: "Passwords don't match",
@@ -80,18 +79,45 @@ const patientSchema = patientRegisterSchema.refine(
 );
 
 // Type for form values
-type PatientRegisterFormValues = z.infer<typeof patientSchema>;
+type CaregiverRegisterFormValues = z.infer<typeof caregiverSchema>;
+
+// Define caregiver relationship options
+const relationshipOptions = [
+  { value: '', label: 'Select relationship' },
+  { value: 'family_member', label: 'Family Member' },
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'child', label: 'Adult Child' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'legal_guardian', label: 'Legal Guardian' },
+  { value: 'healthcare_proxy', label: 'Healthcare Proxy' },
+  { value: 'power_of_attorney', label: 'Power of Attorney' },
+  { value: 'friend', label: 'Friend' },
+  { value: 'other', label: 'Other' },
+];
+
+// Define caregiver type options
+const caregiverTypeOptions = [
+  { value: '', label: 'Select caregiver type' },
+  { value: 'primary', label: 'Primary Caregiver' },
+  { value: 'secondary', label: 'Secondary Caregiver' },
+  { value: 'medical', label: 'Medical Caregiver' },
+  { value: 'non_medical', label: 'Non-Medical Caregiver' },
+  { value: 'part_time', label: 'Part-Time Caregiver' },
+  { value: 'full_time', label: 'Full-Time Caregiver' },
+  { value: 'remote', label: 'Remote Caregiver' },
+];
 
 /**
- * Patient-specific registration form with validation.
+ * Caregiver-specific registration form with validation.
  * 
- * This component handles the complete registration flow for patients, including:
+ * This component handles the complete registration flow for caregivers, including:
  * - Email, password, and personal information validation
- * - Error handling
- * - Terms and privacy policy acceptance
- * - HIPAA consent
+ * - Patient relationship information
+ * - HIPAA and authorization consent
+ * - Error handling and user feedback
  */
-const PatientRegisterForm: React.FC = () => {
+const CaregiverRegisterForm: React.FC = () => {
   // Get auth context for registration function
   const { register: registerUser } = useAuth();
   const router = useRouter();
@@ -107,23 +133,26 @@ const PatientRegisterForm: React.FC = () => {
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<PatientRegisterFormValues>({
-    resolver: zodResolver(patientSchema),
+  } = useForm<CaregiverRegisterFormValues>({
+    resolver: zodResolver(caregiverSchema),
     defaultValues: {
       email: '',
       password: '',
       password_confirm: '',
       first_name: '',
       last_name: '',
-      date_of_birth: '',
+      relationship_to_patient: '',
+      caregiver_type: '',
+      patient_email: '',
       phone_number: '',
       terms_accepted: false,
       hipaa_consent: false,
+      patient_authorization: false,
     },
   });
 
   // Handle form submission
-  const onSubmit = async (data: PatientRegisterFormValues) => {
+  const onSubmit = async (data: CaregiverRegisterFormValues) => {
     try {
       // Clear previous messages
       setErrorMessage(null);
@@ -136,14 +165,16 @@ const PatientRegisterForm: React.FC = () => {
         password_confirm: data.password_confirm,
         first_name: data.first_name,
         last_name: data.last_name,
-        role: 'patient',
-        date_of_birth: data.date_of_birth,
+        role: 'caregiver',
+        relationship_to_patient: data.relationship_to_patient,
+        caregiver_type: data.caregiver_type,
+        patient_email: data.patient_email,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
       });
 
       // Show success message and mark registration as complete
-      setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email notification once your account has been approved.');
+      setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email once your account has been approved.');
       setRegistrationComplete(true);
 
       // Redirect to login page after a delay
@@ -186,13 +217,10 @@ const PatientRegisterForm: React.FC = () => {
           dismissible={false}
         />
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600 mb-4">
-          Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
-        </p>
-        <p className="text-sm text-gray-600 mb-4">
-          You will be redirected to the login page in a few seconds...
-        </p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600 mb-4">
+            You will be redirected to the login page in a few seconds...
+          </p>
           <Link
             href="/login"
             className="font-medium text-blue-600 hover:text-blue-500"
@@ -206,14 +234,14 @@ const PatientRegisterForm: React.FC = () => {
 
   // Main registration form
   return (
-    <div className="w-full max-w-lg mx-auto p-6 bg-white rounded-lg shadow-md">
+    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-        Patient Registration
+        Caregiver Registration
       </h2>
 
       <FormAlert
         type="info"
-        message="Please fill out the form below to create your patient account. After registration, your account will need to be approved by our administrative team before you can access the platform."
+        message="Please fill out the form below to create your caregiver account. After registration, your account will need to be approved by our administrative team before you can access the platform."
         dismissible={false}
       />
 
@@ -224,6 +252,7 @@ const PatientRegisterForm: React.FC = () => {
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6">
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Personal Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput
             id="first_name"
@@ -255,28 +284,83 @@ const PatientRegisterForm: React.FC = () => {
           {...register('email')}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput
-            id="date_of_birth"
-            label="Date of Birth"
-            type="date"
-            error={errors.date_of_birth}
-            required
-            disabled={isSubmitting}
-            {...register('date_of_birth')}
-          />
+        <FormInput
+          id="phone_number"
+          label="Phone Number"
+          type="tel"
+          error={errors.phone_number}
+          autoComplete="tel"
+          required
+          disabled={isSubmitting}
+          {...register('phone_number')}
+        />
 
-          <FormInput
-            id="phone_number"
-            label="Phone Number"
-            type="tel"
-            error={errors.phone_number}
-            autoComplete="tel"
-            required
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 pt-4">Patient Relationship Information</h3>
+
+        <div className="mb-4">
+          <label htmlFor="relationship_to_patient" className="block text-sm font-medium text-gray-700 mb-1">
+            Relationship to Patient<span className="text-red-500 ml-1">*</span>
+          </label>
+          <select
+            id="relationship_to_patient"
+            className={`
+              block w-full px-4 py-2 rounded-md border 
+              ${errors.relationship_to_patient 
+                ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
+            `}
             disabled={isSubmitting}
-            {...register('phone_number')}
-          />
+            {...register('relationship_to_patient')}
+          >
+            {relationshipOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.relationship_to_patient && (
+            <p className="mt-1 text-sm text-red-600">{errors.relationship_to_patient.message}</p>
+          )}
         </div>
+
+        <div className="mb-4">
+          <label htmlFor="caregiver_type" className="block text-sm font-medium text-gray-700 mb-1">
+            Caregiver Type<span className="text-red-500 ml-1">*</span>
+          </label>
+          <select
+            id="caregiver_type"
+            className={`
+              block w-full px-4 py-2 rounded-md border 
+              ${errors.caregiver_type 
+                ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
+            `}
+            disabled={isSubmitting}
+            {...register('caregiver_type')}
+          >
+            {caregiverTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.caregiver_type && (
+            <p className="mt-1 text-sm text-red-600">{errors.caregiver_type.message}</p>
+          )}
+        </div>
+
+        <FormInput
+          id="patient_email"
+          label="Patient's Email Address"
+          type="email"
+          error={errors.patient_email}
+          required
+          disabled={isSubmitting}
+          helperText="Enter the email address of the patient you are caring for"
+          {...register('patient_email')}
+        />
+
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 pt-4">Account Information</h3>
 
         <FormInput
           id="password"
@@ -289,7 +373,7 @@ const PatientRegisterForm: React.FC = () => {
           helperText={`Password must be at least ${config.passwordMinLength} characters${
             config.passwordRequiresUppercase ? ', include an uppercase letter' : ''
           }${config.passwordRequiresNumber ? ', include a number' : ''}${
-            config.passwordRequiresSpecialChar ? ', and include a special character' : ''
+            config.passwordRequiresSpecialChar ? ', include a special character' : ''
           }.`}
           {...register('password')}
         />
@@ -374,13 +458,51 @@ const PatientRegisterForm: React.FC = () => {
                   className="text-blue-600 hover:text-blue-500"
                 >
                   HIPAA Notice of Privacy Practices
-                </Link>
+                </Link>{' '}
+                and will comply with all regulations
               </label>
               {errors.hipaa_consent && (
                 <p className="mt-1 text-sm text-red-600">{errors.hipaa_consent.message}</p>
               )}
             </div>
           </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <Controller
+                name="patient_authorization"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="patient_authorization"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    checked={field.value}
+                    onChange={field.onChange}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="patient_authorization" className="font-medium text-gray-700">
+                I confirm that I have authorization from the patient to access their healthcare information
+                and that I will provide documentation if requested
+              </label>
+              {errors.patient_authorization && (
+                <p className="mt-1 text-sm text-red-600">{errors.patient_authorization.message}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <h4 className="text-sm font-semibold text-yellow-800 mb-2">Important Notice</h4>
+          <p className="text-sm text-yellow-700">
+            As a caregiver, you will be granted access to sensitive health information. You are legally obligated to maintain the
+            confidentiality of this information and use it only for patient care purposes. Unauthorized disclosure or misuse
+            of patient information may result in termination of access and potential legal consequences.
+          </p>
         </div>
 
         <div className="mt-6">
@@ -390,7 +512,7 @@ const PatientRegisterForm: React.FC = () => {
             fullWidth
             isLoading={isSubmitting}
           >
-            Create Account
+            Create Caregiver Account
           </FormButton>
         </div>
       </form>
@@ -410,4 +532,4 @@ const PatientRegisterForm: React.FC = () => {
   );
 };
 
-export default PatientRegisterForm;
+export default CaregiverRegisterForm;
