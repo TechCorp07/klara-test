@@ -9,6 +9,8 @@
  * - Redirects and rewrites
  * - Performance optimizations
  */
+const path = require('path');
+
 const nextConfig = {
     // React strict mode for highlighting potential problems
     reactStrictMode: true,
@@ -171,7 +173,11 @@ const nextConfig = {
     webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
       // Add custom webpack configurations here if needed
       // This is useful for adding custom loaders or plugins
-      
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        '@': path.resolve(__dirname, 'src'),
+      };
+
       // Important for handling large healthcare data files
       config.performance = {
         ...config.performance,

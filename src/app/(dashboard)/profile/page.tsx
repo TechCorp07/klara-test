@@ -100,18 +100,46 @@ export default function ProfilePage() {
       
       // Show success message
       setSuccessMessage('Your profile has been updated successfully.');
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Failed to update profile. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+    } catch (error: unknown) {
+    // Narrow error type safely
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as Record<string, unknown>).response === 'object'
+    ) {
+      const errResponse = (error as { response?: { data?: unknown } }).response;
+  
+      if (
+        errResponse?.data &&
+        typeof errResponse.data === 'object' &&
+        errResponse.data !== null
+      ) {
+        const data = errResponse.data as Record<string, unknown>;
+  
+        if (typeof data.detail === 'string') {
+          setErrorMessage(data.detail);
+          return;
+        }
+  
+        const errorData = data.error as Record<string, unknown> | undefined;
+        const message = errorData?.message;
+        if (typeof message === 'string') {
+          setErrorMessage(message);
+          return;
+        }
+  
+        setErrorMessage('Failed to update profile. Please try again.');
+        return;
       }
-    } finally {
+    }
+  
+    if (error instanceof Error) {
+      setErrorMessage(error.message);
+    } else {
+      setErrorMessage('An unexpected error occurred. Please try again later.');
+    }
+  } finally {
       setIsSaving(false);
     }
   };

@@ -109,26 +109,37 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token }) => {
       setTimeout(() => {
         router.push('/login');
       }, 3000);
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-        
-        // Check if token is invalid or expired
-        if (
-          error.response.data.detail.includes('invalid') ||
-          error.response.data.detail.includes('expired')
-        ) {
-          setIsValidToken(false);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: { data?: { detail?: string; error?: { message?: string } } };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          const detail = err.response.data.detail;
+          setErrorMessage(detail);
+    
+          // Check if token is invalid or expired
+          if (
+            typeof detail === 'string' &&
+            (detail.toLowerCase().includes('invalid') || detail.toLowerCase().includes('expired'))
+          ) {
+            setIsValidToken(false);
+          }
+        } else if (err.response?.data?.error) {
+          setErrorMessage(
+            err.response.data.error.message || 'Password reset failed. Please try again.'
+          );
+        } else if (err.message) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred. Please try again later.');
         }
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Password reset failed. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    }
+    }    
   };
 
   // Check if token is present

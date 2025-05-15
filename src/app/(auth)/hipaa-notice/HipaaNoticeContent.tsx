@@ -27,14 +27,14 @@ interface AcknowledgmentData {
 }
 
 // Define types for office use data
-interface OfficeUseData {
+/* interface OfficeUseData {
   refused: boolean;
   barriers: boolean;
   emergency: boolean;
   other: boolean;
   otherSpecify: string;
   date: string;
-}
+} */
 
 export default function HipaaNoticeContent() {
   // Initialize today's date for the default effective date
@@ -62,14 +62,14 @@ export default function HipaaNoticeContent() {
   });
   
   // State for the office use section
-  const [officeUseData, setOfficeUseData] = useState<OfficeUseData>({
+/*   const [officeUseData, setOfficeUseData] = useState<OfficeUseData>({
     refused: false,
     barriers: false,
     emergency: false,
     other: false,
     otherSpecify: '',
     date: today,
-  });
+  }); */
 
   // Handle changes to the provider information form
   const handleProviderInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -90,13 +90,13 @@ export default function HipaaNoticeContent() {
   };
 
   // Handle changes to the office use section
-  const handleOfficeUseChange = (e: ChangeEvent<HTMLInputElement>): void => {
+/*   const handleOfficeUseChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value, type, checked } = e.target;
     setOfficeUseData({
       ...officeUseData,
       [name]: type === 'checkbox' ? checked : value,
     });
-  };
+  }; */
 
   const handleRelationshipChange = (value: string): void => {
     setAcknowledgmentData({
@@ -108,7 +108,7 @@ export default function HipaaNoticeContent() {
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     // Handle the form submission logic here
-    console.log('Form submitted:', { providerData, acknowledgmentData, officeUseData });
+    //console.log('Form submitted:', { providerData, acknowledgmentData, officeUseData });
     // You could send this data to your backend, show a confirmation message, etc.
     alert('Form submitted successfully!');
   };
@@ -263,7 +263,7 @@ export default function HipaaNoticeContent() {
 
             <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Health Care Operations</h3>
             <p>
-              We may use and disclose medical information about you to operate this medical practice. For example, we may use and disclose this information to review and improve the quality of care we provide, or the competence and qualifications of our professional staff. Or we may use and disclose this information to get your health plan to authorize services or referrals. We may also use and disclose this information as necessary for medical reviews, legal services and audits, including fraud and abuse detection and compliance programs and business planning and management. We may also share your medical information with our "business associates," such as our billing service, that perform administrative services for us. We have a written contract with each of these business associates that contains terms requiring them and their subcontractors to protect the confidentiality and security of your protected health information.
+              We may use and disclose medical information about you to operate this medical practice. For example, we may use and disclose this information to review and improve the quality of care we provide, or the competence and qualifications of our professional staff. Or we may use and disclose this information to get your health plan to authorize services or referrals. We may also use and disclose this information as necessary for medical reviews, legal services and audits, including fraud and abuse detection and compliance programs and business planning and management. We may also share your medical information with our &quot;business associates,&quot; such as our billing service, that perform administrative services for us. We have a written contract with each of these business associates that contains terms requiring them and their subcontractors to protect the confidentiality and security of your protected health information.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Appointment Reminders</h3>
@@ -341,9 +341,9 @@ export default function HipaaNoticeContent() {
               We may disclose your health information for military or national security purposes or to correctional institutions or law enforcement officers that have you in their lawful custody.
             </p>
 
-            <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Workers' Compensation</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Workers&apos; Compensation</h3>
             <p>
-              We may disclose your health information as necessary to comply with workers' compensation laws. For example, to the extent your care is covered by workers' compensation, we may be required make periodic reports to your employer about your condition. We are also required by law to report cases of occupational injury or occupational illness to the employer or workers' compensation insurer.
+              We may disclose your health information as necessary to comply with workers&apos; compensation laws. For example, to the extent your care is covered by workers&apos; compensation, we may be required make periodic reports to your employer about your condition. We are also required by law to report cases of occupational injury or occupational illness to the employer or workers&apos; compensation insurer.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Change of Ownership</h3>
@@ -385,12 +385,12 @@ export default function HipaaNoticeContent() {
 
             <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Right to Inspect and Copy</h3>
             <p>
-              You have the right to inspect and copy your health information, with limited exceptions. To access your medical information, you must submit a written request detailing what information you want access to, whether you want to inspect it or get a copy of it, and if you want a copy, your preferred form and format. We will provide copies in your requested form and format if it is readily producible, or we will provide you with an alternative format you find acceptable, or if we can't agree and we maintain the record in an electronic format, your choice of a readable electronic or hardcopy format. We will also send a copy to any other person you designate in writing. We will charge a reasonable fee which covers our costs for labor, supplies, postage, and if requested and agreed to in advance, the cost of preparing an explanation or summary. We may deny your request under limited circumstances. If we deny your request to access your child's records or the records of an incapacitated adult you are representing because we believe allowing access would be reasonably likely to cause substantial harm to the patient, you will have a right to appeal our decision.
+              You have the right to inspect and copy your health information, with limited exceptions. To access your medical information, you must submit a written request detailing what information you want access to, whether you want to inspect it or get a copy of it, and if you want a copy, your preferred form and format. We will provide copies in your requested form and format if it is readily producible, or we will provide you with an alternative format you find acceptable, or if we can&apos;t agree and we maintain the record in an electronic format, your choice of a readable electronic or hardcopy format. We will also send a copy to any other person you designate in writing. We will charge a reasonable fee which covers our costs for labor, supplies, postage, and if requested and agreed to in advance, the cost of preparing an explanation or summary. We may deny your request under limited circumstances. If we deny your request to access your child&apos;s records or the records of an incapacitated adult you are representing because we believe allowing access would be reasonably likely to cause substantial harm to the patient, you will have a right to appeal our decision.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Right to Amend or Supplement</h3>
             <p>
-              You have a right to request that we amend your health information that you believe is incorrect or incomplete. You must make a request to amend in writing, and include the reasons you believe the information is inaccurate or incomplete. We are not required to change your health information, and will provide you with information about this medical practice's denial and how you can disagree with the denial. We may deny your request if we do not have the information, if we did not create the information (unless the person or entity that created the information is no longer available to make the amendment), if you would not be permitted to inspect or copy the information at issue, or if the information is accurate and complete as is. If we deny your request, you may submit a written statement of your disagreement with that decision, and we may, in turn, prepare a written rebuttal. All information related to any request to amend will be maintained and disclosed in conjunction with any subsequent disclosure of the disputed information.
+              You have a right to request that we amend your health information that you believe is incorrect or incomplete. You must make a request to amend in writing, and include the reasons you believe the information is inaccurate or incomplete. We are not required to change your health information, and will provide you with information about this medical practice&apos;s denial and how you can disagree with the denial. We may deny your request if we do not have the information, if we did not create the information (unless the person or entity that created the information is no longer available to make the amendment), if you would not be permitted to inspect or copy the information at issue, or if the information is accurate and complete as is. If we deny your request, you may submit a written statement of your disagreement with that decision, and we may, in turn, prepare a written rebuttal. All information related to any request to amend will be maintained and disclosed in conjunction with any subsequent disclosure of the disputed information.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2">Right to an Accounting of Disclosures</h3>
@@ -442,7 +442,7 @@ export default function HipaaNoticeContent() {
             
             <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg mt-4">
               <p className="mb-6">
-                I hereby acknowledge that I received a copy of this medical practice's Notice of Privacy Practices. 
+                I hereby acknowledge that I received a copy of this medical practice&apos;s Notice of Privacy Practices. 
                 I further acknowledge that a copy of the current notice will be posted in the reception area, 
                 and that a copy of any amended Notice of Privacy Practices will be available at each appointment.
               </p>
@@ -653,20 +653,19 @@ export default function HipaaNoticeContent() {
         </div>
       </div>
       
-      {/* Print styles */}
-      <style jsx>{`
-        @media print {
-          body {
-            font-size: 12pt;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print-only {
-            display: block !important;
-          }
+    <style>{`
+      @media print {
+        body {
+          font-size: 12pt;
         }
-      `}</style>
+        .no-print {
+          display: none !important;
+        }
+        .print-only {
+          display: block !important;
+        }
+      }
+    `}</style>
     </div>
   );
 }

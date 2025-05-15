@@ -75,7 +75,7 @@ export default function ContactPage() {
     },
   });
 
-  const onSubmit = async (data: ContactFormValues) => {
+  const onSubmit = async (_data: ContactFormValues) => {
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
@@ -120,7 +120,7 @@ export default function ContactPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Message Sent Successfully</h2>
             <p className="text-gray-600 mb-6">
-              Thank you for contacting us. We'll review your message and respond within 1-2 business days.
+              Thank you for contacting us. We&apos;ll review your message and respond within 1-2 business days.
             </p>
             <div className="space-y-4">
               <FormButton
@@ -152,7 +152,7 @@ export default function ContactPage() {
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
           <p className="text-xl text-gray-600">
-            We're here to help. Send us a message and we'll respond as soon as possible.
+            We&apos;re here to help. Send us a message and we&apos;ll respond as soon as possible.
           </p>
         </div>
 
@@ -385,7 +385,7 @@ export default function ContactPage() {
               <div className="px-6 py-4">
                 <h3 className="text-base font-medium text-gray-900">How do I reset my password?</h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  You can reset your password by clicking the "Forgot Password" link on the login page. You'll receive an email with instructions to reset your password.
+                  You can reset your password by clicking the &quot;Forgot Password&quot; link on the login page. You&apos;ll receive an email with instructions to reset your password.
                 </p>
               </div>
               <div className="px-6 py-4">

@@ -1,5 +1,5 @@
 // src/lib/api/client.ts
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { config } from '@/lib/config';
 
 /**
@@ -11,6 +11,10 @@ import { config } from '@/lib/config';
  * 2. Adding appropriate headers to requests
  * 3. Centralizing error handling
  */
+
+interface CustomAxiosRequestConfig extends AxiosRequestConfig {
+  _retry?: boolean;
+}
 
 // Create Axios client with default configuration
 export const apiClient: AxiosInstance = axios.create({
@@ -44,10 +48,10 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   // For successful responses, just return the response
   (response) => response,
-  
+
   // For error responses, handle token refresh if needed
   async (error: AxiosError) => {
-    const originalRequest: any = error.config;
+    const originalRequest = error.config as CustomAxiosRequestConfig;
     
     // If there's no config or we've already tried to refresh, reject
     if (!originalRequest || originalRequest._retry) {
@@ -97,20 +101,23 @@ apiClient.interceptors.response.use(
     // Handle other types of errors (400, 403, 404, 500, etc.)
     if (error.response?.status === 403) {
       // For forbidden errors, check if it's due to email verification or approval
-      const responseData = error.response.data as any;
+      const responseData = error.response?.data;
       
-      if (responseData?.email_verification_required) {
-        // Redirect to email verification page
+      if (typeof responseData == 'object' && responseData !== null) {
+        const dataObj = responseData as Record<string, unknown>;
+        
+        if (dataObj.email_verification_required) {
         if (typeof window !== 'undefined') {
           window.location.href = '/verify-email';
         }
-      } else if (responseData?.awaiting_approval) {
+      } else if (dataObj.awaiting_approval) {
         // Redirect to approval pending page
         if (typeof window !== 'undefined') {
           window.location.href = '/approval-pending';
         }
       }
     }
+  }
     
     // For server errors, log them for monitoring
     if (error.response?.status && error.response.status >= 500) {
@@ -130,13 +137,14 @@ apiClient.interceptors.response.use(
       }
       
       // In production, sanitize error details
-      if (typeof sanitizedError.response?.data === 'object' && sanitizedError.response.data !== null) {
-        // Keep structure but sanitize any potentially sensitive fields
+      const responseData = sanitizedError.response?.data;
+      if (typeof responseData === 'object' && responseData !== null) {
+        const dataObj = responseData as Record<string, unknown>;
+
         const sensitiveFields = ['medical_records', 'diagnosis', 'treatment', 'health_data'];
-        
         for (const field of sensitiveFields) {
-          if (field in sanitizedError.response.data) {
-            (sanitizedError.response.data as Record<string, any>)[field] = '[REDACTED]';
+          if (field in dataObj) {
+            dataObj[field] = '[REDACTED]';
           }
         }
       }

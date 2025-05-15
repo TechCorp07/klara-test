@@ -83,18 +83,29 @@ const TwoFactorForm: React.FC = () => {
       setSecret(response.secret);
       setQrCodeUrl(response.qr_code_url);
       setSetupStarted(true);
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Failed to start 2FA setup. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } 
+    catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: { data?: { detail?: string; error?: { message?: string } } };
+          message?: string;
+        };
+        if (err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          setErrorMessage(
+            err.response.data.error.message || 'Failed to start 2FA setup. Please try again.'
+          );
+        } else if (err.message) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred. Please try again later.');
+        }
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    } finally {
+    }    
+    finally {
       setIsLoading(false);
     }
   };
@@ -115,18 +126,29 @@ const TwoFactorForm: React.FC = () => {
       } else {
         setErrorMessage('Verification failed. Please check your code and try again.');
       }
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Failed to verify 2FA setup. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } 
+    catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: { data?: { detail?: string; error?: { message?: string } } };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          setErrorMessage(
+            err.response.data.error.message || 'Failed to verify 2FA setup. Please try again.'
+          );
+        } else if (err.message) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred. Please try again later.');
+        }
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    }
+    }    
   };
 
   // Function to disable 2FA
@@ -147,16 +169,31 @@ const TwoFactorForm: React.FC = () => {
       } else {
         setErrorMessage('Verification failed. Please check your code and try again.');
       }
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Failed to disable 2FA. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: {
+            data?: {
+              detail?: string;
+              error?: { message?: string };
+            };
+          };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          setErrorMessage(
+            err.response.data.error.message || 'Failed to disable 2FA. Please try again.'
+          );
+        } else if (err.message) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred. Please try again later.');
+        }
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
     } finally {
       setIsDisabling(false);

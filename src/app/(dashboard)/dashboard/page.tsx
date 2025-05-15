@@ -17,7 +17,8 @@ type StatsRecord = Record<string, string | number>;
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
   const [stats, setStats] = useState<StatsRecord | null>(null);
-  const [activities, setActivities] = useState<any[]>([]);
+  interface Activity { id: number; type: string; description: string; date: string; }
+  const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
     // In a real application, this would fetch data from the API

@@ -91,7 +91,7 @@ export default function TermsOfServicePage() {
                   </p>
 
                   <p className="mb-8">
-                    Welcome to the Klararety Platform ("Klararety," "we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of Klararety's platform, website, mobile applications, and related services (collectively, the "Services"). Please read these Terms carefully before using Klararety.
+                    Welcome to the Klararety Platform (&quot;Klararety,&quot; &quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). These Terms of Service (&quot;Terms&quot;) govern your access to and use of Klararety&apos;s platform, website, mobile applications, and related services (collectively, the &quot;Services&quot;). Please read these Terms carefully before using Klararety.
                   </p>
 
                   <p className="mb-8">
@@ -200,7 +200,7 @@ export default function TermsOfServicePage() {
                     
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">4.1 Ownership:</h3>
                     <p className="mb-4">
-                      You retain ownership of the content you submit, post, or share through Klararety ("User Content").
+                      You retain ownership of the content you submit, post, or share through Klararety (&quot;User Content&quot;).
                     </p>
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">4.2 License Grant:</h3>
@@ -287,7 +287,7 @@ export default function TermsOfServicePage() {
                     </p>
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">6.3 Data Processing:</h3>
-                    <p className="mb-2">To the extent that you submit protected health information ("PHI") or personal data to Klararety:</p>
+                    <p className="mb-2">To the extent that you submit protected health information (&quot;PHI&quot;) or personal data to Klararety:</p>
                     <ul className="list-disc list-inside mb-4 space-y-1">
                       <li>We will process such data only as permitted by applicable law and our agreements with you.</li>
                       <li>We will maintain appropriate safeguards for such data.</li>
@@ -316,7 +316,7 @@ export default function TermsOfServicePage() {
                     
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">7.1 HIPAA Compliance:</h3>
                     <p className="mb-4">
-                      If you are a covered entity or business associate under the Health Insurance Portability and Accountability Act of 1996 ("HIPAA"), and you use Klararety in a way that involves PHI, our relationship is governed by our Business Associate Agreement ("BAA"), which is incorporated by reference into these Terms.
+                      If you are a covered entity or business associate under the Health Insurance Portability and Accountability Act of 1996 (&quot;HIPAA&quot;), and you use Klararety in a way that involves PHI, our relationship is governed by our Business Associate Agreement (&quot;BAA&quot;), which is incorporated by reference into these Terms.
                     </p>
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">7.2 No Medical Advice:</h3>
@@ -334,7 +334,7 @@ export default function TermsOfServicePage() {
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">7.4 Healthcare Laws:</h3>
                     <p className="mb-4">
-                      You acknowledge that various federal and state laws govern the electronic transmission of healthcare information, and you agree to use Klararety in compliance with such laws, including HIPAA, the Health Information Technology for Economic and Clinical Health Act ("HITECH"), and other applicable laws and regulations.
+                      You acknowledge that various federal and state laws govern the electronic transmission of healthcare information, and you agree to use Klararety in compliance with such laws, including HIPAA, the Health Information Technology for Economic and Clinical Health Act (&quot;HITECH&quot;), and other applicable laws and regulations.
                     </p>
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">7.5 Regulatory Changes:</h3>

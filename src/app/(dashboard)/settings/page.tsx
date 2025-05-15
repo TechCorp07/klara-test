@@ -49,7 +49,7 @@ export default function SettingsPage() {
       
       await logout();
       // Redirect happens in the auth context
-    } catch (error: any) {
+    } catch (error: unknown) {
       setErrorMessage('Failed to log out. Please try again.');
       console.error('Logout error:', error);
       setIsLoggingOut(false);

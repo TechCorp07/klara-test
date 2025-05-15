@@ -10,11 +10,19 @@ import type {
   ResetPasswordRequest, 
   VerifyEmailRequest, 
   SetupTwoFactorResponse, 
-  TokenRefreshRequest, 
+  //TokenRefreshRequest, 
   TokenRefreshResponse,
   //ConsentUpdate,
   User
 } from '@/types/auth.types';
+
+interface ConsentResponse {
+  consent_type: string;
+  consented: boolean;
+  updated_at: string;        // ISO timestamp from the server
+  user_id: number;           // Optional: include if user-specific
+  version?: string;          // Optional: in case of versioned consent forms
+}
 
 /**
  * Authentication service that provides methods for interacting with the authentication API
@@ -145,13 +153,16 @@ export const authService = {
    * @param consented Whether consent is granted or revoked
    * @returns Updated consent information
    */
-  updateConsent: async (consentType: string, consented: boolean): Promise<any> => {
+   updateConsent: async (
+    consentType: string,
+    consented: boolean
+  ): Promise<ConsentResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.UPDATE_CONSENT, { 
       consent_type: consentType, 
       consented 
     });
     return response.data;
-  },
+  },  
 
   /**
    * Get current user profile and information

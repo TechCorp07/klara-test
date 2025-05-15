@@ -91,22 +91,37 @@ const LoginForm = () => {
           router.push(returnUrl);
         }, 500);
       }
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        // Server returned a specific error message
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        // Server returned an error object
-        setErrorMessage(error.response.data.error.message || 'Login failed. Please try again.');
-      } else if (error.message) {
-        // Generic error with a message
-        setErrorMessage(error.message);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: {
+            data?: {
+              detail?: string;
+              error?: { message?: string };
+            };
+          };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          // Server returned a specific error message
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          // Server returned an error object
+          setErrorMessage(
+            err.response.data.error.message || 'Login failed. Please try again.'
+          );
+        } else if (err.message) {
+          // Generic error with a message
+          setErrorMessage(err.message);
+        } else {
+          // Fallback error message
+          setErrorMessage('An unexpected error occurred. Please try again later.');
+        }
       } else {
-        // Fallback error message
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    }
+    }    
   };
 
   // Handle two-factor authentication code submission
@@ -128,18 +143,33 @@ const LoginForm = () => {
       setTimeout(() => {
         router.push(returnUrl);
       }, 500);
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Verification failed. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: {
+            data?: {
+              detail?: string;
+              error?: { message?: string };
+            };
+          };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          setErrorMessage(
+            err.response.data.error.message || 'Verification failed. Please try again.'
+          );
+        } else if (err.message) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred during verification. Please try again.');
+        }
       } else {
-        setErrorMessage('An unexpected error occurred during verification. Please try again.');
+        setErrorMessage('An unknown error occurred during verification. Please try again.');
       }
-    }
+    }    
   };
 
   // If in two-factor authentication flow, render the 2FA form

@@ -13,6 +13,18 @@ interface VerifyEmailFormProps {
   email?: string;
 }
 
+interface APIError {
+  response?: {
+    data?: {
+      detail?: string;
+      error?: {
+        message?: string;
+      };
+    };
+  };
+  message?: string;
+}
+
 /**
  * Email verification form component.
  * 
@@ -75,14 +87,14 @@ const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ token: propToken, ema
           router.push('/login');
         }, 3000);
       }
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Email verification failed.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } catch (error: unknown) {
+      const err = error as APIError;
+      if (err.response?.data?.detail) {
+        setErrorMessage(err.response.data.detail);
+      } else if (err.response?.data?.error) {
+        setErrorMessage(err.response.data.error.message || 'Email verification failed.');
+      } else if (err.message) {
+        setErrorMessage(err.message);
       } else {
         setErrorMessage('An unexpected error occurred during email verification.');
       }
@@ -103,14 +115,14 @@ const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ token: propToken, ema
       
       // Show success message
       setSuccessMessage(response.detail || 'Verification email has been sent. Please check your inbox.');
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Failed to send verification email.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } catch (error: unknown) {
+      const err = error as APIError;
+      if (err.response?.data?.detail) {
+        setErrorMessage(err.response.data.detail);
+      } else if (err.response?.data?.error) {
+        setErrorMessage(err.response.data.error.message || 'Failed to send verification email.');
+      } else if (err.message) {
+        setErrorMessage(err.message);
       } else {
         setErrorMessage('An unexpected error occurred while requesting verification email.');
       }

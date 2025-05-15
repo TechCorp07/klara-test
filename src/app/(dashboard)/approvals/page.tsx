@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
+//import { useAuth } from '@/lib/auth/use-auth';
 import { RoleGuard } from '@/lib/auth/guards/role-guard';
 import { FormButton, FormAlert } from '@/components/auth/common';
 import { Spinner } from '@/components/ui/spinner';
@@ -43,7 +43,7 @@ function ApprovalManagement() {
         
         const approvals = await authService.getPendingApprovals();
         setPendingUsers(approvals);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching pending approvals:', err);
         setError('Failed to load pending approvals. Please try again.');
       } finally {
@@ -70,7 +70,7 @@ function ApprovalManagement() {
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error approving user:', err);
       setError('Failed to approve user. Please try again.');
     } finally {
@@ -94,7 +94,7 @@ function ApprovalManagement() {
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting user:', err);
       setError('Failed to reject user. Please try again.');
     } finally {

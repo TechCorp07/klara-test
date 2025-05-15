@@ -48,9 +48,13 @@ export default function ApprovalPendingPage() {
       
       await logout();
       router.push('/login');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Logout error:', error.message);
+      } else {
+        console.error('Logout error:', error);
+      }
       setErrorMessage('Failed to log out. Please try again.');
-      console.error('Logout error:', error);
     } finally {
       setIsLoggingOut(false);
     }
@@ -60,7 +64,7 @@ export default function ApprovalPendingPage() {
   const userRole = user?.role || '';
   
   // Define messages based on user role
-  const approvalMessages = {
+  const approvalMessages: Record<string, string> = {
     patient: 'As a patient, we need to verify your account information to ensure the security and integrity of our platform. This typically involves confirming your identity and contact information.',
     provider: 'As a healthcare provider, we need to verify your credentials to ensure the security and integrity of our platform. This typically involves verifying your medical license, NPI number, and other professional information.',
     researcher: 'As a researcher, we need to verify your institutional affiliation and research credentials to ensure the security and integrity of our platform.',
@@ -68,10 +72,10 @@ export default function ApprovalPendingPage() {
     caregiver: 'As a caregiver, we need to verify your relationship to the patient and ensure you have appropriate authorization to access their information.',
     compliance: 'As a compliance officer, we need to verify your credentials and institutional affiliation to ensure the security and integrity of our platform.',
     default: 'We need to verify your information to ensure the security and integrity of our platform.',
-  };
+  };  
   
   // Get appropriate message for user role
-  const approvalMessage = (approvalMessages as any)[userRole] || approvalMessages.default;
+  const approvalMessage = approvalMessages[userRole] || approvalMessages.default;
   
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">

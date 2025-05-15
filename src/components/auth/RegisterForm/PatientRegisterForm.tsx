@@ -150,26 +150,43 @@ const PatientRegisterForm: React.FC = () => {
       setTimeout(() => {
         router.push('/login');
       }, 5000);
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        // Handle validation errors
-        const validationErrors = error.response.data.error.details;
-        if (validationErrors) {
-          // Get the first validation error
-          const firstError = Object.values(validationErrors)[0];
-          setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
+    } catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: {
+            data?: {
+              detail?: string;
+              error?: {
+                message?: string;
+                details?: Record<string, string[]>;
+              };
+            };
+          };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          const validationErrors = err.response.data.error.details;
+    
+          if (validationErrors && typeof validationErrors === 'object') {
+            const firstError = Object.values(validationErrors)[0];
+            setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
+          } else {
+            setErrorMessage(
+              err.response.data.error.message || 'Registration failed. Please try again.'
+            );
+          }
+        } else if (err.message) {
+          setErrorMessage(err.message);
         } else {
-          setErrorMessage(error.response.data.error.message || 'Registration failed. Please try again.');
+          setErrorMessage('An unexpected error occurred. Please try again later.');
         }
-      } else if (error.message) {
-        setErrorMessage(error.message);
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    }
+    }    
   };
 
   // If registration is complete, show success message and redirect info

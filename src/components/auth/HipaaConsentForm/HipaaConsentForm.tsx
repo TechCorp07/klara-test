@@ -109,16 +109,32 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
       if (onComplete) {
         onComplete();
       }
-    } catch (error: any) {
-      // Handle different types of errors
-      if (error.response?.data?.detail) {
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error.message || 'Failed to update consent preferences. Please try again.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          response?: {
+            data?: {
+              detail?: string;
+              error?: { message?: string };
+            };
+          };
+          message?: string;
+        };
+    
+        if (err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else if (err.response?.data?.error) {
+          setErrorMessage(
+            err.response.data.error.message ||
+            'Failed to update consent preferences. Please try again.'
+          );
+        } else if (err.message) {
+          setErrorMessage(err.message);
+        } else {
+          setErrorMessage('An unexpected error occurred. Please try again later.');
+        }
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again later.');
+        setErrorMessage('An unknown error occurred. Please try again later.');
       }
     } finally {
       setIsSubmitting(false);

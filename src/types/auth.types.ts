@@ -2,7 +2,7 @@
 export type UserRole = 'patient' | 'provider' | 'pharmco' | 'caregiver' | 'researcher' | 'admin' | 'superadmin' | 'compliance';
 
 export interface User {
-  date_joined: any;
+  date_joined: string;
   id: number;
   username: string;
   email: string;
@@ -101,6 +101,12 @@ export interface SetupTwoFactorResponse {
   qr_code_url: string;
 }
 
+export interface ConsentUpdateResponse {
+  consent_type: string;
+  consented: boolean;
+  updated_at: string;
+}
+
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -117,7 +123,7 @@ export interface AuthContextType {
   resetPassword: (data: ResetPasswordRequest) => Promise<{ detail: string }>;
   requestEmailVerification: () => Promise<{ detail: string }>;
   verifyEmail: (data: VerifyEmailRequest) => Promise<{ detail: string }>;
-  updateConsent: (consentType: string, consented: boolean) => Promise<any>;
+  updateConsent: (consentType: string, consented: boolean) => Promise<ConsentUpdateResponse>;
 }
 
 // Error interfaces

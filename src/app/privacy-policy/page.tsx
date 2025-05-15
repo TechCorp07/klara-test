@@ -94,11 +94,11 @@ export default function PrivacyPolicyPage() {
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">Introduction</h2>
                     
                     <p className="mb-4">
-                      At Klararety ("we," "our," or "us"), we are committed to protecting your privacy and the security of your information. This Privacy Policy describes how we collect, use, disclose, and safeguard your information when you use our platform, website, mobile applications, and related services (collectively, the "Services").
+                      At Klararety (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;), we are committed to protecting your privacy and the security of your information. This Privacy Policy describes how we collect, use, disclose, and safeguard your information when you use our platform, website, mobile applications, and related services (collectively, the &quot;Services&quot;).
                     </p>
 
                     <p className="mb-4">
-                      We understand the sensitive nature of healthcare information and take our responsibility to protect your data seriously. This Privacy Policy is designed to comply with applicable data protection laws, including the Health Insurance Portability and Accountability Act of 1996 ("HIPAA"), the California Consumer Privacy Act ("CCPA"), the General Data Protection Regulation ("GDPR"), and other applicable privacy laws.
+                      We understand the sensitive nature of healthcare information and take our responsibility to protect your data seriously. This Privacy Policy is designed to comply with applicable data protection laws, including the Health Insurance Portability and Accountability Act of 1996 (&quot;HIPAA&quot;), the California Consumer Privacy Act (&quot;CCPA&quot;), the General Data Protection Regulation (&quot;GDPR&quot;), and other applicable privacy laws.
                     </p>
 
                     <p className="mb-4">
@@ -111,7 +111,7 @@ export default function PrivacyPolicyPage() {
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Key Terms</h2>
                     
                     <p className="mb-4">
-                      Before we dive into the details, let's clarify some key terms used throughout this Privacy Policy:
+                      Before we dive into the details, let&apos;s clarify some key terms used throughout this Privacy Policy:
                     </p>
 
                     <dl className="space-y-4">
@@ -160,10 +160,10 @@ export default function PrivacyPolicyPage() {
                     </p>
 
                     <ul className="list-disc list-inside mb-4 space-y-2">
-                      <li><strong>Device Information:</strong> Information about your device and internet connection, including your device's unique device identifier, IP address, operating system, browser type, mobile network information, and device settings.</li>
+                      <li><strong>Device Information:</strong> Information about your device and internet connection, including your device&apos;s unique device identifier, IP address, operating system, browser type, mobile network information, and device settings.</li>
                       <li><strong>Usage Information:</strong> Details of your visits to our Services, including traffic data, location data, logs, and other communication data and the resources that you access and use on the Services.</li>
-                      <li><strong>Location Information:</strong> We may collect information about your precise or approximate location as determined through data such as your IP address or mobile device's GPS when you enable location services.</li>
-                      <li><strong>Cookies and Tracking Technologies:</strong> We use cookies, web beacons, and similar technologies to track activity on our Services and to collect certain information. For more information, see the "Cookies and Tracking Technologies" section below.</li>
+                      <li><strong>Location Information:</strong> We may collect information about your precise or approximate location as determined through data such as your IP address or mobile device&apos;s GPS when you enable location services.</li>
+                      <li><strong>Cookies and Tracking Technologies:</strong> We use cookies, web beacons, and similar technologies to track activity on our Services and to collect certain information. For more information, see the &quot;Cookies and Tracking Technologies&quot; section below.</li>
                     </ul>
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">2.3 Information from Third Parties</h3>
@@ -310,7 +310,7 @@ export default function PrivacyPolicyPage() {
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">5.7 Cookies and Tracking Technologies</h3>
                     <p className="mb-4">
-                      You can manage your cookie preferences through your browser settings. For more information, see the "Cookies and Tracking Technologies" section below.
+                      You can manage your cookie preferences through your browser settings. For more information, see the &quot;Cookies and Tracking Technologies&quot; section below.
                     </p>
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">5.8 How to Exercise Your Rights</h3>
@@ -375,7 +375,7 @@ export default function PrivacyPolicyPage() {
 
                   {/* Section 8: Children's Privacy */}
                   <section id="8-childrens-privacy" className="mb-12">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Children's Privacy</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Children&apos;s Privacy</h2>
                     
                     <p className="mb-4">
                       Our Services are not intended for children under the age of 18, and we do not knowingly collect personal information from children under 18. If we learn we have collected or received personal information from a child under 18 without verification of parental consent, we will delete that information.
@@ -525,7 +525,7 @@ export default function PrivacyPolicyPage() {
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">12.2 Data Protection Rights</h3>
                     <p className="mb-4">
-                      In addition to the rights described in the "Your Rights and Choices" section, you have the right to:
+                      In addition to the rights described in the &quot;Your Rights and Choices&quot; section, you have the right to:
                     </p>
 
                     <ul className="list-disc list-inside mb-4 space-y-1">
@@ -574,7 +574,7 @@ export default function PrivacyPolicyPage() {
 
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">13.4 Do Not Track Signals</h3>
                     <p className="mb-4">
-                      Some web browsers may transmit "Do Not Track" signals to the websites and other online services with which the browser communicates. There is no standard that governs what, if anything, websites should do when they receive these signals. We currently do not take action in response to these signals.
+                      Some web browsers may transmit &quot;Do Not Track&quot; signals to the websites and other online services with which the browser communicates. There is no standard that governs what, if anything, websites should do when they receive these signals. We currently do not take action in response to these signals.
                     </p>
                   </section>
 

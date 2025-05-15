@@ -62,15 +62,19 @@ const ForgotPasswordForm: React.FC = () => {
       // Show success message and mark request as complete
       setSuccessMessage(response.detail || 'If your email is registered with us, you will receive a password reset link shortly.');
       setRequestComplete(true);
-    } catch (error: any) {
+    }catch (error: unknown) {
       // For security reasons, we still show a success message even if the request fails
       // This prevents email enumeration attacks
       setSuccessMessage('If your email is registered with us, you will receive a password reset link shortly.');
       setRequestComplete(true);
-      
+    
       // Log error for debugging but don't show to user
-      console.error('Error requesting password reset:', error);
-    }
+      if (error && typeof error === 'object') {
+        console.error('Error requesting password reset:', JSON.stringify(error));
+      } else {
+        console.error('Error requesting password reset:', error);
+      }
+    } 
   };
 
   // If request is complete, show success message

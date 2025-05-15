@@ -14,6 +14,7 @@ import {
 } from '@/types/auth.types';
 import { authService } from '../api/services/auth.service';
 import { config } from '@/lib/config';
+import { ConsentUpdateResponse } from '@/types/auth.types';
 
 // Create context with null as initial value
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -358,22 +359,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * @param consented Whether consent is granted or revoked
    * @returns Updated consent information
    */
-  const updateConsent = async (consentType: string, consented: boolean): Promise<any> => {
+  const updateConsent = async (consentType: string, consented: boolean): Promise<ConsentUpdateResponse> => {
     setIsLoading(true);
     try {
       const response = await authService.updateConsent(consentType, consented);
-      
-      // Update user information after consent change
+  
+      // Update user info after consent change
       if (user) {
         const userData = await authService.getCurrentUser();
         setUser(userData);
       }
-      
+  
       return response;
     } finally {
       setIsLoading(false);
     }
-  };
+  };  
 
   // Value to provide in the context
   const contextValue: AuthContextType = {
