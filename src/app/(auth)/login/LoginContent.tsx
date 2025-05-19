@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import { useAuth } from '@/lib/auth/use-auth';
 
@@ -13,13 +13,18 @@ import { useAuth } from '@/lib/auth/use-auth';
 export default function LoginContent() {
   const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get the return URL from the query string, sanitize it to prevent multiple nesting
+  const returnUrl = searchParams.get('returnUrl') || '/dashboard';
+  const sanitizedReturnUrl = returnUrl.includes('/login') ? '/dashboard' : returnUrl;
   
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
-      router.push('/dashboard');
+      router.push(sanitizedReturnUrl);
     }
-  }, [isAuthenticated, isInitialized, router]);
+  }, [isAuthenticated, isInitialized, router, sanitizedReturnUrl]);
   
   return <LoginForm />;
 }

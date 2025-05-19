@@ -6,7 +6,7 @@
  */
 export const config = {
     // API Configuration
-    apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.klararety.com/api',
+    apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://localhost:8000/api',
     
     // Cookie Configuration
     cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || 'localhost',
