@@ -11,7 +11,7 @@ import { FormInput, FormButton, FormAlert } from '../common';
 import { useAuth } from '@/lib/auth/use-auth';
 import { config } from '@/lib/config';
 
-// Validation schema for patient registration
+// UPDATED validation schema to match backend exactly
 const patientRegisterSchema = z.object({
   email: z
     .string()
@@ -32,6 +32,7 @@ const patientRegisterSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
+  // CRITICAL FIX: Changed to match backend expectation
   password_confirm: z
     .string()
     .min(1, 'Please confirm your password'),
@@ -46,12 +47,10 @@ const patientRegisterSchema = z.object({
   date_of_birth: z
     .string()
     .refine((dob) => {
-      // Basic date validation
       const date = new Date(dob);
       return !isNaN(date.getTime());
     }, 'Please enter a valid date of birth')
     .refine((dob) => {
-      // Must be at least 18 years old
       const date = new Date(dob);
       const eighteenYearsAgo = new Date();
       eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -65,12 +64,13 @@ const patientRegisterSchema = z.object({
   terms_accepted: z
     .boolean()
     .refine((val) => val === true, 'You must accept the terms and conditions'),
-  hipaa_consent: z
+  // UPDATED: This maps to hipaa_privacy_acknowledged in the backend
+  hipaa_privacy_acknowledged: z
     .boolean()
     .refine((val) => val === true, 'You must acknowledge the HIPAA Notice of Privacy Practices'),
 });
 
-// Match passwords
+// Match passwords validation
 const patientSchema = patientRegisterSchema.refine(
   (data) => data.password === data.password_confirm,
   {
@@ -79,29 +79,20 @@ const patientSchema = patientRegisterSchema.refine(
   }
 );
 
-// Type for form values
 type PatientRegisterFormValues = z.infer<typeof patientSchema>;
 
 /**
- * Patient-specific registration form with validation.
- * 
- * This component handles the complete registration flow for patients, including:
- * - Email, password, and personal information validation
- * - Error handling
- * - Terms and privacy policy acceptance
- * - HIPAA consent
+ * Patient registration form - ALIGNED WITH BACKEND
+ * This form now sends data in exactly the format your backend expects
  */
 const PatientRegisterForm: React.FC = () => {
-  // Get auth context for registration function
   const { register: registerUser } = useAuth();
   const router = useRouter();
 
-  // Form state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState(false);
 
-  // Initialize form with react-hook-form and zod validation
   const {
     register,
     handleSubmit,
@@ -118,22 +109,20 @@ const PatientRegisterForm: React.FC = () => {
       date_of_birth: '',
       phone_number: '',
       terms_accepted: false,
-      hipaa_consent: false,
+      hipaa_privacy_acknowledged: false,
     },
   });
 
-  // Handle form submission
   const onSubmit = async (data: PatientRegisterFormValues) => {
     try {
-      // Clear previous messages
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      // Submit registration request
+      // The data is now in the correct format for the backend
       await registerUser({
         email: data.email,
         password: data.password,
-        password_confirm: data.password_confirm,
+        password_confirm: data.password_confirm, // This will be transformed to confirm_password in the service
         first_name: data.first_name,
         last_name: data.last_name,
         role: 'patient',
@@ -142,20 +131,20 @@ const PatientRegisterForm: React.FC = () => {
         terms_accepted: data.terms_accepted,
       });
 
-      // Show success message and mark registration as complete
       setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email notification once your account has been approved.');
       setRegistrationComplete(true);
 
-      // Redirect to login page after a delay
       setTimeout(() => {
         router.push('/login');
       }, 5000);
     } catch (error: unknown) {
+      // Enhanced error handling to work with backend response format
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>; // Backend format
               error?: {
                 message?: string;
                 details?: Record<string, string[]>;
@@ -164,12 +153,17 @@ const PatientRegisterForm: React.FC = () => {
           };
           message?: string;
         };
-    
-        if (err.response?.data?.detail) {
+
+        // Handle field-specific validation errors from backend
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Registration failed. Please check your information.');
+        } else if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
         } else if (err.response?.data?.error) {
           const validationErrors = err.response.data.error.details;
-    
           if (validationErrors && typeof validationErrors === 'object') {
             const firstError = Object.values(validationErrors)[0];
             setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
@@ -186,10 +180,9 @@ const PatientRegisterForm: React.FC = () => {
       } else {
         setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    }    
+    }
   };
 
-  // If registration is complete, show success message and redirect info
   if (registrationComplete) {
     return (
       <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
@@ -203,13 +196,13 @@ const PatientRegisterForm: React.FC = () => {
           dismissible={false}
         />
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600 mb-4">
-          Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
-        </p>
-        <p className="text-sm text-gray-600 mb-4">
-          You will be redirected to the login page in a few seconds...
-        </p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600 mb-4">
+            Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            You will be redirected to the login page in a few seconds...
+          </p>
           <Link
             href="/login"
             className="font-medium text-blue-600 hover:text-blue-500"
@@ -221,7 +214,6 @@ const PatientRegisterForm: React.FC = () => {
     );
   }
 
-  // Main registration form
   return (
     <div className="w-full max-w-lg mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
@@ -368,11 +360,11 @@ const PatientRegisterForm: React.FC = () => {
           <div className="flex items-start">
             <div className="flex items-center h-5">
               <Controller
-                name="hipaa_consent"
+                name="hipaa_privacy_acknowledged"
                 control={control}
                 render={({ field }) => (
                   <input
-                    id="hipaa_consent"
+                    id="hipaa_privacy_acknowledged"
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     checked={field.value}
@@ -383,7 +375,7 @@ const PatientRegisterForm: React.FC = () => {
               />
             </div>
             <div className="ml-3 text-sm">
-              <label htmlFor="hipaa_consent" className="font-medium text-gray-700">
+              <label htmlFor="hipaa_privacy_acknowledged" className="font-medium text-gray-700">
                 I acknowledge that I have read and understand the{' '}
                 <Link
                   href={config.hipaaNoticeUrl}
@@ -393,8 +385,8 @@ const PatientRegisterForm: React.FC = () => {
                   HIPAA Notice of Privacy Practices
                 </Link>
               </label>
-              {errors.hipaa_consent && (
-                <p className="mt-1 text-sm text-red-600">{errors.hipaa_consent.message}</p>
+              {errors.hipaa_privacy_acknowledged && (
+                <p className="mt-1 text-sm text-red-600">{errors.hipaa_privacy_acknowledged.message}</p>
               )}
             </div>
           </div>
