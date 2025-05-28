@@ -23,16 +23,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-/**
- * MAJOR FIX: AuthProvider aligned with your single-token backend system
- * 
- * Key Changes Explained:
- * 1. Removed all refresh token logic - your backend doesn't support it
- * 2. Simplified token management - backend uses longer-lived single tokens
- * 3. Fixed 2FA verification to use proper user ID parameter
- * 4. Corrected cookie handling to match backend expectations
- * 5. Improved error handling for backend response format
- */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -43,12 +33,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // FIXED: Simplified initialization - no token refresh needed
-        // The token is automatically sent via cookies due to withCredentials: true
         const userData = await authService.getCurrentUser();
         setUser(userData);
       } catch (error) {
-        // If authentication fails, user remains null
+        // If authentication fails, user remains null (not logged in)
         console.error('Failed to initialize authentication state:', error);
         setUser(null);
       } finally {
@@ -82,11 +70,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
     
-    // Activity tracking event listeners
+    // Track user activity to reset the inactivity timer
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, updateActivity));
     
-    const intervalId = setInterval(checkInactivity, 60 * 1000);
+    const intervalId = setInterval(checkInactivity, 60 * 1000); // Check every minute
     
     return () => {
       events.forEach(event => window.removeEventListener(event, updateActivity));
@@ -102,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.login({ username, password });
       
-      // FIXED: Handle single-token response from backend
+      // CRITICAL FIX: Handle single-token response from backend
       if (!response.requires_2fa) {
         // Store authentication data in cookies via our API route
         await fetch('/api/auth/login', {
@@ -123,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * FIXED: Registration function with proper field transformations
+   * Registration function with proper field transformations
    */
   const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
@@ -167,12 +155,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * CRITICAL FIX: Two-factor authentication verification
-   * Your backend expects a numeric user_id, not a token string
+   * This is different from some other 2FA implementations you might have seen
    */
   const verifyTwoFactor = async (userIdOrToken: string, code: string): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
-      // FIXED: Parse user ID as number - backend expects numeric user_id
+      // CRITICAL FIX: Parse user ID as number - backend expects numeric user_id
       const userId = parseInt(userIdOrToken, 10);
       if (isNaN(userId)) {
         throw new Error('Invalid user ID for two-factor verification');
@@ -198,7 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * FIXED: Setup two-factor authentication with correct response handling
+   * Setup two-factor authentication
    */
   const setupTwoFactor = async (): Promise<SetupTwoFactorResponse> => {
     setIsLoading(true);
@@ -230,7 +218,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * FIXED: Disable 2FA - backend expects password, not 2FA code
+   * CRITICAL FIX: Disable 2FA - backend expects password, not 2FA code
    */
   const disableTwoFactor = async (password: string): Promise<{ success: boolean; message: string }> => {
     setIsLoading(true);

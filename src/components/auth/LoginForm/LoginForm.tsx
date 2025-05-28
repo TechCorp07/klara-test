@@ -26,12 +26,12 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 /**
- * Login form component with validation, error handling, and two-factor authentication support.
- * This component handles the complete login flow, including:
- * - Email and password validation
- * - Error handling
- * - Two-factor authentication
- * - Redirection after successful login
+ * FIXED: Login form with proper 2FA handling aligned with backend
+ * 
+ * Key fixes:
+ * 1. Fixed 2FA verification to use numeric user ID instead of token
+ * 2. Improved error handling for backend response format
+ * 3. Corrected temporary user data handling for 2FA flow
  */
 const LoginForm = () => {
   // Get the auth context
@@ -46,7 +46,7 @@ const LoginForm = () => {
 
   // State to track two-factor authentication flow
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
-  const [temporaryToken, setTemporaryToken] = useState('');
+  const [temporaryUserId, setTemporaryUserId] = useState<number | null>(null); // CRITICAL FIX: Store numeric user ID
   const [twoFactorCode, setTwoFactorCode] = useState('');
 
   // State for form error and success messages
@@ -76,11 +76,11 @@ const LoginForm = () => {
       // Submit login request
       const response = await login(data.username, data.password);
 
-      // Check if two-factor authentication is required
-      if (response.requires_two_factor) {
-        // Switch to the two-factor authentication flow
+      // FIXED: Check if two-factor authentication is required
+      if (response.requires_2fa) {
+        // CRITICAL FIX: Store numeric user ID for 2FA verification
+        setTemporaryUserId(response.user.id);
         setRequiresTwoFactor(true);
-        setTemporaryToken(response.temporary_token || '');
         setSuccessMessage('Please enter the verification code from your authenticator app.');
       } else {
         // Successful login without 2FA - redirect to the return URL
@@ -92,18 +92,26 @@ const LoginForm = () => {
         }, 500);
       }
     } catch (error: unknown) {
+      // IMPROVED: Better error handling aligned with backend response format
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>;
               error?: { message?: string };
             };
           };
           message?: string;
         };
-    
-        if (err.response?.data?.detail) {
+
+        // Handle field-specific errors from backend
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Login failed. Please check your credentials.');
+        } else if (err.response?.data?.detail) {
           // Server returned a specific error message
           setErrorMessage(err.response.data.detail);
         } else if (err.response?.data?.error) {
@@ -124,17 +132,23 @@ const LoginForm = () => {
     }    
   };
 
-  // Handle two-factor authentication code submission
+  // FIXED: Handle two-factor authentication code submission
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!temporaryUserId) {
+      setErrorMessage('Session error. Please try logging in again.');
+      setRequiresTwoFactor(false);
+      return;
+    }
     
     try {
       // Clear any previous error/success messages
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      // Submit 2FA verification request
-      await verifyTwoFactor(temporaryToken, twoFactorCode);
+      // CRITICAL FIX: Submit 2FA verification with numeric user ID
+      await verifyTwoFactor(temporaryUserId.toString(), twoFactorCode);
       
       // Successful 2FA verification - redirect to the return URL
       setSuccessMessage('Verification successful! Redirecting...');
@@ -144,6 +158,7 @@ const LoginForm = () => {
         router.push(returnUrl);
       }, 500);
     } catch (error: unknown) {
+      // Handle 2FA verification errors
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
@@ -239,7 +254,11 @@ const LoginForm = () => {
 
         <div className="mt-4 text-center">
           <button
-            onClick={() => setRequiresTwoFactor(false)}
+            onClick={() => {
+              setRequiresTwoFactor(false);
+              setTemporaryUserId(null);
+              setTwoFactorCode('');
+            }}
             className="text-sm text-blue-600 hover:text-blue-800"
           >
             Back to Login
