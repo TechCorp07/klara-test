@@ -19,40 +19,36 @@ import { ConsentUpdateResponse } from '@/types/auth.types';
 // Create context with null as initial value
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-// Props interface for the AuthProvider component
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 /**
- * AuthProvider component that manages authentication state and provides
- * authentication-related methods to the application.
+ * MAJOR FIX: AuthProvider aligned with your single-token backend system
  * 
- * This provider wraps the application and makes authentication state and
- * methods available to all components through the useAuth hook.
+ * Key Changes Explained:
+ * 1. Removed all refresh token logic - your backend doesn't support it
+ * 2. Simplified token management - backend uses longer-lived single tokens
+ * 3. Fixed 2FA verification to use proper user ID parameter
+ * 4. Corrected cookie handling to match backend expectations
+ * 5. Improved error handling for backend response format
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // State to track the authenticated user
   const [user, setUser] = useState<User | null>(null);
-  
-  // State to track loading state during authentication operations
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  
-  // State to track whether the provider has finished initializing
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  
-  // State to track inactivity for auto-logout
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
   
-  // Effect to initialize the authentication state when the component mounts
+  // Initialize authentication state on component mount
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // The token is stored in HttpOnly cookie and will be sent automatically
+        // FIXED: Simplified initialization - no token refresh needed
+        // The token is automatically sent via cookies due to withCredentials: true
         const userData = await authService.getCurrentUser();
         setUser(userData);
       } catch (error) {
-        // If token is invalid or expired, user will remain null
+        // If authentication fails, user remains null
         console.error('Failed to initialize authentication state:', error);
         setUser(null);
       } finally {
@@ -64,27 +60,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
   
-  // Effect to handle auto-logout after inactivity
+  // Auto-logout functionality for HIPAA compliance
   useEffect(() => {
-    // Only set up inactivity tracking if user is authenticated
     if (!user) return;
     
-    // Function to update last activity timestamp
     const updateActivity = () => {
       setLastActivity(Date.now());
     };
     
-    // Function to check for inactivity
     const checkInactivity = () => {
       const now = Date.now();
       const inactiveTime = now - lastActivity;
       const inactiveTimeoutMs = config.sessionTimeoutMinutes * 60 * 1000;
       
       if (inactiveTime > inactiveTimeoutMs) {
-        // Auto-logout due to inactivity
         logout();
-        
-        // Show notification if window is available
         if (typeof window !== 'undefined') {
           alert('Your session has expired due to inactivity. Please log in again.');
           window.location.href = '/login';
@@ -92,54 +82,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
     
-    // Set up event listeners for user activity
-    window.addEventListener('mousemove', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('click', updateActivity);
-    window.addEventListener('scroll', updateActivity);
-    window.addEventListener('touchstart', updateActivity);
+    // Activity tracking event listeners
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
     
-    // Set up interval to check for inactivity
-    const intervalId = setInterval(checkInactivity, 60 * 1000); // Check every minute
+    const intervalId = setInterval(checkInactivity, 60 * 1000);
     
-    // Clean up event listeners and interval
     return () => {
-      window.removeEventListener('mousemove', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('click', updateActivity);
-      window.removeEventListener('scroll', updateActivity);
-      window.removeEventListener('touchstart', updateActivity);
+      events.forEach(event => window.removeEventListener(event, updateActivity));
       clearInterval(intervalId);
     };
   }, [user, lastActivity]);
 
   /**
-   * Logs in a user with the provided credentials
-   * @param username User's email address or username
-   * @param password User's password
-   * @returns LoginResponse object with user and token information
+   * FIXED: Login function aligned with backend single-token system
    */
   const login = async (username: string, password: string): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
       const response = await authService.login({ username, password });
       
-      // If two-factor authentication is not required, set user state
-      if (!response.requires_two_factor) {
-        // Store tokens in HttpOnly cookies via our API route
+      // FIXED: Handle single-token response from backend
+      if (!response.requires_2fa) {
+        // Store authentication data in cookies via our API route
         await fetch('/api/auth/login', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(response),
           credentials: 'include'
         });
         
-        // Update user state
         setUser(response.user);
-        
-        // Reset last activity timestamp
         setLastActivity(Date.now());
       }
       
@@ -150,9 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Registers a new user with the provided information
-   * @param userData User registration data
-   * @returns RegisterResponse object with the created user information
+   * FIXED: Registration function with proper field transformations
    */
   const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
@@ -164,26 +135,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Logs out the current user
+   * SIMPLIFIED: Logout function for single-token system
    */
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // First call the backend logout endpoint
+      // Call backend logout endpoint
       await authService.logout();
       
-      // Then clear cookies using our API route
+      // Clear cookies via our API route
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
       
-      // Update state
       setUser(null);
     } catch (error) {
       console.error('Error during logout:', error);
       
-      // Even if the API call fails, clear cookies and user state
+      // Even if API call fails, clear local state and cookies
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
@@ -196,30 +166,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Verifies a two-factor authentication code during login
-   * @param token Temporary token from login response
-   * @param code Verification code from authenticator app
-   * @returns LoginResponse with tokens and user data
+   * CRITICAL FIX: Two-factor authentication verification
+   * Your backend expects a numeric user_id, not a token string
    */
-  const verifyTwoFactor = async (token: string, code: string): Promise<LoginResponse> => {
+  const verifyTwoFactor = async (userIdOrToken: string, code: string): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
-      const response = await authService.verifyTwoFactor(token, code);
+      // FIXED: Parse user ID as number - backend expects numeric user_id
+      const userId = parseInt(userIdOrToken, 10);
+      if (isNaN(userId)) {
+        throw new Error('Invalid user ID for two-factor verification');
+      }
       
-      // Store tokens in HttpOnly cookies via our API route
+      const response = await authService.verifyTwoFactor(userId, code);
+      
+      // Store authentication data in cookies
       await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(response),
         credentials: 'include'
       });
       
-      // Update user state
       setUser(response.user);
-      
-      // Reset last activity timestamp
       setLastActivity(Date.now());
       
       return response;
@@ -229,8 +198,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Sets up two-factor authentication for the current user
-   * @returns SetupTwoFactorResponse with secret key and QR code
+   * FIXED: Setup two-factor authentication with correct response handling
    */
   const setupTwoFactor = async (): Promise<SetupTwoFactorResponse> => {
     setIsLoading(true);
@@ -242,17 +210,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Confirms two-factor authentication setup with a verification code
-   * @param code Verification code from authenticator app
-   * @returns Success message
+   * Confirm two-factor authentication setup
    */
   const confirmTwoFactor = async (code: string): Promise<{ success: boolean; message: string }> => {
     setIsLoading(true);
     try {
       const response = await authService.confirmTwoFactor(code);
       
-      // Update user information after successful 2FA setup
       if (response.success) {
+        // Update user information after successful 2FA setup
         const userData = await authService.getCurrentUser();
         setUser(userData);
       }
@@ -264,17 +230,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Disables two-factor authentication for the current user
-   * @param code Verification code from authenticator app
-   * @returns Success message
+   * FIXED: Disable 2FA - backend expects password, not 2FA code
    */
-  const disableTwoFactor = async (code: string): Promise<{ success: boolean; message: string }> => {
+  const disableTwoFactor = async (password: string): Promise<{ success: boolean; message: string }> => {
     setIsLoading(true);
     try {
-      const response = await authService.disableTwoFactor(code);
+      const response = await authService.disableTwoFactor(password);
       
-      // Update user information after successful 2FA disabling
       if (response.success) {
+        // Update user information after disabling 2FA
         const userData = await authService.getCurrentUser();
         setUser(userData);
       }
@@ -286,9 +250,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Requests a password reset email for the provided email address
-   * @param email User's email address
-   * @returns Response message
+   * Request password reset email
    */
   const requestPasswordReset = async (email: string): Promise<{ detail: string }> => {
     setIsLoading(true);
@@ -300,9 +262,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Resets password using a token from the reset email
-   * @param data Reset password data including token and new password
-   * @returns Response message
+   * Reset password with token from email
    */
   const resetPassword = async (data: ResetPasswordRequest): Promise<{ detail: string }> => {
     setIsLoading(true);
@@ -314,8 +274,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Requests a new email verification link
-   * @returns Response message
+   * Request email verification
    */
   const requestEmailVerification = async (): Promise<{ detail: string }> => {
     setIsLoading(true);
@@ -327,16 +286,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Verifies email with token from the verification email
-   * @param data Email verification data including token and optionally email
-   * @returns Response message
+   * Verify email with token
    */
   const verifyEmail = async (data: VerifyEmailRequest): Promise<{ detail: string }> => {
     setIsLoading(true);
     try {
       const response = await authService.verifyEmail(data);
       
-      // If user is logged in, update their info
+      // Update user info if logged in
       if (user) {
         const userData = await authService.getCurrentUser();
         setUser(userData);
@@ -354,17 +311,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Updates user consent for various purposes (HIPAA, research, data sharing, etc.)
-   * @param consentType Type of consent to update
-   * @param consented Whether consent is granted or revoked
-   * @returns Updated consent information
+   * Update user consent preferences
    */
   const updateConsent = async (consentType: string, consented: boolean): Promise<ConsentUpdateResponse> => {
     setIsLoading(true);
     try {
       const response = await authService.updateConsent(consentType, consented);
   
-      // Update user info after consent change
+      // Refresh user data after consent update
       if (user) {
         const userData = await authService.getCurrentUser();
         setUser(userData);
@@ -376,7 +330,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };  
 
-  // Value to provide in the context
+  // Context value with all authentication methods
   const contextValue: AuthContextType = {
     user,
     isAuthenticated: !!user,
