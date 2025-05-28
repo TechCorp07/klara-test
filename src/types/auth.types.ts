@@ -22,12 +22,12 @@ export interface LoginRequest {
   password: string;
 }
 
+// FIXED: Updated to match backend response exactly
 export interface LoginResponse {
-  access: string;
-  refresh: string;
+  token: string;  // Backend returns single "token" field, not "access"
   user: User;
-  requires_two_factor?: boolean;
-  temporary_token?: string;
+  requires_2fa?: boolean;  // Backend uses "requires_2fa", not "requires_two_factor"
+  verification_warning?: any;  // Backend includes this field
 }
 
 export interface RegisterRequest {
@@ -77,13 +77,7 @@ export interface RegisterResponse {
   date_joined: string;
 }
 
-export interface TokenRefreshRequest {
-  refresh: string;
-}
-
-export interface TokenRefreshResponse {
-  access: string;
-}
+// REMOVED: TokenRefreshRequest and TokenRefreshResponse since backend doesn't support refresh
 
 export interface ResetPasswordRequest {
   token: string;
@@ -96,9 +90,10 @@ export interface VerifyEmailRequest {
   email?: string;
 }
 
+// FIXED: Updated to match backend response format
 export interface SetupTwoFactorResponse {
-  secret: string;
-  qr_code_url: string;
+  qr_code: string;  // Backend returns "qr_code", not "qr_code_url"
+  secret_key: string;  // Backend returns "secret_key", not "secret"
 }
 
 export interface ConsentUpdateResponse {
@@ -107,6 +102,7 @@ export interface ConsentUpdateResponse {
   updated_at: string;
 }
 
+// FIXED: Updated context interface to match single-token system
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -115,10 +111,10 @@ export interface AuthContextType {
   login: (username: string, password: string) => Promise<LoginResponse>;
   register: (userData: RegisterRequest) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
-  verifyTwoFactor: (token: string, code: string) => Promise<LoginResponse>;
+  verifyTwoFactor: (userId: number, code: string) => Promise<LoginResponse>;  // FIXED: Proper parameter types
   setupTwoFactor: () => Promise<SetupTwoFactorResponse>;
   confirmTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
-  disableTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
+  disableTwoFactor: (password: string) => Promise<{ success: boolean; message: string }>;  // FIXED: Expects password, not code
   requestPasswordReset: (email: string) => Promise<{ detail: string }>;
   resetPassword: (data: ResetPasswordRequest) => Promise<{ detail: string }>;
   requestEmailVerification: () => Promise<{ detail: string }>;

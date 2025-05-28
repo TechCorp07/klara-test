@@ -8,8 +8,7 @@ import type {
   RegisterResponse, 
   ResetPasswordRequest, 
   VerifyEmailRequest, 
-  SetupTwoFactorResponse, 
-  TokenRefreshResponse,
+  SetupTwoFactorResponse,
   User
 } from '@/types/auth.types';
 
@@ -21,7 +20,7 @@ interface ConsentResponse {
   version?: string;
 }
 
-// New interfaces to match backend exactly
+// Backend response interfaces that match your API documentation exactly
 interface CheckAccountStatusResponse {
   exists: boolean;
   is_approved: boolean;
@@ -49,13 +48,20 @@ interface DashboardStatsResponse {
 }
 
 /**
- * Authentication service that provides methods for interacting with the authentication API
- * UPDATED TO MATCH YOUR DEPLOYED BACKEND EXACTLY
+ * Authentication service aligned with your deployed backend API
+ * 
+ * Key Changes Made:
+ * 1. Removed all refresh token logic since your backend uses single long-lived tokens
+ * 2. Updated response handling to match your backend's field names
+ * 3. Fixed 2FA verification to use proper user ID instead of token string
+ * 4. Corrected disable 2FA to expect password instead of 2FA code
  */
 export const authService = {
   /**
    * Authenticate a user with credentials
-   * Updated to use the correct backend endpoint structure
+   * 
+   * Your backend returns: { "token": "string", "user": {...}, "requires_2fa": boolean }
+   * This is different from JWT-style { "access": "...", "refresh": "..." } tokens
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
@@ -64,14 +70,16 @@ export const authService = {
 
   /**
    * Register a new user with the system
-   * CRITICAL FIX: Field names now match your backend exactly
+   * 
+   * The field transformation logic here correctly maps your frontend form fields
+   * to the exact field names your backend expects
    */
   register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
-    // Transform frontend field names to match backend expectations
+    // Transform frontend field names to match backend expectations exactly
     const backendPayload = {
       email: userData.email,
       password: userData.password,
-      confirm_password: userData.password_confirm, // Backend expects confirm_password, not password_confirm
+      confirm_password: userData.password_confirm, // Backend expects confirm_password
       first_name: userData.first_name,
       last_name: userData.last_name,
       role: userData.role,
@@ -132,7 +140,7 @@ export const authService = {
 
   /**
    * Check account status without authentication
-   * NEW: This endpoint was missing from your frontend
+   * This endpoint allows checking user status before login
    */
   checkAccountStatus: async (email: string): Promise<CheckAccountStatusResponse> => {
     const response = await apiClient.get(`${ENDPOINTS.AUTH.CHECK_STATUS}?email=${email}`);
@@ -140,16 +148,16 @@ export const authService = {
   },
 
   /**
-   * Refresh the access token using refresh token
-   * Updated endpoint path
+   * REMOVED: refreshToken method
+   * 
+   * Your backend doesn't implement token refresh. Instead, it uses longer-lived
+   * single tokens that don't need frequent refreshing. This simplifies the
+   * authentication flow but means users will need to re-login when tokens expire.
    */
-  refreshToken: async (): Promise<TokenRefreshResponse> => {
-    const response = await apiClient.post(ENDPOINTS.AUTH.REFRESH_TOKEN);
-    return response.data;
-  },
 
   /**
-   * Log out the current user and invalidate their tokens
+   * Log out the current user and invalidate their token
+   * The token is sent automatically via cookies due to withCredentials: true
    */
   logout: async (): Promise<void> => {
     await apiClient.post(ENDPOINTS.AUTH.LOGOUT);
@@ -195,36 +203,60 @@ export const authService = {
 
   /**
    * Setup two-factor authentication
+   * 
+   * FIXED: Backend returns "qr_code" and "secret_key", not "qr_code_url" and "secret"
    */
   setupTwoFactor: async (): Promise<SetupTwoFactorResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.SETUP_2FA);
-    return response.data;
+    
+    // Transform backend response to match frontend interface
+    return {
+      qr_code: response.data.qr_code,      // Backend field name
+      secret_key: response.data.secret_key  // Backend field name
+    };
   },
 
   /**
    * Confirm two-factor authentication setup with a verification code
+   * Backend expects 'token' field for the 2FA code
    */
   confirmTwoFactor: async (code: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post(ENDPOINTS.AUTH.CONFIRM_2FA, { token: code }); // Backend expects 'token', not 'code'
+    const response = await apiClient.post(ENDPOINTS.AUTH.CONFIRM_2FA, { 
+      token: code // Backend expects 'token', not 'code'
+    });
     return response.data;
   },
 
   /**
    * Verify two-factor authentication code during login
+   * 
+   * CRITICAL FIX: Your backend expects a numeric user_id and a token string
+   * The previous implementation was incorrectly passing a token as the user_id
+   * 
+   * Your backend documentation shows:
+   * {
+   *   "user_id": 123,        // This should be a number (the user's ID)
+   *   "token": "123456"      // This is the 2FA code from the authenticator app
+   * }
    */
-  verifyTwoFactor: async (token: string, code: string): Promise<LoginResponse> => {
+  verifyTwoFactor: async (userId: number, code: string): Promise<LoginResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.VERIFY_2FA, { 
-      user_id: token, // Backend expects user_id
-      token: code     // Backend expects token for the 2FA code
+      user_id: userId,  // Numeric user ID (not a token string)
+      token: code       // 2FA code from authenticator app
     });
     return response.data;
   },
 
   /**
    * Disable two-factor authentication
+   * 
+   * FIXED: Backend expects the user's current password, not a 2FA code
+   * This makes sense from a security perspective - you need your password to disable 2FA
    */
-  disableTwoFactor: async (code: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post(ENDPOINTS.AUTH.DISABLE_2FA, { password: code }); // Backend expects current password
+  disableTwoFactor: async (password: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post(ENDPOINTS.AUTH.DISABLE_2FA, { 
+      password: password // Backend expects current password to disable 2FA
+    });
     return response.data;
   },
 
@@ -254,7 +286,6 @@ export const authService = {
   
   /**
    * Reject a user registration (for admin users)
-   * FIXED: Using the correct endpoint structure
    */
   rejectUser: async (userId: number): Promise<{ success: boolean; message: string }> => {
     const response = await apiClient.delete(ENDPOINTS.USERS.USER_DETAIL(userId));
@@ -262,7 +293,7 @@ export const authService = {
   },
 
   /**
-   * NEW: Bulk approve multiple users
+   * Bulk approve multiple users
    */
   bulkApproveUsers: async (userIds: number[]): Promise<BulkOperationResponse> => {
     const response = await apiClient.post(ENDPOINTS.ADMIN.BULK_APPROVE, { user_ids: userIds });
@@ -270,7 +301,7 @@ export const authService = {
   },
 
   /**
-   * NEW: Bulk deny multiple users
+   * Bulk deny multiple users
    */
   bulkDenyUsers: async (userIds: number[], reason?: string): Promise<BulkOperationResponse> => {
     const response = await apiClient.post(ENDPOINTS.ADMIN.BULK_DENY, { 
@@ -281,7 +312,7 @@ export const authService = {
   },
 
   /**
-   * NEW: Get admin dashboard statistics
+   * Get admin dashboard statistics
    */
   getDashboardStats: async (): Promise<DashboardStatsResponse> => {
     const response = await apiClient.get(ENDPOINTS.ADMIN.DASHBOARD_STATS);
@@ -298,6 +329,7 @@ export const authService = {
   
   /**
    * Change user password
+   * This endpoint might not exist in your backend - you may need to add it
    */
   changePassword: async (
     currentPassword: string,
@@ -313,15 +345,15 @@ export const authService = {
   },
 
   /**
-   * Update user consent - simplified for now
-   * This would need to be expanded based on your specific consent management needs
+   * Update user consent for various purposes
+   * This simplified implementation works with basic consent management
    */
   updateConsent: async (
     consentType: string,
     consented: boolean
   ): Promise<ConsentResponse> => {
-    // This endpoint might not exist in your backend yet
-    // You might need to implement consent management through profile updates
+    // This endpoint might need to be implemented in your backend
+    // For now, it tries to use the consent records endpoint
     const response = await apiClient.post('/users/consent-records/', { 
       consent_type: consentType, 
       consented 
