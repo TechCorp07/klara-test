@@ -58,12 +58,12 @@ export const authService = {
     const backendPayload: Record<string, any> = {
       email: userData.email,
       password: userData.password,
-      confirm_password: userData.password_confirm, // CRITICAL FIX: Backend expects confirm_password
+      confirm_password: userData.password_confirm,
       first_name: userData.first_name,
       last_name: userData.last_name,
       role: userData.role,
       terms_accepted: userData.terms_accepted,
-      hipaa_privacy_acknowledged: userData.terms_accepted, // FIXED: Backend field name
+      hipaa_privacy_acknowledged: userData.hipaa_privacy_acknowledged,
     };
 
     // Add optional common fields
@@ -74,9 +74,8 @@ export const authService = {
       backendPayload.date_of_birth = userData.date_of_birth;
     }
 
-    // Provider-specific fields - FIXED: Field name mappings
     if (userData.role === 'provider') {
-      backendPayload.medical_license_number = userData.license_number; // CRITICAL FIX
+      backendPayload.medical_license_number = userData.license_number; 
       backendPayload.npi_number = userData.npi_number;
       backendPayload.specialty = userData.specialty;
       backendPayload.practice_name = userData.practice_name;
@@ -84,25 +83,22 @@ export const authService = {
       backendPayload.accepting_new_patients = true;
     }
     
-    // Researcher-specific fields - FIXED: Field mappings
     if (userData.role === 'researcher') {
       backendPayload.institution = userData.institution;
-      backendPayload.primary_research_area = userData.research_area; // CRITICAL FIX
-      backendPayload.qualifications_background = userData.qualifications; // CRITICAL FIX
+      backendPayload.primary_research_area = userData.research_area; 
+      backendPayload.qualifications_background = userData.qualifications;
       backendPayload.irb_approval_confirmed = true;
       backendPayload.phi_handling_acknowledged = true;
     }
     
-    // Pharmaceutical company fields - FIXED: Field mappings
     if (userData.role === 'pharmco') {
       backendPayload.company_name = userData.company_name;
-      backendPayload.role_at_company = userData.company_role; // CRITICAL FIX
+      backendPayload.role_at_company = userData.company_role; 
       backendPayload.regulatory_id = userData.regulatory_id;
-      backendPayload.primary_research_focus = userData.research_focus; // CRITICAL FIX
+      backendPayload.primary_research_focus = userData.research_focus;
       backendPayload.phi_handling_acknowledged = true;
     }
     
-    // Caregiver-specific fields - FIXED: Field mappings
     if (userData.role === 'caregiver') {
       backendPayload.relationship_to_patient = userData.relationship_to_patient;
       backendPayload.caregiver_type = userData.caregiver_type;
@@ -110,12 +106,11 @@ export const authService = {
       backendPayload.caregiver_authorization_acknowledged = true;
     }
     
-    // Compliance officer fields - FIXED: Field mappings
     if (userData.role === 'compliance') {
       backendPayload.organization = userData.regulatory_experience || "Healthcare Organization";
       backendPayload.job_title = "Compliance Officer";
       backendPayload.compliance_certification = userData.compliance_certification;
-      backendPayload.primary_specialization = "HIPAA"; // CRITICAL FIX
+      backendPayload.primary_specialization = "HIPAA";
       backendPayload.regulatory_experience = userData.regulatory_experience;
     }
 
@@ -146,9 +141,6 @@ export const authService = {
     return response.data;
   },
 
-  /**
-   * FIXED: Password reset with proper field names
-   */
   resetPassword: async (data: ResetPasswordRequest): Promise<{ detail: string }> => {
     const payload = {
       token: data.token,
@@ -175,10 +167,6 @@ export const authService = {
     return response.data;
   },
 
-  /**
-   * MAJOR FIX: Two-factor authentication setup
-   * Backend returns "qr_code" and "secret_key", transformed for frontend compatibility
-   */
   setupTwoFactor: async (): Promise<SetupTwoFactorResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.SETUP_2FA);
     
@@ -189,9 +177,6 @@ export const authService = {
     };
   },
 
-  /**
-   * FIXED: Confirm 2FA setup - backend expects 'token' field for the code
-   */
   confirmTwoFactor: async (code: string): Promise<{ success: boolean; message: string }> => {
     try {
       const response = await apiClient.post(ENDPOINTS.AUTH.CONFIRM_2FA, { 
@@ -209,10 +194,6 @@ export const authService = {
     }
   },
 
-  /**
-   * CRITICAL FIX: 2FA verification during login
-   * Your backend expects: { "user_id": 123, "token": "123456" }
-   */
   verifyTwoFactor: async (userId: number, code: string): Promise<LoginResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.VERIFY_2FA, { 
       user_id: userId,  // CRITICAL FIX: Numeric user ID
@@ -221,13 +202,10 @@ export const authService = {
     return response.data;
   },
 
-  /**
-   * MAJOR FIX: Disable 2FA - backend expects password, not 2FA code
-   */
   disableTwoFactor: async (password: string): Promise<{ success: boolean; message: string }> => {
     try {
       const response = await apiClient.post(ENDPOINTS.AUTH.DISABLE_2FA, { 
-        password: password // CRITICAL FIX: Backend expects current password to disable 2FA
+        password: password
       });
       return {
         success: true,

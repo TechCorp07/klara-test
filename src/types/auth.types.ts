@@ -1,21 +1,7 @@
 // src/types/auth.types.ts
 
-/**
- * COMPREHENSIVE FIX: Authentication types aligned with deployed backend API
- * 
- * Key Changes Explained:
- * 1. Updated LoginResponse to match backend's single-token format
- * 2. Fixed field names to match backend expectations exactly
- * 3. Corrected 2FA interfaces to use proper parameter types
- * 4. Added proper error handling interfaces for backend responses
- * 5. Removed refresh token types (backend doesn't support them)
- */
-
 export type UserRole = 'patient' | 'provider' | 'pharmco' | 'caregiver' | 'researcher' | 'admin' | 'superadmin' | 'compliance';
 
-/**
- * FIXED: User interface matching backend user model exactly
- */
 export interface User {
   id: number;
   username: string;
@@ -43,11 +29,6 @@ export interface LoginRequest {
   password: string;
 }
 
-/**
- * MAJOR FIX: LoginResponse aligned with backend single-token system
- * Backend returns: { "token": "string", "user": {...}, "requires_2fa": boolean }
- * NOT the JWT-style { "access": "...", "refresh": "..." } format
- */
 export interface LoginResponse {
   token: string;  // FIXED: Backend returns single "token" field
   user: User;
@@ -64,13 +45,14 @@ export interface LoginResponse {
 export interface RegisterRequest {
   email: string;
   password: string;
-  password_confirm: string; // FIXED: This will be transformed to confirm_password for backend
+  password_confirm: string;
   first_name: string;
   last_name: string;
   role: UserRole;
   phone_number?: string;
   date_of_birth?: string;
   terms_accepted: boolean;
+  hipaa_privacy_acknowledged: boolean;
   
   // Provider-specific fields
   license_number?: string;      // Maps to medical_license_number in backend

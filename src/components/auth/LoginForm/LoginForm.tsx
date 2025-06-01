@@ -25,14 +25,7 @@ const loginSchema = z.object({
 // Type for the form values
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-/**
- * FIXED: Login form with proper 2FA handling aligned with backend
- * 
- * Key fixes:
- * 1. Fixed 2FA verification to use numeric user ID instead of token
- * 2. Improved error handling for backend response format
- * 3. Corrected temporary user data handling for 2FA flow
- */
+
 const LoginForm = () => {
   // Get the auth context
   const { login, verifyTwoFactor } = useAuth();
@@ -76,9 +69,9 @@ const LoginForm = () => {
       // Submit login request
       const response = await login(data.username, data.password);
 
-      // FIXED: Check if two-factor authentication is required
+      
       if (response.requires_2fa) {
-        // CRITICAL FIX: Store numeric user ID for 2FA verification
+        
         setTemporaryUserId(response.user.id);
         setRequiresTwoFactor(true);
         setSuccessMessage('Please enter the verification code from your authenticator app.');
@@ -92,7 +85,7 @@ const LoginForm = () => {
         }, 500);
       }
     } catch (error: unknown) {
-      // IMPROVED: Better error handling aligned with backend response format
+
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
@@ -132,7 +125,6 @@ const LoginForm = () => {
     }    
   };
 
-  // FIXED: Handle two-factor authentication code submission
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -147,7 +139,6 @@ const LoginForm = () => {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      // CRITICAL FIX: Submit 2FA verification with numeric user ID
       await verifyTwoFactor(temporaryUserId.toString(), twoFactorCode);
       
       // Successful 2FA verification - redirect to the return URL

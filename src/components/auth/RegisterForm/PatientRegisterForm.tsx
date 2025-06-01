@@ -64,7 +64,7 @@ const patientRegisterSchema = z.object({
   terms_accepted: z
     .boolean()
     .refine((val) => val === true, 'You must accept the terms and conditions'),
-  // UPDATED: This maps to hipaa_privacy_acknowledged in the backend
+
   hipaa_privacy_acknowledged: z
     .boolean()
     .refine((val) => val === true, 'You must acknowledge the HIPAA Notice of Privacy Practices'),
@@ -81,10 +81,6 @@ const patientSchema = patientRegisterSchema.refine(
 
 type PatientRegisterFormValues = z.infer<typeof patientSchema>;
 
-/**
- * Patient registration form - ALIGNED WITH BACKEND
- * This form now sends data in exactly the format your backend expects
- */
 const PatientRegisterForm: React.FC = () => {
   const { register: registerUser } = useAuth();
   const router = useRouter();
@@ -118,11 +114,11 @@ const PatientRegisterForm: React.FC = () => {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      // The data is now in the correct format for the backend
+
       await registerUser({
         email: data.email,
         password: data.password,
-        password_confirm: data.password_confirm, // This will be transformed to confirm_password in the service
+        password_confirm: data.password_confirm, 
         first_name: data.first_name,
         last_name: data.last_name,
         role: 'patient',

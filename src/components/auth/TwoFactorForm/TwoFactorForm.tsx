@@ -8,9 +8,10 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { FormInput, FormButton, FormAlert } from '../common';
 import { useAuth } from '@/lib/auth/use-auth';
+import { config } from '@/lib/config';
 import Image from 'next/image';
 
-// Validation schema for 2FA verification code
+// Validation schema for 2FA verification code (setup flow)
 const twoFactorCodeSchema = z.object({
   code: z
     .string()
@@ -19,17 +20,27 @@ const twoFactorCodeSchema = z.object({
     .regex(/^\d+$/, 'Verification code must contain only digits'),
 });
 
-// Type for form values
+// FIXED: Separate validation schema for disabling 2FA (requires password)
+const disableTwoFactorSchema = z.object({
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(config.passwordMinLength, `Password must be at least ${config.passwordMinLength} characters`),
+});
+
+// Type for setup/verification form values
 type TwoFactorCodeFormValues = z.infer<typeof twoFactorCodeSchema>;
 
+// FIXED: Type for disable 2FA form values
+type DisableTwoFactorFormValues = z.infer<typeof disableTwoFactorSchema>;
+
 /**
- * Two-factor authentication setup form component.
+ * FIXED: Two-factor authentication form component with proper disable flow
  * 
- * This component handles the complete 2FA setup flow:
- * - Initial setup with QR code display
- * - Verification code validation
- * - Error handling
- * - Success feedback
+ * Key fixes:
+ * - Separate form schemas for setup vs disable flows
+ * - Disable 2FA now asks for password (not verification code)
+ * - Proper backend field name handling for setup response
  */
 const TwoFactorForm: React.FC = () => {
   // Get auth context for 2FA functions
@@ -50,15 +61,28 @@ const TwoFactorForm: React.FC = () => {
   // Check if 2FA is already enabled
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
 
-  // Initialize form with react-hook-form and zod validation
+  // Form for 2FA setup/verification
   const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
+    register: registerSetup,
+    handleSubmit: handleSetupSubmit,
+    formState: { errors: setupErrors, isSubmitting: isSetupSubmitting },
   } = useForm<TwoFactorCodeFormValues>({
     resolver: zodResolver(twoFactorCodeSchema),
     defaultValues: {
       code: '',
+    },
+  });
+
+  // FIXED: Separate form for disabling 2FA (password-based)
+  const {
+    register: registerDisable,
+    handleSubmit: handleDisableSubmit,
+    reset: resetDisableForm,
+    formState: { errors: disableErrors },
+  } = useForm<DisableTwoFactorFormValues>({
+    resolver: zodResolver(disableTwoFactorSchema),
+    defaultValues: {
+      password: '',
     },
   });
 
@@ -79,9 +103,9 @@ const TwoFactorForm: React.FC = () => {
       // Call API to get 2FA setup info
       const response = await setupTwoFactor();
       
-      // Set state with response data
-      setSecret(response.secret);
-      setQrCodeUrl(response.qr_code_url);
+      // FIXED: Use correct field names from backend response
+      setSecret(response.secret_key);  // Backend returns 'secret_key'
+      setQrCodeUrl(response.qr_code);  // Backend returns 'qr_code' (base64 data)
       setSetupStarted(true);
     } 
     catch (error: unknown) {
@@ -111,7 +135,7 @@ const TwoFactorForm: React.FC = () => {
   };
 
   // Function to verify and complete 2FA setup
-  const onSubmit = async (data: TwoFactorCodeFormValues) => {
+  const onSetupSubmit = async (data: TwoFactorCodeFormValues) => {
     try {
       setErrorMessage(null);
       setSuccessMessage(null);
@@ -151,23 +175,24 @@ const TwoFactorForm: React.FC = () => {
     }    
   };
 
-  // Function to disable 2FA
-  const handleDisable2FA = async (data: TwoFactorCodeFormValues) => {
+  // FIXED: Function to disable 2FA using password
+  const onDisableSubmit = async (data: DisableTwoFactorFormValues) => {
     try {
       setIsDisabling(true);
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      // Call API to disable 2FA
-      const response = await disableTwoFactor(data.code);
+      // FIXED: Call API to disable 2FA with password (not verification code)
+      const response = await disableTwoFactor(data.password);
       
       if (response.success) {
         setSuccessMessage(response.message || 'Two-factor authentication has been successfully disabled for your account.');
         setIs2FAEnabled(false);
         setSetupStarted(false);
         setSetupComplete(false);
+        resetDisableForm(); // Clear the password field
       } else {
-        setErrorMessage('Verification failed. Please check your code and try again.');
+        setErrorMessage('Failed to disable 2FA. Please check your password and try again.');
       }
     } catch (error: unknown) {
       if (error && typeof error === 'object') {
@@ -200,7 +225,7 @@ const TwoFactorForm: React.FC = () => {
     }
   };
 
-  // If 2FA is already enabled, show disable form
+  // FIXED: If 2FA is enabled, show disable form with password field
   if (is2FAEnabled && !setupComplete) {
     return (
       <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
@@ -226,20 +251,26 @@ const TwoFactorForm: React.FC = () => {
           onDismiss={() => setSuccessMessage(null)}
         />
 
-        <form onSubmit={handleSubmit(handleDisable2FA)} className="space-y-6">
+        {/* FIXED: Form now asks for password instead of verification code */}
+        <form onSubmit={handleDisableSubmit(onDisableSubmit)} className="space-y-6">
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Security Confirmation Required</h3>
+            <p className="text-sm text-yellow-700">
+              To disable two-factor authentication, please enter your current account password.
+              This helps ensure that only you can make changes to your security settings.
+            </p>
+          </div>
+
           <FormInput
-            id="code"
-            label="Verification Code"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={6}
-            error={errors.code}
-            autoComplete="one-time-code"
+            id="password"
+            label="Current Password"
+            type="password"
+            error={disableErrors.password}
+            autoComplete="current-password"
             required
             disabled={isDisabling}
-            helperText="Enter the 6-digit code from your authenticator app"
-            {...register('code')}
+            helperText="Enter your current account password to confirm this action"
+            {...registerDisable('password')}
           />
 
           <div>
@@ -327,12 +358,13 @@ const TwoFactorForm: React.FC = () => {
           
           <div className="flex justify-center mb-4">
             <div className="p-2 bg-white border rounded-md shadow-sm">
+              {/* FIXED: QR code is now base64 data from backend */}
               <Image
                 src={qrCodeUrl}
                 alt="QR Code for Two-Factor Authentication"
                 className="w-48 h-48"
-                width = {48}
-                height = {48}
+                width={192}
+                height={192}
               />
             </div>
           </div>
@@ -354,7 +386,7 @@ const TwoFactorForm: React.FC = () => {
             Enter the 6-digit verification code from your authenticator app to complete the setup.
           </p>
           
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSetupSubmit(onSetupSubmit)} className="space-y-6">
             <FormInput
               id="code"
               label="Verification Code"
@@ -362,11 +394,11 @@ const TwoFactorForm: React.FC = () => {
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={6}
-              error={errors.code}
+              error={setupErrors.code}
               autoComplete="one-time-code"
               required
-              disabled={isSubmitting}
-              {...register('code')}
+              disabled={isSetupSubmitting}
+              {...registerSetup('code')}
             />
 
             <div>
@@ -374,7 +406,7 @@ const TwoFactorForm: React.FC = () => {
                 type="submit"
                 variant="primary"
                 fullWidth
-                isLoading={isSubmitting}
+                isLoading={isSetupSubmitting}
               >
                 Verify and Enable
               </FormButton>
