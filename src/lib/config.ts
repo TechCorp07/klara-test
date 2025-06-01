@@ -50,3 +50,5 @@ export const config = {
   privacyUrl: '/privacy-policy',
   hipaaNoticeUrl: '/hipaa-notice',
 };
+
+export default config;
