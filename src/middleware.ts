@@ -15,8 +15,12 @@ const PUBLIC_ROUTES = [
   '/two-factor',
   '/approval-pending',
   '/unauthorized',
+  '/terms-of-service',
+  '/privacy-policy',
+  '/hipaa-notice',
+  '/contact',
   // assets & APIs
-  '/_next', '/favicon.ico', '/api', '/assets', '/images', '/fonts',
+  '/_next', '/favicon.ico', '/api/auth', '/assets', '/images', '/fonts',
 ];
 
 /*───────────────────────────────────────────────────────
@@ -86,12 +90,13 @@ export function middleware(request: NextRequest) {
       3a  NOT LOGGED-IN  → /login
   ─────────────────────────────────*/
   if (!token) {
-    // Avoid nesting ?returnUrl=… inside itself
-    if (searchParams.has('returnUrl')) {
+    // If already on the login page or other public routes, don't redirect
+    if (pathname === '/login' || PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
       return NextResponse.next();
     }
+    
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('returnUrl', pathname);   // only the path
+    loginUrl.searchParams.set('returnUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
