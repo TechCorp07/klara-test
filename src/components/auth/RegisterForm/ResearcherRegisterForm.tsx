@@ -88,32 +88,20 @@ type ResearcherRegisterFormValues = z.infer<typeof researcherSchema>;
 // Define research areas for the dropdown
 const researchAreas = [
   { value: '', label: 'Select a research area' },
-  { value: 'clinical_trials', label: 'Clinical Trials' },
-  { value: 'public_health', label: 'Public Health' },
-  { value: 'epidemiology', label: 'Epidemiology' },
-  { value: 'genomics', label: 'Genomics & Precision Medicine' },
-  { value: 'mental_health', label: 'Mental Health' },
-  { value: 'chronic_disease', label: 'Chronic Disease Management' },
-  { value: 'preventive_medicine', label: 'Preventive Medicine' },
-  { value: 'health_outcomes', label: 'Health Outcomes Research' },
-  { value: 'health_economics', label: 'Health Economics' },
-  { value: 'medical_devices', label: 'Medical Devices' },
-  { value: 'biostatistics', label: 'Biostatistics' },
-  { value: 'ai_medicine', label: 'AI in Medicine' },
-  { value: 'telehealth', label: 'Telehealth & Remote Monitoring' },
-  { value: 'other', label: 'Other' },
+  { value: 'RARE_DISEASES', label: 'Rare Diseases' },
+  { value: 'CLINICAL_TRIALS', label: 'Clinical Trials' },
+  { value: 'GENETICS', label: 'Genetics' },
+  { value: 'PHARMACOLOGY', label: 'Pharmacology' },
+  { value: 'EPIDEMIOLOGY', label: 'Epidemiology' },
+  { value: 'BIOSTATISTICS', label: 'Biostatistics' },
+  { value: 'HEALTH_OUTCOMES', label: 'Health Outcomes' },
+  { value: 'DRUG_DEVELOPMENT', label: 'Drug Development' },
+  { value: 'PATIENT_REGISTRIES', label: 'Patient Registries' },
+  { value: 'BIOMARKER_RESEARCH', label: 'Biomarker Research' },
+  { value: 'DIGITAL_HEALTH', label: 'Digital Health' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-/**
- * Researcher-specific registration form with validation.
- * 
- * This component handles the complete registration flow for healthcare researchers, including:
- * - Email, password, and personal information validation
- * - Research credential validation
- * - Error handling
- * - Terms and privacy policy acceptance
- * - HIPAA and data usage consent
- */
 const ResearcherRegisterForm: React.FC = () => {
   // Get auth context for registration function
   const { register: registerUser } = useAuth();
@@ -169,7 +157,7 @@ const ResearcherRegisterForm: React.FC = () => {
         qualifications: data.qualifications,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
-        hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
+        hipaa_privacy_acknowledged: data.hipaa_consent, 
       });
 
       // Show success message and mark registration as complete
@@ -186,6 +174,7 @@ const ResearcherRegisterForm: React.FC = () => {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>;
               error?: {
                 message?: string;
                 details?: Record<string, string[]>;
@@ -195,9 +184,16 @@ const ResearcherRegisterForm: React.FC = () => {
           message?: string;
         };
     
-        if (err.response?.data?.detail) {
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Registration failed. Please check your information.');
+        } 
+        else if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.error) {
+        } 
+        else if (err.response?.data?.error) {
           const validationErrors = err.response.data.error.details;
           if (validationErrors && typeof validationErrors === 'object') {
             const firstError = Object.values(validationErrors)[0];
@@ -207,9 +203,11 @@ const ResearcherRegisterForm: React.FC = () => {
               err.response.data.error.message || 'Registration failed. Please try again.'
             );
           }
-        } else if (err.message) {
+        } 
+        else if (err.message) {
           setErrorMessage(err.message);
-        } else {
+        } 
+        else {
           setErrorMessage('An unexpected error occurred. Please try again later.');
         }
       } else {

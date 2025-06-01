@@ -81,31 +81,31 @@ const caregiverSchema = caregiverRegisterSchema.refine(
 // Type for form values
 type CaregiverRegisterFormValues = z.infer<typeof caregiverSchema>;
 
-// Define caregiver relationship options
+
 const relationshipOptions = [
   { value: '', label: 'Select relationship' },
-  { value: 'family_member', label: 'Family Member' },
-  { value: 'spouse', label: 'Spouse' },
-  { value: 'parent', label: 'Parent' },
-  { value: 'child', label: 'Adult Child' },
-  { value: 'sibling', label: 'Sibling' },
-  { value: 'legal_guardian', label: 'Legal Guardian' },
-  { value: 'healthcare_proxy', label: 'Healthcare Proxy' },
-  { value: 'power_of_attorney', label: 'Power of Attorney' },
-  { value: 'friend', label: 'Friend' },
-  { value: 'other', label: 'Other' },
+  { value: 'PARENT', label: 'Parent' },
+  { value: 'SPOUSE', label: 'Spouse' },
+  { value: 'CHILD', label: 'Child' },
+  { value: 'SIBLING', label: 'Sibling' },
+  { value: 'GRANDPARENT', label: 'Grandparent' },
+  { value: 'GRANDCHILD', label: 'Grandchild' },
+  { value: 'FRIEND', label: 'Friend' },
+  { value: 'PROFESSIONAL_CAREGIVER', label: 'Professional Caregiver' },
+  { value: 'LEGAL_GUARDIAN', label: 'Legal Guardian' },
+  { value: 'HEALTHCARE_PROXY', label: 'Healthcare Proxy' },
+  { value: 'OTHER_FAMILY', label: 'Other Family' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-// Define caregiver type options
 const caregiverTypeOptions = [
   { value: '', label: 'Select caregiver type' },
-  { value: 'primary', label: 'Primary Caregiver' },
-  { value: 'secondary', label: 'Secondary Caregiver' },
-  { value: 'medical', label: 'Medical Caregiver' },
-  { value: 'non_medical', label: 'Non-Medical Caregiver' },
-  { value: 'part_time', label: 'Part-Time Caregiver' },
-  { value: 'full_time', label: 'Full-Time Caregiver' },
-  { value: 'remote', label: 'Remote Caregiver' },
+  { value: 'FAMILY', label: 'Family' },
+  { value: 'PROFESSIONAL', label: 'Professional' },
+  { value: 'FRIEND', label: 'Friend' },
+  { value: 'LEGAL_GUARDIAN', label: 'Legal Guardian' },
+  { value: 'HEALTHCARE_PROXY', label: 'Healthcare Proxy' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 
@@ -180,6 +180,7 @@ const CaregiverRegisterForm: React.FC = () => {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>; 
               error?: {
                 message?: string;
                 details?: Record<string, string[]>;
@@ -189,9 +190,16 @@ const CaregiverRegisterForm: React.FC = () => {
           message?: string;
         };
     
-        if (err.response?.data?.detail) {
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Registration failed. Please check your information.');
+        } 
+        else if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.error) {
+        } 
+        else if (err.response?.data?.error) {
           const validationErrors = err.response.data.error.details;
           if (validationErrors && typeof validationErrors === 'object') {
             const firstError = Object.values(validationErrors)[0];
@@ -201,9 +209,11 @@ const CaregiverRegisterForm: React.FC = () => {
               err.response.data.error.message || 'Registration failed. Please try again.'
             );
           }
-        } else if (err.message) {
+        } 
+        else if (err.message) {
           setErrorMessage(err.message);
-        } else {
+        } 
+        else {
           setErrorMessage('An unexpected error occurred. Please try again later.');
         }
       } else {

@@ -89,33 +89,19 @@ type ComplianceRegisterFormValues = z.infer<typeof complianceSchema>;
 // Define certification types
 const certificationTypes = [
   { value: '', label: 'Select a certification' },
-  { value: 'chc', label: 'Certified in Healthcare Compliance (CHC)' },
-  { value: 'chrc', label: 'Certified in Healthcare Research Compliance (CHRC)' },
-  { value: 'chpc', label: 'Certified in Healthcare Privacy Compliance (CHPC)' },
-  { value: 'ccep', label: 'Certified Compliance & Ethics Professional (CCEP)' },
-  { value: 'cipp', label: 'Certified Information Privacy Professional (CIPP)' },
-  { value: 'cissp', label: 'Certified Information Systems Security Professional (CISSP)' },
-  { value: 'chps', label: 'Certified in Healthcare Privacy and Security (CHPS)' },
-  { value: 'cisa', label: 'Certified Information Systems Auditor (CISA)' },
-  { value: 'other', label: 'Other Compliance Certification' },
-  { value: 'none', label: 'No Formal Certification (Experience Only)' },
+  { value: 'CHPC', label: 'Certified in Healthcare Privacy Compliance (CHPC)' },
+  { value: 'CHPS', label: 'Certified in Healthcare Privacy and Security (CHPS)' },
+  { value: 'HCCA', label: 'Healthcare Compliance Association Certified (HCCA)' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-// Define specialization areas
 const specializationAreas = [
   { value: '', label: 'Select primary specialization' },
-  { value: 'hipaa_privacy', label: 'HIPAA Privacy' },
-  { value: 'hipaa_security', label: 'HIPAA Security' },
-  { value: 'clinical_compliance', label: 'Clinical Compliance' },
-  { value: 'research_compliance', label: 'Research Compliance' },
-  { value: 'billing_compliance', label: 'Billing & Coding Compliance' },
-  { value: 'regulatory_affairs', label: 'Regulatory Affairs' },
-  { value: 'risk_management', label: 'Risk Management' },
-  { value: 'audit_compliance', label: 'Audit & Compliance' },
-  { value: 'quality_improvement', label: 'Quality Improvement' },
-  { value: 'patient_rights', label: 'Patient Rights & Ethics' },
-  { value: 'data_governance', label: 'Data Governance' },
-  { value: 'other', label: 'Other Specialization' },
+  { value: 'HIPAA', label: 'HIPAA' },
+  { value: 'PRIVACY', label: 'Privacy' },
+  { value: 'SECURITY', label: 'Security' },
+  { value: 'AUDIT', label: 'Audit' },
+  { value: 'GENERAL', label: 'General' },
 ];
 
 /**
@@ -201,6 +187,7 @@ const ComplianceRegisterForm: React.FC = () => {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>; 
               error?: {
                 message?: string;
                 details?: Record<string, string[]>;
@@ -210,11 +197,17 @@ const ComplianceRegisterForm: React.FC = () => {
           message?: string;
         };
     
-        if (err.response?.data?.detail) {
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Registration failed. Please check your information.');
+        } 
+        else if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.error) {
+        } 
+        else if (err.response?.data?.error) {
           const validationErrors = err.response.data.error.details;
-    
           if (validationErrors && typeof validationErrors === 'object') {
             const firstError = Object.values(validationErrors)[0];
             setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
@@ -223,9 +216,11 @@ const ComplianceRegisterForm: React.FC = () => {
               err.response.data.error.message || 'Registration failed. Please try again.'
             );
           }
-        } else if (err.message) {
+        } 
+        else if (err.message) {
           setErrorMessage(err.message);
-        } else {
+        } 
+        else {
           setErrorMessage('An unexpected error occurred. Please try again later.');
         }
       } else {

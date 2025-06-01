@@ -186,6 +186,7 @@ const PharmcoRegisterForm: React.FC = () => {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>; 
               error?: {
                 message?: string;
                 details?: Record<string, string[]>;
@@ -195,11 +196,17 @@ const PharmcoRegisterForm: React.FC = () => {
           message?: string;
         };
     
-        if (err.response?.data?.detail) {
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Registration failed. Please check your information.');
+        } 
+        else if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.error) {
+        } 
+        else if (err.response?.data?.error) {
           const validationErrors = err.response.data.error.details;
-    
           if (validationErrors && typeof validationErrors === 'object') {
             const firstError = Object.values(validationErrors)[0];
             setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
@@ -208,9 +215,11 @@ const PharmcoRegisterForm: React.FC = () => {
               err.response.data.error.message || 'Registration failed. Please try again.'
             );
           }
-        } else if (err.message) {
+        } 
+        else if (err.message) {
           setErrorMessage(err.message);
-        } else {
+        } 
+        else {
           setErrorMessage('An unexpected error occurred. Please try again later.');
         }
       } else {

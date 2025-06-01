@@ -92,22 +92,17 @@ type ProviderRegisterFormValues = z.infer<typeof providerSchema>;
 // Define specialties for the dropdown
 const specialties = [
   { value: '', label: 'Select a specialty' },
-  { value: 'family_medicine', label: 'Family Medicine' },
-  { value: 'internal_medicine', label: 'Internal Medicine' },
-  { value: 'pediatrics', label: 'Pediatrics' },
-  { value: 'cardiology', label: 'Cardiology' },
-  { value: 'dermatology', label: 'Dermatology' },
-  { value: 'endocrinology', label: 'Endocrinology' },
-  { value: 'gastroenterology', label: 'Gastroenterology' },
-  { value: 'neurology', label: 'Neurology' },
-  { value: 'obstetrics_gynecology', label: 'Obstetrics & Gynecology' },
-  { value: 'oncology', label: 'Oncology' },
-  { value: 'ophthalmology', label: 'Ophthalmology' },
-  { value: 'orthopedics', label: 'Orthopedics' },
-  { value: 'psychiatry', label: 'Psychiatry' },
-  { value: 'radiology', label: 'Radiology' },
-  { value: 'urology', label: 'Urology' },
-  { value: 'other', label: 'Other' },
+  { value: 'RARE_DISEASE', label: 'Rare Disease' },
+  { value: 'GENETICS', label: 'Genetics' },
+  { value: 'NEUROLOGY', label: 'Neurology' },
+  { value: 'ONCOLOGY', label: 'Oncology' },
+  { value: 'CARDIOLOGY', label: 'Cardiology' },
+  { value: 'ENDOCRINOLOGY', label: 'Endocrinology' },
+  { value: 'IMMUNOLOGY', label: 'Immunology' },
+  { value: 'PEDIATRICS', label: 'Pediatrics' },
+  { value: 'INTERNAL_MEDICINE', label: 'Internal Medicine' },
+  { value: 'FAMILY_MEDICINE', label: 'Family Medicine' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 /**
@@ -195,6 +190,7 @@ const ProviderRegisterForm: React.FC = () => {
           response?: {
             data?: {
               detail?: string;
+              field_errors?: Record<string, string[]>;
               error?: {
                 message?: string;
                 details?: Record<string, string[]>;
@@ -204,12 +200,16 @@ const ProviderRegisterForm: React.FC = () => {
           message?: string;
         };
     
-        // Handle server-provided detail message
-        if (err.response?.data?.detail) {
+        if (err.response?.data?.field_errors) {
+          const fieldErrors = err.response.data.field_errors;
+          const firstFieldWithError = Object.keys(fieldErrors)[0];
+          const firstError = fieldErrors[firstFieldWithError]?.[0];
+          setErrorMessage(firstError || 'Registration failed. Please check your information.');
+        } 
+        else if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
-    
-        // Handle validation errors from structured error object
-        } else if (err.response?.data?.error) {
+        } 
+        else if (err.response?.data?.error) {
           const validationErrors = err.response.data.error.details;
           if (validationErrors && typeof validationErrors === 'object') {
             const firstError = Object.values(validationErrors)[0];
@@ -219,17 +219,17 @@ const ProviderRegisterForm: React.FC = () => {
               err.response.data.error.message || 'Registration failed. Please try again.'
             );
           }
-        // Handle generic message
-        } else if (err.message) {
+        } 
+        else if (err.message) {
           setErrorMessage(err.message);
-        // Fallback for completely unknown structures
-        } else {
+        } 
+        else {
           setErrorMessage('An unexpected error occurred. Please try again later.');
         }
       } else {
         setErrorMessage('An unknown error occurred. Please try again later.');
       }
-    }    
+    }   
   };
 
   // If registration is complete, show success message and redirect info

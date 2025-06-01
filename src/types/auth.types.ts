@@ -2,6 +2,10 @@
 
 export type UserRole = 'patient' | 'provider' | 'pharmco' | 'caregiver' | 'researcher' | 'admin' | 'superadmin' | 'compliance';
 
+export type EmergencyAccessReason = 'LIFE_THREATENING' | 'URGENT_CARE' | 'PATIENT_UNABLE' | 'IMMINENT_DANGER' | 'OTHER';
+
+export type CaregiverRelationship = 'PARENT' | 'SPOUSE' | 'CHILD' | 'SIBLING' | 'GRANDPARENT' | 'GRANDCHILD' | 'FRIEND' | 'PROFESSIONAL_CAREGIVER' | 'LEGAL_GUARDIAN' | 'HEALTHCARE_PROXY' | 'OTHER_FAMILY' | 'OTHER';
+
 export interface User {
   id: number;
   username: string;
@@ -280,7 +284,7 @@ export interface CaregiverRequest {
   id: number;
   caregiver: number;
   patient_email: string;
-  relationship: string;
+  relationship: CaregiverRelationship;
   status: 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
   requested_at: string;
   processed_at?: string;
@@ -290,7 +294,7 @@ export interface EmergencyAccessRecord {
   id: number;
   requester: number;
   patient_identifier: string;
-  reason: 'LIFE_THREATENING' | 'URGENT_CARE' | 'PATIENT_UNABLE' | 'IMMINENT_DANGER' | 'OTHER';
+  reason: EmergencyAccessReason;
   detailed_reason: string;
   requested_at: string;
   ended_at?: string;
