@@ -170,7 +170,10 @@ const ComplianceRegisterForm: React.FC = () => {
         regulatory_experience: data.regulatory_experience,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
-        hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
+        hipaa_privacy_acknowledged: data.hipaa_consent,
+        organization: data.organization,
+        job_title: data.job_title,
+        specialization_areas: data.specialization_areas,
       });
 
       // Show success message and mark registration as complete

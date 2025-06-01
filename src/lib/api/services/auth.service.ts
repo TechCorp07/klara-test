@@ -1,6 +1,7 @@
 // src/lib/api/services/auth.service.ts
 import apiClient from '../client';
 import { ENDPOINTS } from '../endpoints';
+import { validateLoginResponse, validateUserResponse } from '@/lib/api/validation';
 import type { 
   LoginRequest, 
   LoginResponse, 
@@ -108,6 +109,11 @@ interface BackendRegistrationPayload {
 export const authService = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
+    
+    if (!validateLoginResponse(response.data)) {
+      throw new Error('Invalid login response format from server');
+    }
+    
     return response.data;
   },
 
@@ -284,6 +290,11 @@ export const authService = {
    */
   getCurrentUser: async (): Promise<User> => {
     const response = await apiClient.get(ENDPOINTS.USERS.ME);
+    
+    if (!validateUserResponse(response.data)) {
+      throw new Error('Invalid user data format from server');
+    }
+    
     return response.data;
   },
   

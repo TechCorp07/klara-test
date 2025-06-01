@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = [
   '/two-factor',
   '/approval-pending',
   '/unauthorized',
+  '/compliance-violation',
   '/terms-of-service',
   '/privacy-policy',
   '/hipaa-notice',

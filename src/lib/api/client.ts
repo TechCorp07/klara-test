@@ -1,17 +1,8 @@
 // src/lib/api/client.ts
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { config } from '@/lib/config';
+import { getCookieValue } from '@/lib/utils/cookies';
 
-/**
- * MAJOR FIX: API client simplified for single-token authentication system
- * 
- * Key Changes Explained:
- * 1. Removed complex token refresh logic (backend doesn't support it)
- * 2. Simplified error handling to match backend response format  
- * 3. Enhanced HIPAA compliance headers
- * 4. Fixed redirect logic for authentication failures
- * 5. Improved error sanitization for production security
- */
 
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
@@ -27,7 +18,7 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  withCredentials: true, // CRITICAL: Ensures authentication cookies are sent automatically
+  withCredentials: true, 
   timeout: 30000, // 30 second timeout for HIPAA compliance
 });
 
@@ -56,15 +47,10 @@ apiClient.interceptors.request.use(
   }
 );
 
-/**
- * MAJOR FIX: Response interceptor simplified for single-token system
- * Removes complex refresh token logic that was causing authentication issues
- */
 apiClient.interceptors.response.use(
   // Success responses pass through unchanged
   (response) => response,
 
-  // SIMPLIFIED: Error handling aligned with backend response format
   async (error: AxiosError) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
     
@@ -72,10 +58,8 @@ apiClient.interceptors.response.use(
     if (!originalRequest || originalRequest._retry) {
       return Promise.reject(error);
     }
-    
-    /**
-     * FIXED: Handle 401 Unauthorized - token expired or invalid
-     * Since backend doesn't support token refresh, redirect to login
+     /**
+     * Handle 401 Unauthorized - token expired or invalid
      */
     if (error.response?.status === 401) {
       // Mark request as retried to prevent loops
@@ -101,16 +85,38 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
     
-    /**
-     * FIXED: Handle 403 Forbidden - user lacks permission or needs verification
-     * Your backend uses specific response formats for different 403 scenarios
-     */
     if (error.response?.status === 403) {
       const responseData = error.response?.data;
       
       if (responseData && typeof responseData === 'object') {
         const data = responseData as Record<string, unknown>;
         
+      // Log potential HIPAA violations based on error context
+      const errorDetail = data.detail as string;
+
+        // Enhanced logging for audit trail (works with current backend)
+        if (errorDetail && (
+          errorDetail.toLowerCase().includes('phi') ||
+          errorDetail.toLowerCase().includes('patient') ||
+          errorDetail.toLowerCase().includes('medical') ||
+          originalRequest?.url?.includes('/patient') ||
+          originalRequest?.url?.includes('/medical-records')
+        )) {
+          console.error('Potential HIPAA-related access denial:', {
+            timestamp: new Date().toISOString(),
+            url: originalRequest?.url?.replace(/\/\d+/g, '/[ID]'),
+            user_role: getCookieValue(config.userRoleCookieName),
+            error_detail: errorDetail,
+            method: originalRequest?.method?.toUpperCase(),
+            severity: 'MEDIUM'
+          });
+          
+          if (typeof window !== 'undefined') {
+            window.location.href = '/compliance-violation';
+          }
+          return Promise.reject(error);
+        }
+
         // Check for email verification requirement
         if (data.email_verification_required || data.detail === 'Email verification required') {
           if (typeof window !== 'undefined') {
@@ -134,23 +140,20 @@ apiClient.interceptors.response.use(
       }
     }
     
-    /**
-     * Enhanced error logging for HIPAA audit requirements
-     * Log server errors while protecting PHI
-     */
-    if (error.response?.status && error.response.status >= 500) {
-      const sanitizedError = {
-        status: error.response.status,
-        url: originalRequest?.url?.replace(/\/\d+/g, '/[ID]'), // Remove potential patient IDs from URLs
-        method: originalRequest?.method?.toUpperCase(),
-        timestamp: new Date().toISOString(),
-        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown'
-      };
+      /**
+           * Enhanced error logging for HIPAA audit requirements
+           */
+      if (error.response?.status && error.response.status >= 500) {
+        const sanitizedError = {
+          status: error.response.status,
+          url: originalRequest?.url?.replace(/\/\d+/g, '/[ID]'),
+          method: originalRequest?.method?.toUpperCase(),
+          timestamp: new Date().toISOString(),
+          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown',
+          user_role: getCookieValue(config.userRoleCookieName) || 'unknown',
+        };
       
-      console.error('Server error (sanitized for HIPAA):', sanitizedError);
-      
-      // In production, you would send this to your error monitoring service
-      // Example: errorMonitoringService.logError(sanitizedError);
+        console.error('Server error (sanitized for HIPAA):', sanitizedError);
     }
     
     /**

@@ -1,13 +1,35 @@
 // src/lib/config.ts
 
-/**
- * Environment-based configuration utility for the Klararety Healthcare Platform
- * FIXED: Updated to align with deployed backend API
- */
-export const config = {
-  // API Configuration - FIXED: Updated to match deployed backend
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.klararety.com/api',
+// Validate critical environment variables
+const validateConfig = () => {
+  const requiredEnvVars = [
+    'NEXT_PUBLIC_API_BASE_URL',
+  ];
   
+  const missing = requiredEnvVars.filter(
+    envVar => !process.env[envVar] && envVar === 'NEXT_PUBLIC_API_BASE_URL' && !config.apiBaseUrl
+  );
+  
+  if (missing.length > 0 && config.isProduction) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+};
+
+// Run validation
+if (typeof window === 'undefined') { // Only run on server side
+  validateConfig();
+}
+
+export const config = {
+  
+  // Enhanced API configuration with validation
+  apiBaseUrl: (() => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.klararety.com/api';
+    
+    // Ensure no trailing slash for consistency
+    return baseUrl.replace(/\/$/, '');
+  })(),
+
   // Cookie Configuration
   cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || 'klararety.com',
   secureCookies: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true' || process.env.NODE_ENV === 'production',
@@ -49,6 +71,15 @@ export const config = {
   termsUrl: '/terms-of-service',
   privacyUrl: '/privacy-policy',
   hipaaNoticeUrl: '/hipaa-notice',
+
+  validateApiConnection: async (): Promise<boolean> => {
+  try {
+       const response = await fetch(`${config.apiBaseUrl}/users/auth/check-status/?email=test@example.com`);
+       return response.status !== 500; // Any non-500 response means API is reachable
+    } catch {
+       return false;
+    }
+  },
 };
 
 export default config;
