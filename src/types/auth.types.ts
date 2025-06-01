@@ -30,18 +30,15 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;  // FIXED: Backend returns single "token" field
+  token: string;  
   user: User;
-  requires_2fa?: boolean;  // FIXED: Backend uses "requires_2fa"
+  requires_2fa?: boolean;  
   verification_warning?: {
     message: string;
     type: string;
   };
 }
 
-/**
- * FIXED: Registration request with proper field mappings
- */
 export interface RegisterRequest {
   email: string;
   password: string;
