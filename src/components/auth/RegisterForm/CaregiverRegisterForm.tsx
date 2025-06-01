@@ -108,15 +108,7 @@ const caregiverTypeOptions = [
   { value: 'remote', label: 'Remote Caregiver' },
 ];
 
-/**
- * Caregiver-specific registration form with validation.
- * 
- * This component handles the complete registration flow for caregivers, including:
- * - Email, password, and personal information validation
- * - Patient relationship information
- * - HIPAA and authorization consent
- * - Error handling and user feedback
- */
+
 const CaregiverRegisterForm: React.FC = () => {
   // Get auth context for registration function
   const { register: registerUser } = useAuth();

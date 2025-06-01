@@ -87,48 +87,32 @@ type PharmcoRegisterFormValues = z.infer<typeof pharmcoSchema>;
 // Define company role options
 const companyRoleOptions = [
   { value: '', label: 'Select your role' },
-  { value: 'clinical_research', label: 'Clinical Research Manager' },
-  { value: 'medical_affairs', label: 'Medical Affairs Officer' },
-  { value: 'regulatory_affairs', label: 'Regulatory Affairs' },
-  { value: 'pharmacovigilance', label: 'Pharmacovigilance' },
-  { value: 'medical_science_liaison', label: 'Medical Science Liaison' },
-  { value: 'clinical_trial_manager', label: 'Clinical Trial Manager' },
-  { value: 'drug_safety', label: 'Drug Safety Officer' },
-  { value: 'market_access', label: 'Market Access' },
-  { value: 'medical_information', label: 'Medical Information' },
-  { value: 'executive', label: 'Executive' },
-  { value: 'other', label: 'Other' },
+  { value: 'RESEARCHER', label: 'Researcher' },
+  { value: 'CLINICAL_AFFAIRS', label: 'Clinical Affairs' },
+  { value: 'REGULATORY_AFFAIRS', label: 'Regulatory Affairs' },
+  { value: 'MEDICAL_AFFAIRS', label: 'Medical Affairs' },
+  { value: 'DATA_SCIENTIST', label: 'Data Scientist' },
+  { value: 'COMPLIANCE_OFFICER', label: 'Compliance Officer' },
+  { value: 'EXECUTIVE', label: 'Executive' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 // Define research focus areas
 const researchFocusAreas = [
   { value: '', label: 'Select primary research focus' },
-  { value: 'oncology', label: 'Oncology' },
-  { value: 'cardiology', label: 'Cardiology' },
-  { value: 'neurology', label: 'Neurology' },
-  { value: 'infectious_disease', label: 'Infectious Disease' },
-  { value: 'immunology', label: 'Immunology' },
-  { value: 'endocrinology', label: 'Endocrinology' },
-  { value: 'respiratory', label: 'Respiratory' },
-  { value: 'gastroenterology', label: 'Gastroenterology' },
-  { value: 'hematology', label: 'Hematology' },
-  { value: 'rare_diseases', label: 'Rare Diseases' },
-  { value: 'pediatrics', label: 'Pediatrics' },
-  { value: 'women_health', label: 'Women\'s Health' },
-  { value: 'mental_health', label: 'Mental Health' },
-  { value: 'other', label: 'Other' },
+  { value: 'RARE_DISEASES', label: 'Rare Diseases' },
+  { value: 'ONCOLOGY', label: 'Oncology' },
+  { value: 'NEUROLOGY', label: 'Neurology' },
+  { value: 'CARDIOLOGY', label: 'Cardiology' },
+  { value: 'IMMUNOLOGY', label: 'Immunology' },
+  { value: 'ENDOCRINOLOGY', label: 'Endocrinology' },
+  { value: 'PEDIATRICS', label: 'Pediatrics' },
+  { value: 'GENETICS', label: 'Genetics' },
+  { value: 'DRUG_DEVELOPMENT', label: 'Drug Development' },
+  { value: 'CLINICAL_TRIALS', label: 'Clinical Trials' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-/**
- * Pharmaceutical company-specific registration form with validation.
- * 
- * This component handles the complete registration flow for pharmaceutical companies, including:
- * - Email, password, and personal information validation
- * - Company and regulatory information
- * - Research focus areas
- * - HIPAA and data handling consent
- * - Error handling and user feedback
- */
 const PharmcoRegisterForm: React.FC = () => {
   // Get auth context for registration function
   const { register: registerUser } = useAuth();

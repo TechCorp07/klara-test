@@ -65,9 +65,9 @@ export interface RegisterRequest {
   
   // Pharmaceutical company fields
   company_name?: string;
-  company_role?: string;        // Maps to role_at_company in backend
+  company_role?: string;
   regulatory_id?: string;
-  research_focus?: string;      // Maps to primary_research_focus in backend
+  research_focus?: string;      
   
   // Caregiver-specific fields
   relationship_to_patient?: string;
@@ -77,11 +77,11 @@ export interface RegisterRequest {
   // Compliance officer fields
   compliance_certification?: string;
   regulatory_experience?: string;
+  organization?: string;
+  job_title?: string;
+  specialization_areas?: string;
 }
 
-/**
- * FIXED: Registration response matching backend format
- */
 export interface RegisterResponse {
   id: number;
   username: string;

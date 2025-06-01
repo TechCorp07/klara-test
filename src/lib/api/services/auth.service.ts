@@ -165,10 +165,10 @@ export const authService = {
     }
     
     if (userData.role === 'compliance') {
-      backendPayload.organization = userData.regulatory_experience || "Healthcare Organization";
-      backendPayload.job_title = "Compliance Officer";
+      backendPayload.organization = userData.organization; 
+      backendPayload.job_title = userData.job_title;
       backendPayload.compliance_certification = userData.compliance_certification;
-      backendPayload.primary_specialization = "HIPAA";
+      backendPayload.primary_specialization = userData.specialization_areas; 
       backendPayload.regulatory_experience = userData.regulatory_experience;
     }
 
