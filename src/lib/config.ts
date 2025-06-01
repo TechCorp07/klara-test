@@ -1,31 +1,9 @@
 // src/lib/config.ts
 
-// Validate critical environment variables
-const validateConfig = () => {
-  const requiredEnvVars = [
-    'NEXT_PUBLIC_API_BASE_URL',
-  ];
-  
-  const missing = requiredEnvVars.filter(
-    envVar => !process.env[envVar] && envVar === 'NEXT_PUBLIC_API_BASE_URL' && !config.apiBaseUrl
-  );
-  
-  if (missing.length > 0 && config.isProduction) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-  }
-};
-
-// Run validation
-if (typeof window === 'undefined') { // Only run on server side
-  validateConfig();
-}
-
 export const config = {
-  
   // Enhanced API configuration with validation
   apiBaseUrl: (() => {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.klararety.com/api';
-    
     // Ensure no trailing slash for consistency
     return baseUrl.replace(/\/$/, '');
   })(),
@@ -40,7 +18,6 @@ export const config = {
   emailVerifiedCookieName: 'klararety_email_verified',
   isApprovedCookieName: 'klararety_is_approved',
   
-  // REMOVED: Refresh token settings since backend doesn't support token refresh
   // Authentication Settings - SIMPLIFIED: Single token system
   tokenExpiryDays: 7, // Backend uses longer-lived tokens
   
@@ -71,15 +48,31 @@ export const config = {
   termsUrl: '/terms-of-service',
   privacyUrl: '/privacy-policy',
   hipaaNoticeUrl: '/hipaa-notice',
+};
 
-  validateApiConnection: async (): Promise<boolean> => {
+// Separate validation function to avoid circular dependencies
+export const validateApiConnection = async (): Promise<boolean> => {
   try {
-       const response = await fetch(`${config.apiBaseUrl}/users/auth/check-status/?email=test@example.com`);
-       return response.status !== 500; // Any non-500 response means API is reachable
-    } catch {
-       return false;
-    }
-  },
+    const response = await fetch(`${config.apiBaseUrl}/users/auth/check-status/?email=test@example.com`);
+    return response.status !== 500; // Any non-500 response means API is reachable
+  } catch {
+    return false;
+  }
+};
+
+// Validate critical environment variables (moved outside config object)
+export const validateConfig = () => {
+  const requiredEnvVars = [
+    'NEXT_PUBLIC_API_BASE_URL',
+  ];
+  
+  const missing = requiredEnvVars.filter(
+    envVar => !process.env[envVar] && envVar === 'NEXT_PUBLIC_API_BASE_URL' && !config.apiBaseUrl
+  );
+  
+  if (missing.length > 0 && config.isProduction) {
+    console.warn(`Missing environment variables: ${missing.join(', ')}`);
+  }
 };
 
 export default config;

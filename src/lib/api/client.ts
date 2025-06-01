@@ -1,19 +1,20 @@
 // src/lib/api/client.ts
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
-import { config } from '@/lib/config';
 import { getCookieValue } from '@/lib/utils/cookies';
-
 
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
 }
+
+// Import config directly - circular dependency should be resolved now
+import { config as appConfig } from '@/lib/config';
 
 /**
  * Create Axios client configured for your deployed backend
  * The client automatically handles cookies and provides HIPAA-compliant headers
  */
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: config.apiBaseUrl,
+  baseURL: appConfig.apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -105,7 +106,7 @@ apiClient.interceptors.response.use(
           console.error('Potential HIPAA-related access denial:', {
             timestamp: new Date().toISOString(),
             url: originalRequest?.url?.replace(/\/\d+/g, '/[ID]'),
-            user_role: getCookieValue(config.userRoleCookieName),
+            user_role: getCookieValue(appConfig.userRoleCookieName),
             error_detail: errorDetail,
             method: originalRequest?.method?.toUpperCase(),
             severity: 'MEDIUM'
@@ -150,7 +151,7 @@ apiClient.interceptors.response.use(
           method: originalRequest?.method?.toUpperCase(),
           timestamp: new Date().toISOString(),
           userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown',
-          user_role: getCookieValue(config.userRoleCookieName) || 'unknown',
+          user_role: getCookieValue(appConfig.userRoleCookieName) || 'unknown',
         };
       
         console.error('Server error (sanitized for HIPAA):', sanitizedError);
@@ -160,7 +161,7 @@ apiClient.interceptors.response.use(
      * HIPAA-Compliant Error Sanitization
      * Remove potential PHI from error responses before returning to frontend
      */
-    if (error.response?.data && config.isProduction) {
+    if (error.response?.data && appConfig.isProduction) {
       const responseData = error.response.data;
       
       if (typeof responseData === 'object' && responseData !== null) {

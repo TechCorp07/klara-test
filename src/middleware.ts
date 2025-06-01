@@ -28,7 +28,6 @@ const PUBLIC_ROUTES = [
   2.  ROLE-BASED PERMISSIONS
 ────────────────────────────────────────────────────────*/
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  /* … exactly the list you posted … */
   patient: [
     '/dashboard', '/profile', '/settings', '/healthcare',
     '/appointments', '/prescriptions', '/medical-records',
@@ -145,12 +144,11 @@ export function middleware(request: NextRequest) {
 }
 
 /*───────────────────────────────────────────────────────
-  4.  LIMIT THE SCOPE OF THE MIDDLEWARE
+  4.  LIMIT THE SCOPE OF THE MIDDLEWARE (FIXED)
 ────────────────────────────────────────────────────────*/
 export const config = {
   matcher: [
-    // everything except Next internals, static assets, API, and the public pages above
-    '/((?!_next/static|_next/image|favicon.ico|api|login|register|verify-email|' +
-      'reset-password|forgot-password|two-factor|approval-pending|unauthorized).*)',
+    // Fixed: Use a single static string instead of concatenation
+    '/((?!_next/static|_next/image|favicon.ico|api|login|register|verify-email|reset-password|forgot-password|two-factor|approval-pending|unauthorized|compliance-violation|terms-of-service|privacy-policy|hipaa-notice|contact).*)',
   ],
 };
