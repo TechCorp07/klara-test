@@ -148,7 +148,7 @@ export default function ContactPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <Link href="/" className="inline-block mb-8">
-            <AppLogo size="lg" />
+            <AppLogo size="_8xlg" />
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
           <p className="text-xl text-gray-600">

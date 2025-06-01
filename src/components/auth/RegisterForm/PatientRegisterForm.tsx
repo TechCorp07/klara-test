@@ -114,7 +114,6 @@ const PatientRegisterForm: React.FC = () => {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-
       await registerUser({
         email: data.email,
         password: data.password,
@@ -125,6 +124,7 @@ const PatientRegisterForm: React.FC = () => {
         date_of_birth: data.date_of_birth,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
+        hipaa_privacy_acknowledged: data.hipaa_privacy_acknowledged,
       });
 
       setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email notification once your account has been approved.');

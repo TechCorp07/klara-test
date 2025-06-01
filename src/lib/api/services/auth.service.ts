@@ -47,6 +47,64 @@ interface ConsentResponse {
   version?: string;
 }
 
+// Type for API error responses
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+  message?: string;
+}
+
+// Backend payload type for registration
+interface BackendRegistrationPayload {
+  email: string;
+  password: string;
+  confirm_password: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  terms_accepted: boolean;
+  hipaa_privacy_acknowledged: boolean;
+  phone_number?: string;
+  date_of_birth?: string;
+  
+  // Provider fields
+  medical_license_number?: string;
+  npi_number?: string;
+  specialty?: string;
+  practice_name?: string;
+  practice_address?: string;
+  accepting_new_patients?: boolean;
+  
+  // Researcher fields
+  institution?: string;
+  primary_research_area?: string;
+  qualifications_background?: string;
+  irb_approval_confirmed?: boolean;
+  phi_handling_acknowledged?: boolean;
+  
+  // Pharmco fields
+  company_name?: string;
+  role_at_company?: string;
+  regulatory_id?: string;
+  primary_research_focus?: string;
+  
+  // Caregiver fields
+  relationship_to_patient?: string;
+  caregiver_type?: string;
+  patient_email?: string;
+  caregiver_authorization_acknowledged?: boolean;
+  
+  // Compliance fields
+  organization?: string;
+  job_title?: string;
+  compliance_certification?: string;
+  primary_specialization?: string;
+  regulatory_experience?: string;
+}
+
 export const authService = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
@@ -55,7 +113,7 @@ export const authService = {
 
   register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
     // Transform frontend field names to match backend API exactly
-    const backendPayload: Record<string, any> = {
+    const backendPayload: BackendRegistrationPayload = {
       email: userData.email,
       password: userData.password,
       confirm_password: userData.password_confirm,
@@ -186,10 +244,11 @@ export const authService = {
         success: true,
         message: response.data.detail || "Two-factor authentication enabled successfully"
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       return {
         success: false,
-        message: error.response?.data?.detail || "Failed to enable two-factor authentication"
+        message: apiError.response?.data?.detail || "Failed to enable two-factor authentication"
       };
     }
   },
@@ -211,10 +270,11 @@ export const authService = {
         success: true,
         message: response.data.detail || "Two-factor authentication disabled successfully"
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       return {
         success: false,
-        message: error.response?.data?.detail || "Failed to disable two-factor authentication"
+        message: apiError.response?.data?.detail || "Failed to disable two-factor authentication"
       };
     }
   },

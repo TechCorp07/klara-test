@@ -30,18 +30,6 @@ export async function POST(_request: NextRequest) {
       maxAge: 0 // Expire immediately
     });
     
-    // Clear secure HttpOnly cookie for refresh token
-    response.cookies.set({
-      name: config.refreshCookieName,
-      value: '',
-      httpOnly: true,
-      secure: config.secureCookies,
-      sameSite: 'strict',
-      domain: config.cookieDomain,
-      path: '/',
-      maxAge: 0 // Expire immediately
-    });
-    
     // Clear non-HttpOnly cookies for user information
     // User role cookie
     response.cookies.set({

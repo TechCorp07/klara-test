@@ -29,6 +29,15 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
+    // Skip guard for public routes
+    const publicRoutes = ['/login', '/register', '/verify-email', '/reset-password', '/terms-of-service', 
+                        '/forgot-password', '/two-factor', '/approval-pending', '/unauthorized',
+                        '/hipaa-notice', '/contact',  '/privacy-policy',];
+                        
+    if (publicRoutes.some(route => pathname.startsWith(route))) {
+      return;
+    }
+
     // Only proceed if authentication is initialized and not currently loading
     if (!isInitialized || isLoading) return;
     

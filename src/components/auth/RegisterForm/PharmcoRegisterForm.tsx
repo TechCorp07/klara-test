@@ -185,6 +185,7 @@ const PharmcoRegisterForm: React.FC = () => {
         research_focus: data.research_focus,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
+        hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
       });
 
       // Show success message and mark registration as complete

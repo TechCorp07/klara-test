@@ -5,8 +5,8 @@ import { config } from '@/lib/config';
 /**
  * Server-side API route for handling login and setting secure HttpOnly cookies
  * 
- * This route receives authentication data (access token, refresh token, user info)
- * from the client and sets secure cookies to store the tokens.
+ * This route receives authentication data (token and user info)
+ * from the client and sets secure cookies to store the token.
  * 
  * The tokens are stored in HttpOnly cookies for security, while non-sensitive
  * user information is stored in regular cookies for client-side access.
@@ -14,10 +14,15 @@ import { config } from '@/lib/config';
 export async function POST(request: NextRequest) {
   try {
     // Parse the request body
-    const { access, refresh, user } = await request.json();
+    const body = await request.json();
+    //console.log('Login API route received:', body); // For debugging
+    
+    // Extract data from request body
+    const { token, user } = body;
     
     // Validate required data
-    if (!access || !refresh || !user) {
+    if (!token || !user) {
+      console.error('Missing required authentication data', { token: !!token, user: !!user });
       return NextResponse.json(
         { error: 'Missing required authentication data' },
         { status: 400 }
@@ -33,63 +38,58 @@ export async function POST(request: NextRequest) {
     // Set secure HttpOnly cookie for access token
     response.cookies.set({
       name: config.authCookieName,
-      value: access,
+      value: token, // Use 'token' instead of 'access'
       httpOnly: true,
       secure: config.secureCookies,
       sameSite: 'strict',
       domain: config.cookieDomain,
       path: '/',
-      maxAge: 60 * config.accessTokenExpiryMinutes // Match JWT expiration
-    });
-    
-    // Set secure HttpOnly cookie for refresh token
-    response.cookies.set({
-      name: config.refreshCookieName,
-      value: refresh,
-      httpOnly: true,
-      secure: config.secureCookies,
-      sameSite: 'strict',
-      domain: config.cookieDomain,
-      path: '/',
-      maxAge: 60 * 60 * 24 * config.refreshTokenExpiryDays // Match refresh token expiration
+      //maxAge: 60 * config.accessTokenExpiryMinutes // Match JWT expiration
     });
     
     // Set non-HttpOnly cookies for information needed client-side
     // User role for role-based UI rendering
-    response.cookies.set({
-      name: config.userRoleCookieName,
-      value: user.role,
-      httpOnly: false,
-      secure: config.secureCookies,
-      sameSite: 'strict',
-      domain: config.cookieDomain,
-      path: '/',
-      maxAge: 60 * 60 * 24 * config.refreshTokenExpiryDays
-    });
+    if (user.role) {
+      response.cookies.set({
+        name: config.userRoleCookieName,
+        value: user.role,
+        httpOnly: false,
+        secure: config.secureCookies,
+        sameSite: 'strict',
+        domain: config.cookieDomain,
+        path: '/',
+        //maxAge: 60 * config.accessTokenExpiryMinutes
+      });
+    }
     
     // Email verification status for UI feedback
-    response.cookies.set({
-      name: config.emailVerifiedCookieName,
-      value: user.email_verified.toString(),
-      httpOnly: false,
-      secure: config.secureCookies,
-      sameSite: 'strict',
-      domain: config.cookieDomain,
-      path: '/',
-      maxAge: 60 * 60 * 24 * config.refreshTokenExpiryDays
-    });
+    // Note: Your API response may not include this field, so check first
+    if (user.email_verified !== undefined) {
+      response.cookies.set({
+        name: config.emailVerifiedCookieName,
+        value: String(user.email_verified),
+        httpOnly: false,
+        secure: config.secureCookies,
+        sameSite: 'strict',
+        domain: config.cookieDomain,
+        path: '/',
+        //maxAge: 60 * config.accessTokenExpiryMinutes
+      });
+    }
     
     // Account approval status for UI feedback
-    response.cookies.set({
-      name: config.isApprovedCookieName,
-      value: (user.is_approved === false ? 'false' : 'true'),
-      httpOnly: false,
-      secure: config.secureCookies,
-      sameSite: 'strict',
-      domain: config.cookieDomain,
-      path: '/',
-      maxAge: 60 * 60 * 24 * config.refreshTokenExpiryDays
-    });
+    if (user.is_approved !== undefined) {
+      response.cookies.set({
+        name: config.isApprovedCookieName,
+        value: String(user.is_approved),
+        httpOnly: false,
+        secure: config.secureCookies,
+        sameSite: 'strict',
+        domain: config.cookieDomain,
+        path: '/',
+        //maxAge: 60 * config.accessTokenExpiryMinutes
+      });
+    }
     
     return response;
   } catch (error) {

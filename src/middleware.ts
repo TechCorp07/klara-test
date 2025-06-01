@@ -70,7 +70,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   3.  MIDDLEWARE FUNCTION
 ────────────────────────────────────────────────────────*/
 export function middleware(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
   /*-- Public pages, static assets, and API calls – straight through --*/
   if (PUBLIC_ROUTES.some(r => pathname.startsWith(r))) {
@@ -133,7 +133,7 @@ export function middleware(request: NextRequest) {
     "style-src  'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "font-src   'self' https://fonts.gstatic.com; " +
     "img-src    'self' data: https:; " +
-    "connect-src 'self' https://api.klararety.com; frame-src 'self'; object-src 'none';");
+    "connect-src 'self' https://api.klararety.com http://localhost:8000 http://127.0.0.1:8000/; frame-src 'self'; object-src 'none';");
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options',         'DENY');
   res.headers.set('X-XSS-Protection',        '1; mode=block');

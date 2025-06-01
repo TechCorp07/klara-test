@@ -3,6 +3,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { config } from '@/lib/config';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: `Authentication | ${config.appName}`,
@@ -33,30 +34,30 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               <Image 
                 src="/images/logo.svg" 
                 alt={config.appName}
-                width={32} 
-                height={32}
-                className="h-8 w-auto" 
+                width={80} 
+                height={80}
+                className={"h-20 w-auto"} 
               />
             </div>
             <div className="flex items-center space-x-4">
-              <a 
-                href="/contact" 
-                className="text-sm font-medium text-gray-600 hover:text-gray-900"
+              <Link 
+              href="/contact" 
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
               >
                 Support
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href={config.privacyUrl}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900"
               >
                 Privacy
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href={config.termsUrl}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900"
               >
                 Terms
-              </a>
+              </Link>
             </div>
           </div>
         </div>
