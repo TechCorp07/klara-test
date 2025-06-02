@@ -71,7 +71,7 @@ const nextConfig = {
                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
                 font-src 'self' https://fonts.gstatic.com;
                 img-src 'self' data: https:;
-                connect-src 'self' https://api.klararety.com;
+                connect-src 'self' https://api.klararety.com http://localhost:8000 http://127.0.0.1:8000/;
                 frame-src 'self';
                 object-src 'none';
                 base-uri 'self';
