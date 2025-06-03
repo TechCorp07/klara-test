@@ -21,16 +21,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const lastRedirectPath = useRef<string>('');
   
   useEffect(() => {
-    // 🔍 ADD DEBUG LOGGING HERE - AT THE TOP OF useEffect
-    console.log('🛡️ AuthGuard running:', {
-      pathname,
-      isAuthenticated,
-      isInitialized,
-      isLoading,
-      user: user ? { id: user.id, email: user.email, role: user.role, email_verified: user.email_verified, is_approved: user.is_approved } : null,
-      redirectAttempts: redirectAttempts.current,
-      isRedirecting
-    });
 
     const publicRoutes = [
       '/login', '/register', '/verify-email', '/reset-password', 
@@ -43,48 +33,22 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
       pathname === route || pathname.startsWith(route + '/')
     );
     
-    // 🔍 MORE DEBUG LOGGING
-    console.log('🛡️ Route check:', {
-      pathname,
-      isPublicRoute,
-      matchedRoutes: publicRoutes.filter(route => pathname === route || pathname.startsWith(route + '/'))
-    });
-    
     if (isPublicRoute) {
-      console.log('✅ Public route detected - resetting state and exiting early');
       redirectAttempts.current = 0;
       lastRedirectPath.current = '';
       setIsRedirecting(false);
       return;
     }
-
-    if (!isInitialized || isLoading) {
-      console.log('⏳ Auth not ready - waiting...', { isInitialized, isLoading });
-      return;
-    }
     
-    if (redirectAttempts.current > 3) {
-      console.error('🔄 Too many redirect attempts, forcing dashboard redirect');
-      redirectAttempts.current = 0;
-      router.replace('/dashboard');
-      return;
-    }
-    
-    if (isRedirecting) {
-      console.log('🔄 Already redirecting - skipping');
-      return;
-    }
 
     const currentFullPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
     if (lastRedirectPath.current === currentFullPath) {
-      console.error('🔄 Redirect loop detected - forcing dashboard');
       redirectAttempts.current = 0;
       router.replace('/dashboard');
       return;
     }
 
     if (!isAuthenticated) {
-      console.log('🔐 Not authenticated - preparing redirect to login');
       setIsRedirecting(true);
       redirectAttempts.current++;
       lastRedirectPath.current = currentFullPath;
@@ -108,13 +72,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
       const encodedReturnUrl = encodeURIComponent(returnUrl);
       const loginUrl = `/login?returnUrl=${encodedReturnUrl}`;
       
-      console.log('🔐 Redirecting to:', loginUrl);
       router.replace(loginUrl);
       return;
     }
     
     if (user && !user.email_verified && !pathname.includes('/verify-email')) {
-      console.log('📧 Email not verified - redirecting to verification');
       setIsRedirecting(true);
       redirectAttempts.current++;
       router.replace('/verify-email');
@@ -122,14 +84,12 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     }
     
     if (user && user.is_approved === false && !pathname.includes('/approval-pending')) {
-      console.log('⏳ Account not approved - redirecting to approval pending');
       setIsRedirecting(true);
       redirectAttempts.current++;
       router.replace('/approval-pending');
       return;
     }
     
-    console.log('✅ All AuthGuard checks passed');
     redirectAttempts.current = 0;
     lastRedirectPath.current = '';
     setIsRedirecting(false);
@@ -148,14 +108,12 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   );
 
   if (isPublicRoute) {
-    console.log('✅ Public route - rendering children directly');
     return <>{children}</>;
   }
 
   if (!isInitialized || isLoading || isRedirecting || !isAuthenticated || 
       (user && !user.email_verified) || 
       (user && user.is_approved === false)) {
-    console.log('⏳ Showing loading spinner');
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner size="lg" />
@@ -163,7 +121,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     );
   }
 
-  console.log('✅ AuthGuard complete - rendering protected content');
   return <>{children}</>;
 };
 

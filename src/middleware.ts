@@ -67,32 +67,15 @@ export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const returnUrl = searchParams.get('returnUrl');
 
-  // 🔍 ADD DEBUG LOGGING HERE - AT THE VERY TOP OF THE FUNCTION
-  console.log('🚀 Middleware running for:', {
-    pathname,
-    returnUrl,
-    searchParams: searchParams.toString(),
-    fullUrl: request.url
-  });
-
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     pathname === route || pathname.startsWith(route + '/')
   );
   
-  // 🔍 MORE DEBUG LOGGING
-  console.log('📍 Route check:', {
-    pathname,
-    isPublicRoute,
-    matchedRoutes: PUBLIC_ROUTES.filter(route => pathname === route || pathname.startsWith(route + '/'))
-  });
-  
   if (isPublicRoute) {
-    console.log('✅ Public route - allowing through');
     return NextResponse.next();
   }
 
   if (returnUrl && hasRedirectLoop(returnUrl)) {
-    console.warn('🔄 LOOP DETECTED - breaking cycle:', returnUrl);
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -118,15 +101,6 @@ export function middleware(request: NextRequest) {
   const verified = request.cookies.get(appConfig.emailVerifiedCookieName)?.value === 'true';
   const approved = request.cookies.get(appConfig.isApprovedCookieName)?.value !== 'false';
 
-  // 🔍 DEBUG AUTH STATE
-  console.log('🔐 Auth state:', {
-    hasToken: !!token,
-    role,
-    verified,
-    approved,
-    pathname
-  });
-
   if (!token) {
     const loginUrl = new URL('/login', request.url);
     
@@ -136,22 +110,18 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set('returnUrl', pathname);
     }
     
-    console.log('🔐 No token - redirecting to:', loginUrl.toString());
     return NextResponse.redirect(loginUrl);
   }
 
   if (!approved) {
-    console.log('⏳ Not approved - redirecting to approval-pending');
     return NextResponse.redirect(new URL('/approval-pending', request.url));
   }
   
   if (!verified) {
-    console.log('📧 Not verified - redirecting to verify-email');
     return NextResponse.redirect(new URL('/verify-email', request.url));
   }
 
   if (!role || !(role in ROLE_ROUTES)) {
-    console.log('🚫 Invalid role - clearing cookies and redirecting to login');
     const response = NextResponse.redirect(new URL('/login', request.url));
     response.cookies.delete(appConfig.authCookieName);
     response.cookies.delete(appConfig.userRoleCookieName);
@@ -163,12 +133,10 @@ export function middleware(request: NextRequest) {
       pathname === base || pathname.startsWith(base + '/')
     );
     if (!allowed) {
-      console.log('🚫 Role not allowed for path - redirecting to unauthorized');
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
 
-  console.log('✅ All checks passed - proceeding');
   const res = NextResponse.next();
   
   // Add your security headers here...
