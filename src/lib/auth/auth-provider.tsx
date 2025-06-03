@@ -15,6 +15,7 @@ import {
 import { authService } from '../api/services/auth.service';
 import { config } from '@/lib/config';
 import { ConsentUpdateResponse } from '@/types/auth.types';
+import { getCookieValue } from '@/lib/utils/cookies';
 
 // Create context with null as initial value
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,26 +30,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
   
-  // Initialize authentication state on component mount
+  // CRITICAL FIX: Check for token before making API calls
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const userData = await authService.getCurrentUser();
-        setUser(userData);
+        // STEP 1: Check if auth token exists before making any API calls
+        const authToken = getCookieValue(config.authCookieName);
+        
+        console.log('🔍 AuthProvider initializing:', {
+          hasToken: !!authToken,
+          cookieName: config.authCookieName
+        });
+        
+        // STEP 2: Only call API if token exists
+        if (authToken) {
+          console.log('✅ Token found, checking user data...');
+          const userData = await authService.getCurrentUser();
+          setUser(userData);
+          console.log('✅ User data loaded:', userData);
+        } else {
+          console.log('❌ No token found, user remains unauthenticated');
+          setUser(null);
+        }
       } catch (error) {
-        // If authentication fails, user remains null (not logged in)
         console.error('Failed to initialize authentication state:', error);
+        // If API call fails, clear any stale cookies and set user to null
         setUser(null);
+        
+        // Clear potentially invalid cookies
+        if (typeof window !== 'undefined') {
+          document.cookie = `${config.authCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${config.userRoleCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${config.emailVerifiedCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${config.isApprovedCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
+        console.log('🏁 AuthProvider initialization complete');
       }
     };
 
     initializeAuth();
   }, []);
   
-  // Auto-logout functionality for HIPAA compliance
+  // Auto-logout functionality for HIPAA compliance (unchanged)
   useEffect(() => {
     if (!user) return;
     
@@ -83,14 +109,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user, lastActivity]);
 
   /**
-   * FIXED: Login function aligned with backend single-token system
+   * Login function aligned with backend single-token system
    */
   const login = async (username: string, password: string): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
       const response = await authService.login({ username, password });
       
-      // CRITICAL FIX: Handle single-token response from backend
+      // Handle single-token response from backend
       if (!response.requires_2fa) {
         // Store authentication data in cookies via our API route
         await fetch('/api/auth/login', {
@@ -123,7 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * SIMPLIFIED: Logout function for single-token system
+   * Logout function for single-token system
    */
   const logout = async (): Promise<void> => {
     setIsLoading(true);
@@ -154,13 +180,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * CRITICAL FIX: Two-factor authentication verification
-   * This is different from some other 2FA implementations you might have seen
+   * Two-factor authentication verification
    */
   const verifyTwoFactor = async (userIdOrToken: string, code: string): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
-      // CRITICAL FIX: Parse user ID as number - backend expects numeric user_id
       const userId = parseInt(userIdOrToken, 10);
       if (isNaN(userId)) {
         throw new Error('Invalid user ID for two-factor verification');
@@ -218,7 +242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * CRITICAL FIX: Disable 2FA - backend expects password, not 2FA code
+   * Disable 2FA - backend expects password, not 2FA code
    */
   const disableTwoFactor = async (password: string): Promise<{ success: boolean; message: string }> => {
     setIsLoading(true);
