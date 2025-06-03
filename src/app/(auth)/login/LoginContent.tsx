@@ -27,13 +27,19 @@ export default function LoginContent() {
       return '/dashboard';
     }
     
-    // Prevent redirect loops by checking for problematic patterns
+    // CRITICAL FIX: More comprehensive loop detection
     if (
       decodedUrl.includes('/login') ||           // Direct login references
-      decodedUrl.includes('%2Flogin') ||         // Encoded login references
+      decodedUrl.includes('%2Flogin') ||         // Encoded login references  
+      decodedUrl.includes('%252Flogin') ||       // Double-encoded login references
       decodedUrl.includes('returnUrl=') ||       // Nested returnUrl parameters
-      decodedUrl.length > 100 ||                 // Suspiciously long URLs
-      decodedUrl.split('?').length > 3           // Too many query parameters (likely recursive)
+      decodedUrl.length > 200 ||                 // Suspiciously long URLs
+      decodedUrl.split('?').length > 5 ||        // Too many query parameters (likely recursive)
+      (decodedUrl.match(/returnUrl/g) || []).length > 1 || // Multiple returnUrl params
+      decodedUrl.includes('/register') ||        // Other auth pages
+      decodedUrl.includes('/verify-email') ||
+      decodedUrl.includes('/reset-password') ||
+      decodedUrl.includes('/forgot-password')
     ) {
       return '/dashboard';
     }
@@ -51,14 +57,19 @@ export default function LoginContent() {
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
-      // Add a small delay to prevent rapid redirects
+      // CRITICAL FIX: Add a small delay and use replace instead of push
       const timeoutId = setTimeout(() => {
-        router.push(sanitizedReturnUrl);
+        router.replace(sanitizedReturnUrl); // Use replace to prevent back button issues
       }, 100);
       
       return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated, isInitialized, router, sanitizedReturnUrl]);
+  
+  // CRITICAL FIX: Don't render anything while redirecting if already authenticated
+  if (isInitialized && isAuthenticated) {
+    return null; // Prevent any flash of login form
+  }
   
   return <LoginForm />;
 }

@@ -1,4 +1,4 @@
-// middleware.ts - Enhanced with better loop prevention
+// src/middleware.ts - Enhanced with better loop prevention
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
@@ -71,41 +71,80 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
 };
 
 /*───────────────────────────────────────────────────────
-  3.  ENHANCED MIDDLEWARE FUNCTION with loop detection
+  3.  CRITICAL FIX: Enhanced loop detection function
+────────────────────────────────────────────────────────*/
+function hasRedirectLoop(returnUrl: string): boolean {
+  try {
+    // Check for basic loop patterns
+    if (returnUrl.includes('/login') || 
+        returnUrl.includes('%2Flogin') || 
+        returnUrl.includes('%252Flogin')) {
+      return true;
+    }
+    
+    // Check for nested returnUrl parameters
+    const returnUrlCount = (returnUrl.match(/returnUrl/g) || []).length;
+    if (returnUrlCount > 1) {
+      return true;
+    }
+    
+    // Check for excessive URL length (indicates recursive encoding)
+    if (returnUrl.length > 500) {
+      return true;
+    }
+    
+    // Check for multiple levels of URL encoding
+    const encodingLevels = returnUrl.split('%25').length - 1;
+    if (encodingLevels > 5) {
+      return true;
+    }
+    
+    return false;
+  } catch {
+    // If we can't parse the URL, assume it's problematic
+    return true;
+  }
+}
+
+/*───────────────────────────────────────────────────────
+  4.  ENHANCED MIDDLEWARE FUNCTION with better loop detection
 ────────────────────────────────────────────────────────*/
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  /*-- ENHANCED: Better public route detection --*/
+  /*-- CRITICAL FIX: Better public route detection --*/
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     pathname === route || pathname.startsWith(route + '/')
   );
   
+  // CRITICAL: Let all public routes through WITHOUT any auth checks
   if (isPublicRoute) {
     return NextResponse.next();
   }
 
-  /*-- ENHANCED: Loop detection for returnUrl parameters --*/
+  /*-- CRITICAL FIX: Enhanced loop detection for returnUrl parameters --*/
   const returnUrl = searchParams.get('returnUrl');
-  if (returnUrl) {
+  if (returnUrl && hasRedirectLoop(returnUrl)) {
+    console.warn('Detected redirect loop in middleware, breaking cycle');
+    // Clear the problematic returnUrl and redirect to dashboard
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  /*-- CRITICAL FIX: Prevent login page from redirecting to itself --*/
+  if (pathname === '/login' && returnUrl) {
     try {
       const decodedUrl = decodeURIComponent(returnUrl);
       
-      // Detect potential loops
-      if (
-        decodedUrl.includes('/login') ||
-        decodedUrl.includes('returnUrl=') ||
-        decodedUrl.length > 200 ||
-        (decodedUrl.match(/login/g) || []).length > 1
-      ) {
-        // Break the loop by redirecting to dashboard
-        console.warn('Detected potential redirect loop, breaking cycle');
+      // If returnUrl points to login or other auth pages, redirect to dashboard
+      if (decodedUrl.includes('/login') || 
+          decodedUrl.includes('/register') ||
+          decodedUrl.includes('/verify-email') ||
+          decodedUrl.includes('/reset-password')) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-    } catch (error) {
-      // If URL decoding fails, it's probably malformed - redirect to login
-      console.warn('Malformed returnUrl parameter, redirecting to clean login');
-      return NextResponse.redirect(new URL('/login', request.url));
+    } catch {
+      // If decoding fails, redirect to dashboard
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 
@@ -119,14 +158,16 @@ export function middleware(request: NextRequest) {
                         .get(appConfig.isApprovedCookieName)?.value !== 'false';
 
   /*─────────────────────────────────
-      3a  NOT LOGGED-IN  → /login
+      4a  NOT LOGGED-IN  → /login
   ─────────────────────────────────*/
   if (!token) {
-    // ENHANCED: Better returnUrl handling
+    // ENHANCED: Better returnUrl handling with loop prevention
     const loginUrl = new URL('/login', request.url);
     
-    // Only add returnUrl if it's not a login page and not too long
-    if (!pathname.includes('/login') && pathname.length < 100) {
+    // Only add returnUrl if it's safe and not too long
+    if (!pathname.includes('/login') && 
+        pathname.length < 100 && 
+        !hasRedirectLoop(pathname)) {
       loginUrl.searchParams.set('returnUrl', pathname);
     }
     
@@ -134,13 +175,13 @@ export function middleware(request: NextRequest) {
   }
 
   /*─────────────────────────────────
-      3b  HOUSE-KEEPING GATES
+      4b  HOUSE-KEEPING GATES
   ─────────────────────────────────*/
   if (!approved)  return NextResponse.redirect(new URL('/approval-pending', request.url));
   if (!verified)  return NextResponse.redirect(new URL('/verify-email', request.url));
 
   /*─────────────────────────────────
-      3c  AUTHORISATION by ROLE
+      4c  AUTHORISATION by ROLE
   ─────────────────────────────────*/
   if (!role || !(role in ROLE_ROUTES)) {
     // corrupted or missing role cookie – force re-login
@@ -161,7 +202,7 @@ export function middleware(request: NextRequest) {
   }
 
   /*─────────────────────────────────
-      3d  SUCCESS  → add security headers
+      4d  SUCCESS  → add security headers
   ─────────────────────────────────*/
   const res = NextResponse.next();
   
@@ -189,7 +230,7 @@ export function middleware(request: NextRequest) {
 }
 
 /*───────────────────────────────────────────────────────
-  4.  MIDDLEWARE MATCHER (unchanged but documented)
+  5.  MIDDLEWARE MATCHER (unchanged but documented)
 ────────────────────────────────────────────────────────*/
 export const config = {
   matcher: [

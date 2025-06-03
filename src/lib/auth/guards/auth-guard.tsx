@@ -11,7 +11,7 @@ interface AuthGuardProps {
 }
 
 /**
- * ENHANCED: AuthGuard with better redirect loop prevention
+ * FIXED: AuthGuard with proper public route handling to prevent infinite loops
  */
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { isAuthenticated, isInitialized, user, isLoading } = useAuth();
@@ -25,26 +25,25 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const lastRedirectPath = useRef<string>('');
   
   useEffect(() => {
-    // EXPANDED: More comprehensive public routes list
+    // CRITICAL FIX: Comprehensive public routes list that MUST be excluded from auth checks
     const publicRoutes = [
       '/login', '/register', '/verify-email', '/reset-password', 
       '/forgot-password', '/two-factor', '/approval-pending', '/unauthorized',
       '/hipaa-notice', '/contact', '/privacy-policy', '/terms-of-service',
-      '/compliance-violation',
-      // Add common static pages that should be public
-      '/about', '/help', '/support', '/faq'
+      '/compliance-violation', '/about', '/help', '/support', '/faq'
     ];
                         
-    // Skip guard for public routes - use exact match and startsWith
+    // CRITICAL FIX: If we're on a public route, NEVER run auth checks
     const isPublicRoute = publicRoutes.some(route => 
       pathname === route || pathname.startsWith(route + '/')
     );
     
     if (isPublicRoute) {
-      // Reset redirect attempts when on public routes
+      // Reset all redirect tracking when on public routes
       redirectAttempts.current = 0;
       lastRedirectPath.current = '';
-      return;
+      setIsRedirecting(false);
+      return; // EXIT EARLY - no auth checks for public routes
     }
 
     // Only proceed if authentication is initialized and not currently loading
@@ -53,8 +52,9 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     // ENHANCED: Loop detection - prevent too many redirects
     if (redirectAttempts.current > 3) {
       console.error('Too many redirect attempts, stopping to prevent infinite loop');
-      // Force redirect to a safe page
-      router.push('/dashboard');
+      // Force redirect to a safe page and reset
+      redirectAttempts.current = 0;
+      router.replace('/dashboard'); // Use replace instead of push
       return;
     }
     
@@ -66,7 +66,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     if (lastRedirectPath.current === currentFullPath) {
       console.error('Detected redirect loop, breaking cycle');
       redirectAttempts.current = 0;
-      router.push('/dashboard');
+      router.replace('/dashboard'); // Use replace instead of push
       return;
     }
 
@@ -79,7 +79,9 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
       // IMPROVED: Better returnUrl encoding with length limits
       let returnUrl = pathname;
       const queryString = searchParams.toString();
-      if (queryString) {
+      
+      // Add query params only if they don't contain returnUrl (to prevent nesting)
+      if (queryString && !queryString.includes('returnUrl')) {
         returnUrl += `?${queryString}`;
       }
       
@@ -88,13 +90,16 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         returnUrl = pathname; // Just use the path without query params
       }
       
-      // Ensure we don't encode login paths
-      if (returnUrl.includes('/login')) {
+      // CRITICAL FIX: Prevent login paths from being used as returnUrl
+      if (returnUrl.includes('/login') || returnUrl.includes('/register') || 
+          returnUrl.includes('/verify-email') || returnUrl.includes('/reset-password')) {
         returnUrl = '/dashboard';
       }
       
       const encodedReturnUrl = encodeURIComponent(returnUrl);
-      router.push(`/login?returnUrl=${encodedReturnUrl}`);
+      
+      // Use replace instead of push to prevent back button issues
+      router.replace(`/login?returnUrl=${encodedReturnUrl}`);
       return;
     }
     
@@ -102,7 +107,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     if (user && !user.email_verified && !pathname.includes('/verify-email')) {
       setIsRedirecting(true);
       redirectAttempts.current++;
-      router.push('/verify-email');
+      router.replace('/verify-email');
       return;
     }
     
@@ -110,7 +115,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     if (user && user.is_approved === false && !pathname.includes('/approval-pending')) {
       setIsRedirecting(true);
       redirectAttempts.current++;
-      router.push('/approval-pending');
+      router.replace('/approval-pending');
       return;
     }
     
@@ -120,6 +125,23 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     setIsRedirecting(false);
     
   }, [isAuthenticated, isInitialized, router, pathname, searchParams, user, isLoading, isRedirecting]);
+
+  // CRITICAL FIX: Don't show loading for public routes
+  const publicRoutes = [
+    '/login', '/register', '/verify-email', '/reset-password', 
+    '/forgot-password', '/two-factor', '/approval-pending', '/unauthorized',
+    '/hipaa-notice', '/contact', '/privacy-policy', '/terms-of-service',
+    '/compliance-violation', '/about', '/help', '/support', '/faq'
+  ];
+  
+  const isPublicRoute = publicRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
+
+  // For public routes, always render children immediately
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
 
   // Show loading indicator while checking authentication or during redirection
   if (!isInitialized || isLoading || isRedirecting || !isAuthenticated || 
