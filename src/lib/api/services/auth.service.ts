@@ -1,5 +1,6 @@
 // src/lib/api/services/auth.service.ts
 import apiClient from '../client';
+import { AxiosError } from 'axios';
 import { ENDPOINTS } from '../endpoints';
 import { validateLoginResponse, validateUserResponse } from '@/lib/api/validation';
 import type { 
@@ -12,6 +13,13 @@ import type {
   SetupTwoFactorResponse,
   User
 } from '@/types/auth.types';
+
+import type { 
+  UserFilters, 
+  PaginatedUsersResponse, 
+  AdminUserCreateData 
+} from '@/types/admin.types';
+
 
 // Backend response interfaces matching your deployed API exactly
 interface CheckAccountStatusResponse {
@@ -46,6 +54,13 @@ interface ConsentResponse {
   updated_at: string;
   user_id: number;
   version?: string;
+}
+
+// NEW: Permission-related interfaces
+interface UserPermissions {
+  has_dashboard_access: boolean;
+  has_approval_permissions: boolean;
+  user_role: string;
 }
 
 // Type for API error responses
@@ -107,6 +122,12 @@ interface BackendRegistrationPayload {
 }
 
 export const authService = {
+  // Helper method to get stored token
+  getToken: (): string | null => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+  },
+
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
     
@@ -188,6 +209,19 @@ export const authService = {
   checkAccountStatus: async (email: string): Promise<CheckAccountStatusResponse> => {
     const response = await apiClient.get(`${ENDPOINTS.AUTH.CHECK_STATUS}?email=${encodeURIComponent(email)}`);
     return response.data;
+  },
+
+  /**
+   * NEW: Check approval permissions for current user
+   */
+  checkApprovalPermissions: async (): Promise<UserPermissions> => {
+    try {
+      const response = await apiClient.get('/api/approvals/permissions/');
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      throw new Error(apiError.response?.data?.detail || 'Failed to check permissions');
+    }
   },
 
   /**
@@ -299,28 +333,52 @@ export const authService = {
   },
   
   /**
-   * Admin functions - get pending approvals
+   * MODIFIED: Admin functions - get pending approvals with permission handling
    */
   getPendingApprovals: async (): Promise<User[]> => {
-    const response = await apiClient.get(ENDPOINTS.USERS.PENDING_APPROVALS);
-    // Handle both paginated and direct array responses
-    return response.data.results || response.data;
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS.PENDING_APPROVALS);
+      // Handle both paginated and direct array responses
+      return response.data.results || response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to access this resource');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch pending approvals');
+    }
   },
   
   /**
-   * Approve user registration
+   * MODIFIED: Approve user registration with permission handling
    */
   approveUser: async (userId: number): Promise<User> => {
-    const response = await apiClient.post(ENDPOINTS.USERS.APPROVE_USER(userId));
-    return response.data;
+    try {
+      const response = await apiClient.post(ENDPOINTS.USERS.APPROVE_USER(userId));
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to approve users');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to approve user');
+    }
   },
   
   /**
-   * Reject user registration  
+   * MODIFIED: Reject user registration with permission handling
    */
   rejectUser: async (userId: number): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.delete(ENDPOINTS.USERS.USER_DETAIL(userId));
-    return response.data;
+    try {
+      const response = await apiClient.delete(ENDPOINTS.USERS.USER_DETAIL(userId));
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to reject users');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to reject user');
+    }
   },
 
   /**
@@ -337,6 +395,85 @@ export const authService = {
       reason: reason || "Application denied"
     });
     return response.data;
+  },
+
+
+  /**
+   * Get all users with filtering and pagination - matches GET /users/
+   */
+  getUsers: async (params?: UserFilters): Promise<PaginatedUsersResponse> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.role) queryParams.append('role', params.role);
+      if (params?.is_approved !== undefined) queryParams.append('is_approved', params.is_approved.toString());
+      if (params?.ordering) queryParams.append('ordering', params.ordering);
+      
+      const response = await apiClient.get(`${ENDPOINTS.USERS.USERS}?${queryParams}`);
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to access user list');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch users');
+    }
+  },
+
+  /**
+   * Get specific user details - matches GET /users/{id}/
+   */
+  getUserDetails: async (userId: number): Promise<User> => {
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS.USER_DETAIL(userId));
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to view this user');
+      }
+      if (apiError.response?.status === 404) {
+        throw new Error('User not found');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch user details');
+    }
+  },
+
+  /**
+   * Update user information - matches PUT/PATCH /users/{id}/
+   */
+  updateUser: async (userId: number, userData: Partial<User>): Promise<User> => {
+    try {
+      const response = await apiClient.patch(ENDPOINTS.USERS.USER_DETAIL(userId), userData);
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to modify this user');
+      }
+      if (apiError.response?.status === 404) {
+        throw new Error('User not found');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to update user');
+    }
+  },
+
+  /**
+   * Create admin user - matches POST /users/create-admin/
+   */
+  createAdminUser: async (adminData: AdminUserCreateData): Promise<User> => {
+    try {
+      const response = await apiClient.post(ENDPOINTS.ADMIN.CREATE_ADMIN, adminData);
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only superusers can create admin accounts');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to create admin user');
+    }
   },
 
   /**

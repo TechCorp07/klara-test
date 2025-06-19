@@ -108,7 +108,7 @@ export default function HipaaNoticeContent() {
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     // Handle the form submission logic here
-    //console.log('Form submitted:', { providerData, acknowledgmentData, officeUseData });
+    console.error('Form submitted:', { providerData, acknowledgmentData }); //officeUseData
     // You could send this data to your backend, show a confirmation message, etc.
     alert('Form submitted successfully!');
   };

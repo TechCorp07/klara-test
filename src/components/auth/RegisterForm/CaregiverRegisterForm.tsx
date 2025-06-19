@@ -144,83 +144,181 @@ const CaregiverRegisterForm: React.FC = () => {
   });
 
   // Handle form submission
-  const onSubmit = async (data: CaregiverRegisterFormValues) => {
-    try {
-      // Clear previous messages
-      setErrorMessage(null);
-      setSuccessMessage(null);
+const onSubmit = async (data: CaregiverRegisterFormValues) => {
+  try {
+    // Clear previous messages
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-      // Submit registration request
-      await registerUser({
-        email: data.email,
-        password: data.password,
-        password_confirm: data.password_confirm,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: 'caregiver',
-        relationship_to_patient: data.relationship_to_patient,
-        caregiver_type: data.caregiver_type,
-        patient_email: data.patient_email,
-        phone_number: data.phone_number,
-        terms_accepted: data.terms_accepted,
-        hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
-      });
+    // Submit registration request
+    await registerUser({
+      email: data.email,
+      password: data.password,
+      password_confirm: data.password_confirm,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      role: 'caregiver',
+      relationship_to_patient: data.relationship_to_patient,
+      caregiver_type: data.caregiver_type,
+      patient_email: data.patient_email,
+      phone_number: data.phone_number,
+      terms_accepted: data.terms_accepted,
+      hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
+    });
 
-      // Show success message and mark registration as complete
-      setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email once your account has been approved.');
-      setRegistrationComplete(true);
+    // Show success message and mark registration as complete
+    setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email once your account has been approved.');
+    setRegistrationComplete(true);
 
-      // Redirect to login page after a delay
-      setTimeout(() => {
-        router.push('/login');
-      }, 5000);
-    } catch (error: unknown) {
-      if (error && typeof error === 'object') {
-        const err = error as {
-          response?: {
-            data?: {
-              detail?: string;
-              field_errors?: Record<string, string[]>; 
-              error?: {
-                message?: string;
-                details?: Record<string, string[]>;
-              };
-            };
+    setTimeout(() => {
+      router.push('/approval-pending');
+    }, 10000); //wait for 10 seconds and redirect to approval-pending
+  } catch (error: unknown) {
+    // Initialize error message
+    let errorMsg = 'An unexpected error occurred. Please try again later.';
+    
+    // Define error type interface
+    interface ApiError {
+      response?: {
+        data?: {
+          detail?: string;
+          field_errors?: Record<string, string[]>;
+          error?: {
+            message?: string;
+            details?: Record<string, string[]>;
           };
           message?: string;
+          email?: string[] | string;
+          patient_email?: string[] | string;
+          relationship_to_patient?: string[] | string;
+          caregiver_type?: string[] | string;
+          non_field_errors?: string[] | string;
+          [key: string]: unknown;
         };
+      };
+      message?: string;
+    }
     
-        if (err.response?.data?.field_errors) {
-          const fieldErrors = err.response.data.field_errors;
-          const firstFieldWithError = Object.keys(fieldErrors)[0];
-          const firstError = fieldErrors[firstFieldWithError]?.[0];
-          setErrorMessage(firstError || 'Registration failed. Please check your information.');
-        } 
-        else if (err.response?.data?.detail) {
-          setErrorMessage(err.response.data.detail);
-        } 
-        else if (err.response?.data?.error) {
-          const validationErrors = err.response.data.error.details;
-          if (validationErrors && typeof validationErrors === 'object') {
-            const firstError = Object.values(validationErrors)[0];
-            setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
-          } else {
-            setErrorMessage(
-              err.response.data.error.message || 'Registration failed. Please try again.'
-            );
+    // Type guard for error objects
+    if (error && typeof error === 'object') {
+      const err = error as ApiError;
+      
+      // Handle Axios errors with response
+      if (err.response?.data) {
+        const responseData = err.response.data;
+        
+        // Format 1: field_errors (Django REST Framework style)
+        if (responseData.field_errors && typeof responseData.field_errors === 'object') {
+          const fieldErrors = responseData.field_errors;
+          
+          // Handle specific caregiver field errors
+          if (fieldErrors.email) {
+            const emailError = Array.isArray(fieldErrors.email) ? fieldErrors.email[0] : fieldErrors.email;
+            if (emailError.toLowerCase().includes('already exists') || emailError.toLowerCase().includes('already taken')) {
+              errorMsg = 'An account with this email already exists. If you have previously registered, your account may be pending approval. Please check your email or contact support.';
+            } else {
+              errorMsg = emailError;
+            }
           }
-        } 
-        else if (err.message) {
-          setErrorMessage(err.message);
-        } 
-        else {
-          setErrorMessage('An unexpected error occurred. Please try again later.');
+          // Handle patient email errors
+          else if (fieldErrors.patient_email) {
+            const patientEmailError = Array.isArray(fieldErrors.patient_email) ? fieldErrors.patient_email[0] : fieldErrors.patient_email;
+            errorMsg = patientEmailError;
+          }
+          // Handle relationship errors
+          else if (fieldErrors.relationship_to_patient) {
+            const relationshipError = Array.isArray(fieldErrors.relationship_to_patient) ? fieldErrors.relationship_to_patient[0] : fieldErrors.relationship_to_patient;
+            errorMsg = relationshipError;
+          }
+          // Handle caregiver type errors
+          else if (fieldErrors.caregiver_type) {
+            const caregiverTypeError = Array.isArray(fieldErrors.caregiver_type) ? fieldErrors.caregiver_type[0] : fieldErrors.caregiver_type;
+            errorMsg = caregiverTypeError;
+          }
+          // Handle other field errors
+          else {
+            const firstField = Object.keys(fieldErrors)[0];
+            const firstError = fieldErrors[firstField];
+            errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+          }
         }
-      } else {
-        setErrorMessage('An unknown error occurred. Please try again later.');
+        
+        // Format 2: Simple detail message
+        else if (responseData.detail) {
+          errorMsg = responseData.detail;
+        }
+        
+        // Format 3: Nested error object
+        else if (responseData.error) {
+          if (responseData.error.message) {
+            errorMsg = responseData.error.message;
+          } else if (responseData.error.details) {
+            const details = responseData.error.details;
+            const firstError = Object.values(details)[0];
+            errorMsg = Array.isArray(firstError) ? firstError[0] : String(firstError);
+          }
+        }
+        
+        // Format 4: Direct error fields (some APIs return errors directly)
+        else if (responseData.email) {
+          const emailError = Array.isArray(responseData.email) ? responseData.email[0] : responseData.email;
+          if (emailError.toLowerCase().includes('already exists')) {
+            errorMsg = 'An account with this email already exists. If you have previously registered, your account may be pending approval. Please check your email or contact support.';
+          } else {
+            errorMsg = emailError;
+          }
+        }
+        else if (responseData.patient_email) {
+          const patientEmailError = Array.isArray(responseData.patient_email) ? responseData.patient_email[0] : responseData.patient_email;
+          errorMsg = patientEmailError;
+        }
+        
+        // Format 5: Check for any array of errors in top level
+        else {
+          const errorFields = Object.keys(responseData).filter(key => 
+            Array.isArray(responseData[key]) && responseData[key] && (responseData[key] as unknown[]).length > 0
+          );
+          
+          if (errorFields.length > 0) {
+            const firstErrorField = errorFields[0];
+            const fieldValue = responseData[firstErrorField];
+            if (Array.isArray(fieldValue) && fieldValue.length > 0) {
+              errorMsg = String(fieldValue[0]);
+            }
+          }
+          // Format 6: Check for non_field_errors (common in Django)
+          else if (responseData.non_field_errors) {
+            const nonFieldErrors = responseData.non_field_errors;
+            errorMsg = Array.isArray(nonFieldErrors) ? String(nonFieldErrors[0]) : String(nonFieldErrors);
+          }
+          // Format 7: Check for message field
+          else if (responseData.message) {
+            errorMsg = String(responseData.message);
+          }
+        }
       }
-    }    
-  };
+      
+      // Handle network errors or errors without response
+      else if (err.message) {
+        // Common network errors
+        if (err.message.includes('Network Error') || err.message.includes('fetch')) {
+          errorMsg = 'Network error. Please check your connection and try again.';
+        } else if (err.message.includes('timeout')) {
+          errorMsg = 'Request timed out. Please try again.';
+        } else {
+          errorMsg = err.message;
+        }
+      }
+      
+      // Handle string errors
+      else if (typeof error === 'string') {
+        errorMsg = error;
+      }
+    }
+    
+    setErrorMessage(errorMsg);
+  }
+};
 
   // If registration is complete, show success message and redirect info
   if (registrationComplete) {
@@ -238,13 +336,16 @@ const CaregiverRegisterForm: React.FC = () => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 mb-4">
-            You will be redirected to the login page in a few seconds...
+            Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            You will be redirected to the approval pending page in <em>10</em> seconds...
           </p>
           <Link
-            href="/login"
+            href="/approval-pending"
             className="font-medium text-blue-600 hover:text-blue-500"
           >
-            Proceed to Login
+            Proceed to Approval Pending
           </Link>
         </div>
       </div>

@@ -180,56 +180,207 @@ const ProviderRegisterForm: React.FC = () => {
       setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email once your account has been approved.');
       setRegistrationComplete(true);
 
-      // Redirect to login page after a delay
       setTimeout(() => {
-        router.push('/login');
-      }, 5000);
+        router.push('/approval-pending');
+      }, 10000);// wait for 10 seconds and redirect to approval-pending
     } catch (error: unknown) {
-      if (error && typeof error === 'object') {
-        const err = error as {
-          response?: {
-            data?: {
-              detail?: string;
-              field_errors?: Record<string, string[]>;
-              error?: {
-                message?: string;
-                details?: Record<string, string[]>;
-              };
+      // Initialize error message
+      let errorMsg = 'An unexpected error occurred. Please try again later.';
+      
+      // Define error type interface
+      interface ApiError {
+        response?: {
+          data?: {
+            detail?: string;
+            field_errors?: Record<string, string[]>;
+            error?: {
+              message?: string;
+              details?: Record<string, string[]>;
             };
+            message?: string;
+            email?: string[] | string;
+            license_number?: string[] | string;
+            npi_number?: string[] | string;
+            specialty?: string[] | string;
+            practice_name?: string[] | string;
+            practice_address?: string[] | string;
+            non_field_errors?: string[] | string;
+            [key: string]: unknown;
           };
-          message?: string;
         };
-    
-        if (err.response?.data?.field_errors) {
-          const fieldErrors = err.response.data.field_errors;
-          const firstFieldWithError = Object.keys(fieldErrors)[0];
-          const firstError = fieldErrors[firstFieldWithError]?.[0];
-          setErrorMessage(firstError || 'Registration failed. Please check your information.');
-        } 
-        else if (err.response?.data?.detail) {
-          setErrorMessage(err.response.data.detail);
-        } 
-        else if (err.response?.data?.error) {
-          const validationErrors = err.response.data.error.details;
-          if (validationErrors && typeof validationErrors === 'object') {
-            const firstError = Object.values(validationErrors)[0];
-            setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
-          } else {
-            setErrorMessage(
-              err.response.data.error.message || 'Registration failed. Please try again.'
-            );
-          }
-        } 
-        else if (err.message) {
-          setErrorMessage(err.message);
-        } 
-        else {
-          setErrorMessage('An unexpected error occurred. Please try again later.');
-        }
-      } else {
-        setErrorMessage('An unknown error occurred. Please try again later.');
+        message?: string;
       }
-    }   
+      
+      // Type guard for error objects
+      if (error && typeof error === 'object') {
+        const err = error as ApiError;
+        
+        // Handle Axios errors with response
+        if (err.response?.data) {
+          const responseData = err.response.data;
+          
+          // Format 1: field_errors (Django REST Framework style)
+          if (responseData.field_errors && typeof responseData.field_errors === 'object') {
+            const fieldErrors = responseData.field_errors;
+            
+            // Handle email errors
+            if (fieldErrors.email) {
+              const emailError = Array.isArray(fieldErrors.email) ? fieldErrors.email[0] : fieldErrors.email;
+              if (emailError.toLowerCase().includes('already exists') || emailError.toLowerCase().includes('already taken')) {
+                errorMsg = 'An account with this email already exists. If you have previously registered, your account may be pending approval. Please check your email or contact support.';
+              } else {
+                errorMsg = emailError;
+              }
+            }
+            // Handle NPI number errors (uniqueness critical for providers)
+            else if (fieldErrors.npi_number) {
+              const npiError = Array.isArray(fieldErrors.npi_number) ? fieldErrors.npi_number[0] : fieldErrors.npi_number;
+              if (npiError.toLowerCase().includes('already exists') || npiError.toLowerCase().includes('already taken') || npiError.toLowerCase().includes('unique')) {
+                errorMsg = 'This NPI number is already registered with another provider account. Each NPI number can only be used once. Please verify your NPI number or contact support if you believe this is an error.';
+              } else if (npiError.toLowerCase().includes('invalid') || npiError.toLowerCase().includes('format')) {
+                errorMsg = 'Invalid NPI number format. NPI numbers must be exactly 10 digits. Please check your entry and try again.';
+              } else {
+                errorMsg = npiError;
+              }
+            }
+            // Handle medical license number errors (uniqueness critical for providers)
+            else if (fieldErrors.license_number) {
+              const licenseError = Array.isArray(fieldErrors.license_number) ? fieldErrors.license_number[0] : fieldErrors.license_number;
+              if (licenseError.toLowerCase().includes('already exists') || licenseError.toLowerCase().includes('already taken') || licenseError.toLowerCase().includes('unique')) {
+                errorMsg = 'This medical license number is already registered with another provider account. Each license number can only be used once. Please verify your license number or contact support if you believe this is an error.';
+              } else if (licenseError.toLowerCase().includes('invalid') || licenseError.toLowerCase().includes('format')) {
+                errorMsg = 'Invalid medical license number format. Please check your license number and try again.';
+              } else {
+                errorMsg = licenseError;
+              }
+            }
+            // Handle specialty errors
+            else if (fieldErrors.specialty) {
+              const specialtyError = Array.isArray(fieldErrors.specialty) ? fieldErrors.specialty[0] : fieldErrors.specialty;
+              errorMsg = specialtyError;
+            }
+            // Handle practice name errors
+            else if (fieldErrors.practice_name) {
+              const practiceNameError = Array.isArray(fieldErrors.practice_name) ? fieldErrors.practice_name[0] : fieldErrors.practice_name;
+              errorMsg = practiceNameError;
+            }
+            // Handle practice address errors
+            else if (fieldErrors.practice_address) {
+              const practiceAddressError = Array.isArray(fieldErrors.practice_address) ? fieldErrors.practice_address[0] : fieldErrors.practice_address;
+              errorMsg = practiceAddressError;
+            }
+            // Handle other field errors
+            else {
+              const firstField = Object.keys(fieldErrors)[0];
+              const firstError = fieldErrors[firstField];
+              errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+            }
+          }
+          
+          // Format 2: Simple detail message
+          else if (responseData.detail) {
+            errorMsg = responseData.detail;
+          }
+          
+          // Format 3: Nested error object
+          else if (responseData.error) {
+            if (responseData.error.message) {
+              errorMsg = responseData.error.message;
+            } else if (responseData.error.details) {
+              const details = responseData.error.details;
+              const firstError = Object.values(details)[0];
+              errorMsg = Array.isArray(firstError) ? firstError[0] : String(firstError);
+            }
+          }
+          
+          // Format 4: Direct error fields (some APIs return errors directly)
+          else if (responseData.email) {
+            const emailError = Array.isArray(responseData.email) ? responseData.email[0] : responseData.email;
+            if (emailError.toLowerCase().includes('already exists')) {
+              errorMsg = 'An account with this email already exists. If you have previously registered, your account may be pending approval. Please check your email or contact support.';
+            } else {
+              errorMsg = emailError;
+            }
+          }
+          else if (responseData.npi_number) {
+            const npiError = Array.isArray(responseData.npi_number) ? responseData.npi_number[0] : responseData.npi_number;
+            if (npiError.toLowerCase().includes('already exists') || npiError.toLowerCase().includes('unique')) {
+              errorMsg = 'This NPI number is already registered with another provider account. Each NPI number can only be used once. Please verify your NPI number or contact support if you believe this is an error.';
+            } else {
+              errorMsg = npiError;
+            }
+          }
+          else if (responseData.license_number) {
+            const licenseError = Array.isArray(responseData.license_number) ? responseData.license_number[0] : responseData.license_number;
+            if (licenseError.toLowerCase().includes('already exists') || licenseError.toLowerCase().includes('unique')) {
+              errorMsg = 'This medical license number is already registered with another provider account. Each license number can only be used once. Please verify your license number or contact support if you believe this is an error.';
+            } else {
+              errorMsg = licenseError;
+            }
+          }
+          
+          // Format 5: Check for any array of errors in top level
+          else {
+            const errorFields = Object.keys(responseData).filter(key => 
+              Array.isArray(responseData[key]) && responseData[key] && (responseData[key] as unknown[]).length > 0
+            );
+            
+            if (errorFields.length > 0) {
+              const firstErrorField = errorFields[0];
+              const fieldValue = responseData[firstErrorField];
+              if (Array.isArray(fieldValue) && fieldValue.length > 0) {
+                // Special handling for critical provider fields even in generic errors
+                if (firstErrorField === 'npi_number') {
+                  const npiError = String(fieldValue[0]);
+                  if (npiError.toLowerCase().includes('already exists') || npiError.toLowerCase().includes('unique')) {
+                    errorMsg = 'This NPI number is already registered with another provider account. Each NPI number can only be used once.';
+                  } else {
+                    errorMsg = npiError;
+                  }
+                } else if (firstErrorField === 'license_number') {
+                  const licenseError = String(fieldValue[0]);
+                  if (licenseError.toLowerCase().includes('already exists') || licenseError.toLowerCase().includes('unique')) {
+                    errorMsg = 'This medical license number is already registered with another provider account. Each license number can only be used once.';
+                  } else {
+                    errorMsg = licenseError;
+                  }
+                } else {
+                  errorMsg = String(fieldValue[0]);
+                }
+              }
+            }
+            // Format 6: Check for non_field_errors (common in Django)
+            else if (responseData.non_field_errors) {
+              const nonFieldErrors = responseData.non_field_errors;
+              errorMsg = Array.isArray(nonFieldErrors) ? String(nonFieldErrors[0]) : String(nonFieldErrors);
+            }
+            // Format 7: Check for message field
+            else if (responseData.message) {
+              errorMsg = String(responseData.message);
+            }
+          }
+        }
+        
+        // Handle network errors or errors without response
+        else if (err.message) {
+          // Common network errors
+          if (err.message.includes('Network Error') || err.message.includes('fetch')) {
+            errorMsg = 'Network error. Please check your connection and try again.';
+          } else if (err.message.includes('timeout')) {
+            errorMsg = 'Request timed out. Please try again.';
+          } else {
+            errorMsg = err.message;
+          }
+        }
+        
+        // Handle string errors
+        else if (typeof error === 'string') {
+          errorMsg = error;
+        }
+      }
+      
+      setErrorMessage(errorMsg);
+    }
   };
 
   // If registration is complete, show success message and redirect info
@@ -248,13 +399,16 @@ const ProviderRegisterForm: React.FC = () => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 mb-4">
-            You will be redirected to the login page in a few seconds...
+            Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            You will be redirected to the approval pending page in <em>10</em> seconds...
           </p>
           <Link
-            href="/login"
+            href="/approval-pending"
             className="font-medium text-blue-600 hover:text-blue-500"
           >
-            Proceed to Login
+            Proceed to Approval Pending
           </Link>
         </div>
       </div>

@@ -22,23 +22,20 @@ export default function ApprovalPendingPage() {
   // State for form actions
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+ 
   
-  // Redirect users if they're not awaiting approval or not authenticated
+  // Redirect users if they're authenticated
   useEffect(() => {
     if (isInitialized) {
-      // If user is not logged in, redirect to login
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      
       // If user is approved, redirect to dashboard
-      if (user.is_approved !== false) {
+      if (user && user.is_approved === true) {
         router.push('/dashboard');
         return;
       }
     }
   }, [isInitialized, user, router]);
+
+  
   
   // Handle logout
   const handleLogout = async () => {

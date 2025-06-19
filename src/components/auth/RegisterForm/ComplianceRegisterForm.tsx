@@ -180,56 +180,241 @@ const ComplianceRegisterForm: React.FC = () => {
       setSuccessMessage('Registration successful! Your account will be reviewed by our administrative team. You will receive an email once your account has been approved.');
       setRegistrationComplete(true);
 
-      // Redirect to login page after a delay
       setTimeout(() => {
-        router.push('/login');
-      }, 5000);
+        router.push('/approval-pending');
+      }, 10000); // wait for 10 seconds and redirect to approval-pending
     } catch (error: unknown) {
-      if (error && typeof error === 'object') {
-        const err = error as {
-          response?: {
-            data?: {
-              detail?: string;
-              field_errors?: Record<string, string[]>; 
-              error?: {
-                message?: string;
-                details?: Record<string, string[]>;
-              };
+      // Initialize error message
+      let errorMsg = 'An unexpected error occurred. Please try again later.';
+      
+      // Define error type interface
+      interface ApiError {
+        response?: {
+          data?: {
+            detail?: string;
+            field_errors?: Record<string, string[]>;
+            error?: {
+              message?: string;
+              details?: Record<string, string[]>;
             };
+            message?: string;
+            email?: string[] | string;
+            compliance_certification?: string[] | string;
+            regulatory_experience?: string[] | string;
+            organization?: string[] | string;
+            specialization_areas?: string[] | string;
+            job_title?: string[] | string;
+            confidentiality_agreement?: string[] | string;
+            non_field_errors?: string[] | string;
+            [key: string]: unknown;
           };
-          message?: string;
         };
-    
-        if (err.response?.data?.field_errors) {
-          const fieldErrors = err.response.data.field_errors;
-          const firstFieldWithError = Object.keys(fieldErrors)[0];
-          const firstError = fieldErrors[firstFieldWithError]?.[0];
-          setErrorMessage(firstError || 'Registration failed. Please check your information.');
-        } 
-        else if (err.response?.data?.detail) {
-          setErrorMessage(err.response.data.detail);
-        } 
-        else if (err.response?.data?.error) {
-          const validationErrors = err.response.data.error.details;
-          if (validationErrors && typeof validationErrors === 'object') {
-            const firstError = Object.values(validationErrors)[0];
-            setErrorMessage(Array.isArray(firstError) ? firstError[0] : String(firstError));
-          } else {
-            setErrorMessage(
-              err.response.data.error.message || 'Registration failed. Please try again.'
-            );
-          }
-        } 
-        else if (err.message) {
-          setErrorMessage(err.message);
-        } 
-        else {
-          setErrorMessage('An unexpected error occurred. Please try again later.');
-        }
-      } else {
-        setErrorMessage('An unknown error occurred. Please try again later.');
+        message?: string;
       }
-    }    
+      
+      // Type guard for error objects
+      if (error && typeof error === 'object') {
+        const err = error as ApiError;
+        
+        // Handle Axios errors with response
+        if (err.response?.data) {
+          const responseData = err.response.data;
+          
+          // Format 1: field_errors (Django REST Framework style)
+          if (responseData.field_errors && typeof responseData.field_errors === 'object') {
+            const fieldErrors = responseData.field_errors;
+            
+            // Handle email errors
+            if (fieldErrors.email) {
+              const emailError = Array.isArray(fieldErrors.email) ? fieldErrors.email[0] : fieldErrors.email;
+              if (emailError.toLowerCase().includes('already exists') || emailError.toLowerCase().includes('already taken')) {
+                errorMsg = 'An account with this email already exists. If you have previously registered, your account may be pending approval. Please check your email or contact support.';
+              } else if (emailError.toLowerCase().includes('corporate') || emailError.toLowerCase().includes('professional')) {
+                errorMsg = 'Please use a valid corporate or professional email address for compliance officer registration.';
+              } else {
+                errorMsg = emailError;
+              }
+            }
+            // Handle compliance certification errors
+            else if (fieldErrors.compliance_certification) {
+              const certificationError = Array.isArray(fieldErrors.compliance_certification) ? fieldErrors.compliance_certification[0] : fieldErrors.compliance_certification;
+              if (certificationError.toLowerCase().includes('invalid') || certificationError.toLowerCase().includes('not recognized')) {
+                errorMsg = 'Please select a valid compliance certification. If you have a certification not listed, select "Other" and provide details in your regulatory experience.';
+              } else if (certificationError.toLowerCase().includes('required')) {
+                errorMsg = 'Compliance certification is required for compliance officer accounts. Please select your current certification.';
+              } else {
+                errorMsg = certificationError;
+              }
+            }
+            // Handle regulatory experience errors
+            else if (fieldErrors.regulatory_experience) {
+              const experienceError = Array.isArray(fieldErrors.regulatory_experience) ? fieldErrors.regulatory_experience[0] : fieldErrors.regulatory_experience;
+              if (experienceError.toLowerCase().includes('insufficient') || experienceError.toLowerCase().includes('too short')) {
+                errorMsg = 'Please provide more detailed information about your regulatory and compliance experience, including specific HIPAA knowledge and relevant work history.';
+              } else if (experienceError.toLowerCase().includes('experience')) {
+                errorMsg = 'Regulatory experience description is required. Please describe your background in healthcare compliance and HIPAA regulations.';
+              } else {
+                errorMsg = experienceError;
+              }
+            }
+            // Handle organization errors
+            else if (fieldErrors.organization) {
+              const organizationError = Array.isArray(fieldErrors.organization) ? fieldErrors.organization[0] : fieldErrors.organization;
+              if (organizationError.toLowerCase().includes('not recognized') || organizationError.toLowerCase().includes('invalid')) {
+                errorMsg = 'Please provide the full, official name of your healthcare organization, insurance company, or consulting firm.';
+              } else {
+                errorMsg = organizationError;
+              }
+            }
+            // Handle specialization areas errors
+            else if (fieldErrors.specialization_areas) {
+              const specializationError = Array.isArray(fieldErrors.specialization_areas) ? fieldErrors.specialization_areas[0] : fieldErrors.specialization_areas;
+              if (specializationError.toLowerCase().includes('required')) {
+                errorMsg = 'Please select your primary area of compliance specialization.';
+              } else {
+                errorMsg = specializationError;
+              }
+            }
+            // Handle job title errors
+            else if (fieldErrors.job_title) {
+              const jobTitleError = Array.isArray(fieldErrors.job_title) ? fieldErrors.job_title[0] : fieldErrors.job_title;
+              if (jobTitleError.toLowerCase().includes('compliance') || jobTitleError.toLowerCase().includes('officer')) {
+                errorMsg = 'Please provide a valid job title that reflects your compliance responsibilities and authority.';
+              } else {
+                errorMsg = jobTitleError;
+              }
+            }
+            // Handle confidentiality agreement errors
+            else if (fieldErrors.confidentiality_agreement) {
+              const confidentialityError = Array.isArray(fieldErrors.confidentiality_agreement) ? fieldErrors.confidentiality_agreement[0] : fieldErrors.confidentiality_agreement;
+              if (confidentialityError.toLowerCase().includes('required') || confidentialityError.toLowerCase().includes('agreement')) {
+                errorMsg = 'Confidentiality agreement is required for compliance officer accounts. You must agree to maintain the confidentiality of all accessed data.';
+              } else {
+                errorMsg = confidentialityError;
+              }
+            }
+            // Handle other field errors
+            else {
+              const firstField = Object.keys(fieldErrors)[0];
+              const firstError = fieldErrors[firstField];
+              errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+            }
+          }
+          
+          // Format 2: Simple detail message
+          else if (responseData.detail) {
+            errorMsg = responseData.detail;
+          }
+          
+          // Format 3: Nested error object
+          else if (responseData.error) {
+            if (responseData.error.message) {
+              errorMsg = responseData.error.message;
+            } else if (responseData.error.details) {
+              const details = responseData.error.details;
+              const firstError = Object.values(details)[0];
+              errorMsg = Array.isArray(firstError) ? firstError[0] : String(firstError);
+            }
+          }
+          
+          // Format 4: Direct error fields (some APIs return errors directly)
+          else if (responseData.email) {
+            const emailError = Array.isArray(responseData.email) ? responseData.email[0] : responseData.email;
+            if (emailError.toLowerCase().includes('already exists')) {
+              errorMsg = 'An account with this email already exists. If you have previously registered, your account may be pending approval. Please check your email or contact support.';
+            } else {
+              errorMsg = emailError;
+            }
+          }
+          else if (responseData.compliance_certification) {
+            const certificationError = Array.isArray(responseData.compliance_certification) ? responseData.compliance_certification[0] : responseData.compliance_certification;
+            if (certificationError.toLowerCase().includes('invalid')) {
+              errorMsg = 'Please select a valid compliance certification. If you have a certification not listed, select "Other".';
+            } else {
+              errorMsg = certificationError;
+            }
+          }
+          else if (responseData.regulatory_experience) {
+            const experienceError = Array.isArray(responseData.regulatory_experience) ? responseData.regulatory_experience[0] : responseData.regulatory_experience;
+            if (experienceError.toLowerCase().includes('insufficient')) {
+              errorMsg = 'Please provide more detailed information about your regulatory and compliance experience.';
+            } else {
+              errorMsg = experienceError;
+            }
+          }
+          else if (responseData.organization) {
+            const organizationError = Array.isArray(responseData.organization) ? responseData.organization[0] : responseData.organization;
+            if (organizationError.toLowerCase().includes('not recognized')) {
+              errorMsg = 'Please provide the full, official name of your healthcare organization.';
+            } else {
+              errorMsg = organizationError;
+            }
+          }
+          
+          // Format 5: Check for any array of errors in top level
+          else {
+            const errorFields = Object.keys(responseData).filter(key => 
+              Array.isArray(responseData[key]) && responseData[key] && (responseData[key] as unknown[]).length > 0
+            );
+            
+            if (errorFields.length > 0) {
+              const firstErrorField = errorFields[0];
+              const fieldValue = responseData[firstErrorField];
+              if (Array.isArray(fieldValue) && fieldValue.length > 0) {
+                // Special handling for critical compliance fields even in generic errors
+                if (firstErrorField === 'compliance_certification') {
+                  const certificationError = String(fieldValue[0]);
+                  if (certificationError.toLowerCase().includes('invalid')) {
+                    errorMsg = 'Please select a valid compliance certification.';
+                  } else {
+                    errorMsg = certificationError;
+                  }
+                } else if (firstErrorField === 'regulatory_experience') {
+                  const experienceError = String(fieldValue[0]);
+                  if (experienceError.toLowerCase().includes('insufficient')) {
+                    errorMsg = 'Please provide more detailed information about your regulatory and compliance experience.';
+                  } else {
+                    errorMsg = experienceError;
+                  }
+                } else if (firstErrorField === 'confidentiality_agreement') {
+                  errorMsg = 'Confidentiality agreement is required for compliance officer accounts.';
+                } else {
+                  errorMsg = String(fieldValue[0]);
+                }
+              }
+            }
+            // Format 6: Check for non_field_errors (common in Django)
+            else if (responseData.non_field_errors) {
+              const nonFieldErrors = responseData.non_field_errors;
+              errorMsg = Array.isArray(nonFieldErrors) ? String(nonFieldErrors[0]) : String(nonFieldErrors);
+            }
+            // Format 7: Check for message field
+            else if (responseData.message) {
+              errorMsg = String(responseData.message);
+            }
+          }
+        }
+        
+        // Handle network errors or errors without response
+        else if (err.message) {
+          // Common network errors
+          if (err.message.includes('Network Error') || err.message.includes('fetch')) {
+            errorMsg = 'Network error. Please check your connection and try again.';
+          } else if (err.message.includes('timeout')) {
+            errorMsg = 'Request timed out. Please try again.';
+          } else {
+            errorMsg = err.message;
+          }
+        }
+        
+        // Handle string errors
+        else if (typeof error === 'string') {
+          errorMsg = error;
+        }
+      }
+      
+      setErrorMessage(errorMsg);
+    }
   };
 
   // If registration is complete, show success message and redirect info
@@ -248,18 +433,22 @@ const ComplianceRegisterForm: React.FC = () => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 mb-4">
-            You will be redirected to the login page in a few seconds...
+            Your account is pending approval from our administrative team. You will receive an email notification once your account has been approved.
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            You will be redirected to the approval pending page in <em>10</em> seconds...
           </p>
           <Link
-            href="/login"
+            href="/approval-pending"
             className="font-medium text-blue-600 hover:text-blue-500"
           >
-            Proceed to Login
+            Proceed to Approval Pending
           </Link>
         </div>
       </div>
     );
   }
+
 
   // Main registration form
   return (

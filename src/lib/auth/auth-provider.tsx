@@ -37,19 +37,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // STEP 1: Check if auth token exists before making any API calls
         const authToken = getCookieValue(config.authCookieName);
         
-        console.log('🔍 AuthProvider initializing:', {
+        console.error('🔍 AuthProvider initializing:', {
           hasToken: !!authToken,
           cookieName: config.authCookieName
         });
         
         // STEP 2: Only call API if token exists
         if (authToken) {
-          console.log('✅ Token found, checking user data...');
+          console.error('✅ Token found, checking user data...');
           const userData = await authService.getCurrentUser();
           setUser(userData);
-          console.log('✅ User data loaded:', userData);
+          console.error('✅ User data loaded:', userData);
         } else {
-          console.log('❌ No token found, user remains unauthenticated');
+          console.error('❌ No token found, user remains unauthenticated');
           setUser(null);
         }
       } catch (error) {
@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
-        console.log('🏁 AuthProvider initialization complete');
+        console.error('🏁 AuthProvider initialization complete');
       }
     };
 

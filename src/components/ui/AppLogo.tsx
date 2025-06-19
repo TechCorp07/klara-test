@@ -1,4 +1,5 @@
 // src/components/ui/AppLogo.tsx
+'use client';
 import Image from 'next/image';
 
 interface AppLogoProps {

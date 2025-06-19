@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse the request body
     const body = await request.json();
-    //console.log('Login API route received:', body); // For debugging
+    console.error('Login API route received:', body); // For debugging
     
     // Extract data from request body
     const { token, user } = body;

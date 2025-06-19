@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/(auth)/unauthorized/page.tsx
 'use client';
 
@@ -18,12 +19,6 @@ export default function UnauthorizedPage() {
   const { user, isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
   
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, isInitialized, router]);
   
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
@@ -86,7 +81,7 @@ export default function UnauthorizedPage() {
               </Link>
               
               <Link
-                href="/support"
+                href="/contact"
                 className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Contact Support
