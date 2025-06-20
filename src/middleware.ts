@@ -25,14 +25,28 @@ const PUBLIC_ROUTES = [
 ];
 
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  patient: ['/dashboard', '/profile', '/settings', '/healthcare'],
-  provider: ['/dashboard', '/profile', '/settings', '/healthcare'],
-  pharmco: ['/dashboard', '/profile', '/settings', '/research'],
-  caregiver: ['/dashboard', '/profile', '/settings', '/patients'],
-  researcher: ['/dashboard', '/profile', '/settings', '/research'],
-  admin: ['/dashboard', '/profile', '/settings', '/admin'],
+  patient: ['/dashboard', '/profile', '/settings', '/messages', 
+    '/health-records', '/appointments','/settings/password',
+     '/telemedicine', '/research', '/clinical-trials', '/medications'],
+  provider: ['/dashboard', '/profile', '/settings', '/settings/password',
+     '/messages', '/clinical-trials', '/patients',
+      '/health-records', '/appointments', '/telemedicine', 
+      '/medications'], // Provider-specific patient management
+  admin: ['/dashboard', '/profile', '/settings', '/settings/password',
+     '/messages', '/users', '/reports',  '/admin',
+    '/approvals', '/users', '/audit-logs', '/system-settings'],
+  pharmco: ['/dashboard', '/profile', '/settings', '/settings/password',
+     '/messages', '/medications', '/clinical-trials', '/reports', // Pharmaceutical reports
+     '/research'],
+  caregiver: ['/dashboard', '/profile', '/settings', '/settings/password',
+    '/messages', '/health-records', '/appointments', '/telemedicine',
+    '/medications', '/patients'], // For their assigned patients
+  researcher: ['/dashboard', '/profile', '/settings', '/settings/password',
+    '/messages', '/research', '/clinical-trials', '/reports'], // Research reports
   superadmin: ['/'],
-  compliance: ['/dashboard', '/profile', '/settings', '/compliance'],
+  compliance: ['/dashboard', '/profile', '/settings', '/settings/password',
+    '/messages', '/audit-logs', '/compliance-reports', '/emergency-access',
+    '/consent-records', '/compliance'], // HIPAA consent tracking, // Review emergency access
 };
 
 function hasRedirectLoop(returnUrl: string): boolean {

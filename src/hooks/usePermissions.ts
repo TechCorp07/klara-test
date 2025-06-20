@@ -30,7 +30,6 @@ export const usePermissions = (): UsePermissionsResult => {
         ];
         const adminRoles = ['admin', 'superadmin'];
         const complianceRoles = ['admin', 'superadmin', 'compliance'];
-        const providerRoles = ['provider', 'admin', 'superadmin'];
         const patientDataRoles = ['patient', 'provider', 'caregiver', 'admin', 'superadmin'];
 
         // Calculate comprehensive permissions
@@ -50,7 +49,7 @@ export const usePermissions = (): UsePermissionsResult => {
           
           // Healthcare permissions
           has_patient_data_access: patientDataRoles.includes(userRole),
-          has_medical_records_access: providerRoles.includes(userRole),
+          has_medical_records_access: patientDataRoles.includes(userRole),
           
           // Role-specific permissions
           can_view_own_data: true, // All users can view their own data
