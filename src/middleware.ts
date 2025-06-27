@@ -153,11 +153,38 @@ export function middleware(request: NextRequest) {
 
   const res = NextResponse.next();
   
-  // Add your security headers here...
-  res.headers.set('Content-Security-Policy', "default-src 'self'");
+  if (process.env.NODE_ENV === 'production') {
+    // Production CSP - Still secure but allows Next.js to function
+    res.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "connect-src 'self' https://api.klararety.com; " +
+      "frame-ancestors 'none';"
+    );
+  } else {
+    // Development CSP - More permissive for Next.js dev features
+    res.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: blob:; " +
+      "connect-src 'self' http://localhost:* ws://localhost:* https://api.klararety.com; " +
+      "frame-ancestors 'none';"
+    );
+  }
+  
+  // Other security headers
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // HIPAA-specific headers
   res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.headers.set('Pragma', 'no-cache');
+  res.headers.set('Expires', '0');
 
   return res;
 }

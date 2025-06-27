@@ -11,6 +11,7 @@ import { config } from '@/lib/config';
  * The tokens are stored in HttpOnly cookies for security, while non-sensitive
  * user information is stored in regular cookies for client-side access.
  */
+
 export async function POST(request: NextRequest) {
   try {
     // Parse the request body
@@ -38,13 +39,12 @@ export async function POST(request: NextRequest) {
     // Set secure HttpOnly cookie for access token
     response.cookies.set({
       name: config.authCookieName,
-      value: token, // Use 'token' instead of 'access'
+      value: token,
       httpOnly: true,
       secure: config.secureCookies,
-      sameSite: 'strict',
-      domain: config.cookieDomain,
+      sameSite: 'strict' as const,
       path: '/',
-      //maxAge: 60 * config.accessTokenExpiryMinutes // Match JWT expiration
+      ...(config.cookieDomain && { domain: config.cookieDomain })
     });
     
     // Set non-HttpOnly cookies for information needed client-side

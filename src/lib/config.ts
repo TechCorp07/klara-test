@@ -8,8 +8,14 @@ export const config = {
     return baseUrl.replace(/\/$/, '');
   })(),
 
-  // Cookie Configuration
-  cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || 'klararety.com',
+  cookieDomain: (() => {
+    // In development, don't set a domain so cookies work on localhost
+    if (process.env.NODE_ENV === 'development') {
+      return undefined; // Let browser set domain automatically for localhost
+    }
+    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN || 'klararety.com';
+  })(),
+  
   secureCookies: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true' || process.env.NODE_ENV === 'production',
   
   // Authentication Cookie Names - SIMPLIFIED: Backend uses single token
@@ -19,7 +25,7 @@ export const config = {
   isApprovedCookieName: 'klararety_is_approved',
   
   // Authentication Settings - SIMPLIFIED: Single token system
-  tokenExpiryDays: 7, // Backend uses longer-lived tokens
+  tokenExpiryDays: 1, // Backend uses longer-lived tokens
   
   // Security Settings
   passwordMinLength: 12,
