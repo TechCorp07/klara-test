@@ -20,9 +20,15 @@ export interface User {
   date_of_birth?: string;
   phone_number?: string;
   date_joined: string;
-  // Additional fields that might be returned by backend
+  patient_profile?: { id: number };
+  provider_profile?: { id: number };
+  pharmco_profile?: { id: number };
+  caregiver_profile?: { id: number };
+  researcher_profile?: { id: number };
+  compliance_profile?: { id: number };
   is_active?: boolean;
   last_login?: string;
+  
 }
 
 /**
@@ -137,13 +143,6 @@ export interface ConsentUpdateResponse {
   version?: string;
 }
 
-/**
- * CRITICAL FIX: AuthContextType interface updated for single-token system
- * Key changes:
- * - verifyTwoFactor now takes userId (number) instead of token (string)
- * - disableTwoFactor now takes password instead of 2FA code
- * - Removed refresh token methods
- */
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -160,13 +159,92 @@ export interface AuthContextType {
   resetPassword: (data: ResetPasswordRequest) => Promise<{ detail: string }>;
   requestEmailVerification: () => Promise<{ detail: string }>;
   verifyEmail: (data: VerifyEmailRequest) => Promise<{ detail: string }>;
+
+  //Identity verification methods
+  initiateIdentityVerification: (method: string) => Promise<{ detail: string; method: string }>;
+  completeIdentityVerification: (method: string) => Promise<{ detail: string; verified_at: string }>;
+  // Profile completion methods for all roles
+  completePatientProfile: (profileData: Partial<PatientProfile>) => Promise<PatientProfile>;
+  updatePatientConsent: (consents: {
+    medication_adherence_monitoring_consent: boolean;
+    vitals_monitoring_consent: boolean;
+    research_participation_consent: boolean;
+  }) => Promise<PatientProfile>;
+
+  completeProviderProfile: (profileData: Partial<ProviderProfile>) => Promise<ProviderProfile>;
+  completePharmcoProfile: (profileData: Partial<PharmcoProfile>) => Promise<PharmcoProfile>;
+  completeCaregiverProfile: (profileData: Partial<CaregiverProfile>) => Promise<CaregiverProfile>;
+  completeResearcherProfile: (profileData: Partial<ResearcherProfile>) => Promise<ResearcherProfile>;
+  completeComplianceProfile: (profileData: Partial<ComplianceProfile>) => Promise<ComplianceProfile>;
+  
+  // Caregiver request management
+  getCaregiverRequests: (params?: { status?: string; ordering?: string }) => Promise<CaregiverRequest[]>;
+  approveCaregiverRequest: (requestId: number) => Promise<{ detail: string }>;
+  denyCaregiverRequest: (requestId: number, reason?: string) => Promise<{ detail: string }>;
+  getCaregiverRequestDetails: (requestId: number) => Promise<CaregiverRequest>;
+
+  // HIPAA document management
+  getHipaaDocuments: (filters?: { document_type?: string; active?: boolean }) => Promise<HipaaDocument[]>;
+  getHipaaDocumentDetails: (documentId: number) => Promise<HipaaDocument>;
+  getLatestHipaaDocuments: () => Promise<HipaaDocument[]>;
+  signHipaaDocument: (documentId: number) => Promise<{ detail: string; consent_id: number; signed_at: string }>;
+  
+  // Consent record management
+  getConsentRecords: (filters?: { consent_type?: string; consented?: boolean }) => Promise<ConsentRecord[]>;
+  getConsentAuditTrail: (days?: number) => Promise<{
+    summary: {
+      total_records: number;
+      by_type: Record<string, number>;
+      by_user_role: Record<string, number>;
+      revoked_count: number;
+    };
+    records: ConsentRecord[];
+    pagination: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+    };
+  }>;
+  
+  // Emergency access (for providers/compliance)
+  initiateEmergencyAccess: (data: {
+    patient_identifier: string;
+    reason: string;
+    detailed_reason: string;
+  }) => Promise<{ detail: string; access_id: number; expires_in: string }>;
+  endEmergencyAccess: (accessId: number, phiSummary: string) => Promise<{ detail: string }>;
+  getEmergencyAccessRecords: (filters?: {
+    reason?: string;
+    reviewed?: boolean;
+    requester?: number;
+    ordering?: string;
+  }) => Promise<EmergencyAccessRecord[]>;
+  reviewEmergencyAccess: (accessId: number, reviewData: { notes: string; justified: boolean }) => Promise<{ detail: string }>;
+  getEmergencyAccessSummary: () => Promise<{
+    total_requests: number;
+    pending_review: number;
+    recent_requests: number;
+    justified_access: number;
+    unjustified_access: number;
+    by_reason: Record<string, number>;
+    active_sessions: number;
+  }>;
+  
+  // Admin dashboard stats
+  getDashboardStats: () => Promise<{
+    total_users: number;
+    pending_approvals: number;
+    users_by_role: Record<string, number>;
+    pending_caregiver_requests: number;
+    unreviewed_emergency_access: number;
+    recent_registrations: number;
+    unverified_patients: number;
+  }>;
+
+  // Legacy consent update method (for backward compatibility)
   updateConsent: (consentType: string, consented: boolean) => Promise<ConsentUpdateResponse>;
 }
 
-/**
- * FIXED: Error interfaces matching backend response format
- * Your backend returns { "detail": "error message" } or { "field_errors": {...} }
- */
 export interface ApiError {
   detail?: string;
   field_errors?: Record<string, string[]>; // FIXED: Backend uses field_errors
@@ -205,20 +283,32 @@ export interface ConsentUpdate {
  */
 export interface PatientProfile {
   id: number;
-  user: number;
+  user: User;
+  // Encrypted fields - values returned as decrypted strings
   medical_id?: string;
   blood_type?: string;
   allergies?: string;
+  primary_condition?: string;
+  condition_diagnosis_date?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
-  primary_condition?: string;
-  condition_diagnosis_date?: string;
-  identity_verified?: boolean;
-  // Consent fields
-  medication_adherence_monitoring_consent?: boolean;
-  vitals_monitoring_consent?: boolean;
-  research_participation_consent?: boolean;
+  
+  // Consent preferences with timestamps
+  medication_adherence_monitoring_consent: boolean;
+  medication_adherence_consent_date?: string;
+  vitals_monitoring_consent: boolean;
+  vitals_monitoring_consent_date?: string;
+  research_participation_consent: boolean;
+  research_consent_date?: string;
+  
+  // Identity verification (30-day requirement)
+  identity_verified: boolean;
+  identity_verification_date?: string;
+  identity_verification_method?: string;
+  verification_deadline_notified: boolean;
+  first_login_date?: string;
+  days_until_verification_required?: number;
 }
 
 export interface ProviderProfile {
@@ -280,48 +370,154 @@ export interface ComplianceProfile {
 /**
  * ADDED: Additional interfaces for backend functionality
  */
+// Caregiver Request Types
 export interface CaregiverRequest {
   id: number;
-  caregiver: number;
-  patient_email: string;
-  relationship: CaregiverRelationship;
+  caregiver: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  patient: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  relationship: string;
   status: 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
   requested_at: string;
-  processed_at?: string;
+  responded_at?: string;
+  response_notes?: string;
+  patient_notified: boolean;
+  reminder_sent: boolean;
 }
 
+// Emergency Access Types
 export interface EmergencyAccessRecord {
   id: number;
-  requester: number;
-  patient_identifier: string;
-  reason: EmergencyAccessReason;
+  requester: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  patient_identifier: string; // Encrypted in backend
+  reason: 'LIFE_THREATENING' | 'URGENT_CARE' | 'PATIENT_UNABLE' | 'IMMINENT_DANGER' | 'OTHER';
   detailed_reason: string;
   requested_at: string;
-  ended_at?: string;
-  phi_accessed?: string;
-  reviewed?: boolean;
-  justified?: boolean;
-  notes?: string;
+  access_ended_at?: string;
+  duration: string;
+  is_active: boolean;
+  reviewed: boolean;
+  access_justified?: boolean;
+  review_notes?: string;
+  notifications_sent: boolean;
 }
 
+// HIPAA Document Types
 export interface HipaaDocument {
   id: number;
   title: string;
-  document_type: 'PRIVACY_NOTICE' | 'AUTHORIZATION' | 'CONSENT' | 'OTHER';
+  document_type: 'PRIVACY_NOTICE' | 'TERMS_OF_SERVICE' | 'PATIENT_RIGHTS' | 
+                 'DATA_USE' | 'CAREGIVER_AGREEMENT' | 'RESEARCH_CONSENT';
+  document_type_display: string;
   version: string;
-  content: string;
+  content: string; // Markdown or HTML
   effective_date: string;
+  expiration_date?: string;
   active: boolean;
   created_at: string;
+  created_by: {
+    id: number;
+    email: string;
+  };
+  checksum: string; // SHA-256 for integrity
+  is_signed_by_user: boolean;
 }
 
+// Consent Record Types
 export interface ConsentRecord {
   id: number;
-  user: number;
-  document: number;
-  consent_type: string;
+  user: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  consent_type: 'TERMS_OF_SERVICE' | 'PRIVACY_NOTICE' | 'MEDICATION_MONITORING' | 
+                'VITALS_MONITORING' | 'RESEARCH_PARTICIPATION' | 'DATA_SHARING' | 
+                'CAREGIVER_ACCESS' | 'PHI_HANDLING' | 'IDENTITY_VERIFICATION';
+  consent_type_display: string;
   consented: boolean;
   signature_timestamp: string;
-  revoked?: boolean;
+  signature_ip?: string;
+  signature_user_agent?: string;
+  document_version?: string;
+  document_checksum?: string;
+  revoked: boolean;
   revoked_at?: string;
+  revocation_reason?: string;
+}
+
+// Two Factor Device Types
+export interface TwoFactorDevice {
+  id: number;
+  user: number;
+  confirmed: boolean;
+  created_at: string;
+  last_used_at?: string;
+}
+
+export interface ConsentAuditTrailResponse {
+  summary: {
+    total_records: number;
+    by_type: Record<string, number>;
+    by_user_role: Record<string, number>;
+    revoked_count: number;
+  };
+  records: ConsentRecord[];          // already imported
+  pagination: {
+    count: number;
+    next: string | null;
+    previous: string | null;
+  };
+}
+
+export interface EmergencyAccessFilters {
+  reason?: string;
+  reviewed?: boolean;
+  requester?: number;
+  ordering?: string;
+}
+
+// Dashboard Stats Type (for admin)
+export interface DashboardStatsResponse {
+  total_users: number;
+  pending_approvals: number;
+  users_by_role: {
+    patient: number;
+    provider: number;
+    caregiver: number;
+    pharmco: number;
+    researcher: number;
+    compliance: number;
+    admin: number;
+  };
+  pending_caregiver_requests: number;
+  unreviewed_emergency_access: number;
+  recent_registrations: number;
+  unverified_patients: number;
+}
+
+// Emergency Access Summary (for compliance)
+export interface EmergencyAccessSummary {
+  total_requests: number;
+  pending_review: number;
+  recent_requests: number;
+  justified_access: number;
+  unjustified_access: number;
+  by_reason: Record<string, number>;
+  active_sessions: number;
 }

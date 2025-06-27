@@ -6,7 +6,7 @@
 
 // Determine the correct API prefix based on environment
 const getApiPrefix = (): string => {
-  const baseUrl = process.env.VITE_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   
   // If base URL already includes /api/, don't add it again
   if (baseUrl.includes('/api/')) {

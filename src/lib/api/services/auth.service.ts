@@ -1,5 +1,5 @@
 // src/lib/api/services/auth.service.ts
-import apiClient from '../client';
+import apiClient, { extractDataFromResponse } from '../client';
 import { AxiosError } from 'axios';
 import { ENDPOINTS } from '../endpoints';
 import { validateLoginResponse, validateUserResponse } from '@/lib/api/validation';
@@ -11,7 +11,17 @@ import type {
   ResetPasswordRequest, 
   VerifyEmailRequest, 
   SetupTwoFactorResponse,
-  User
+  User,
+  PatientProfile,
+  ProviderProfile,
+  CaregiverRequest,
+  EmergencyAccessRecord,
+  HipaaDocument,
+  ConsentRecord,
+  PharmcoProfile,
+  ResearcherProfile,
+  CaregiverProfile,
+  ComplianceProfile
 } from '@/types/auth.types';
 
 import type { 
@@ -201,6 +211,460 @@ export const authService = {
 
     const response = await apiClient.post(ENDPOINTS.AUTH.REGISTER, backendPayload);
     return response.data;
+  },
+
+  /**
+   * Profile Completion Methods
+   */
+  completePatientProfile: async (profileId: number, profileData: {
+    medical_id?: string;
+    blood_type?: string;
+    allergies?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+    emergency_contact_relationship?: string;
+    primary_condition?: string;
+    condition_diagnosis_date?: string;
+  }): Promise<PatientProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_PATIENT_PROFILE(profileId), 
+        profileData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete patient profile');
+    }
+  },
+
+  updatePatientConsent: async (profileId: number, consents: {
+    medication_adherence_monitoring_consent: boolean;
+    vitals_monitoring_consent: boolean;
+    research_participation_consent: boolean;
+  }): Promise<PatientProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.UPDATE_PATIENT_CONSENT(profileId),
+        consents
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to update patient consent');
+    }
+  },
+  
+  /**
+   * Identity Verification Methods
+   */
+  initiateIdentityVerification: async (
+    profileId: number, 
+    method: 'E_SIGNATURE' | 'PROVIDER_VERIFICATION' | 'DOCUMENT_UPLOAD' | 'VIDEO_VERIFICATION'
+  ): Promise<{ detail: string; method: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.INITIATE_IDENTITY_VERIFICATION(profileId),
+        { method }
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to initiate identity verification');
+    }
+  },
+
+  completeIdentityVerification: async (
+    profileId: number,
+    method: string
+  ): Promise<{ detail: string; verified_at: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_IDENTITY_VERIFICATION(profileId),
+        { method }
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete identity verification');
+    }
+  },
+  
+  // Provider Profile Completion
+  completeProviderProfile: async (profileId: number, profileData: {
+    years_of_experience?: number;
+    rare_condition_specialties?: string;
+    telemedicine_available?: boolean;
+  }): Promise<ProviderProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_PROVIDER_PROFILE(profileId),
+        profileData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete provider profile');
+    }
+  },
+  
+  completePharmcoProfile: async (profileId: number, profileData: {
+    company_address?: string;
+    monitored_medications?: string;
+  }): Promise<PharmcoProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_PHARMCO_PROFILE(profileId),
+        profileData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete pharmco profile');
+    }
+  },
+  
+  completeCaregiverProfile: async (profileId: number, profileData: {
+    authorization_documentation?: boolean;
+    notes?: string;
+  }): Promise<CaregiverProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_CAREGIVER_PROFILE(profileId),
+        profileData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete caregiver profile');
+    }
+  },
+
+  completeResearcherProfile: async (profileId: number, profileData: {
+    active_studies?: string;
+  }): Promise<ResearcherProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_RESEARCHER_PROFILE(profileId),
+        profileData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete researcher profile');
+    }
+  },
+  
+  completeComplianceProfile: async (profileId: number, profileData: {
+    certification_number?: string;
+    certification_expiry?: string;
+  }): Promise<ComplianceProfile> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.USERS.COMPLETE_COMPLIANCE_PROFILE(profileId),
+        profileData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to complete compliance profile');
+    }
+  },
+  
+  /**
+   * Caregiver Request Management
+   */
+  getCaregiverRequests: async (params?: {
+    status?: 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
+    ordering?: string;
+  }): Promise<CaregiverRequest[]> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.ordering) queryParams.append('ordering', params.ordering);
+      
+      const response = await apiClient.get(
+        `${ENDPOINTS.CAREGIVER_REQUESTS.LIST}?${queryParams}`
+      );
+      return extractDataFromResponse(response.data);
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch caregiver requests');
+    }
+  },
+
+  approveCaregiverRequest: async (requestId: number): Promise<{ detail: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.CAREGIVER_REQUESTS.APPROVE(requestId)
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only the patient can approve this request');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to approve caregiver request');
+    }
+  },
+
+  denyCaregiverRequest: async (requestId: number, reason?: string): Promise<{ detail: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.CAREGIVER_REQUESTS.DENY(requestId),
+        { reason }
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only the patient can deny this request');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to deny caregiver request');
+    }
+  },
+
+  getCaregiverRequestDetails: async (requestId: number): Promise<CaregiverRequest> => {
+    try {
+      const response = await apiClient.get(ENDPOINTS.CAREGIVER_REQUESTS.DETAIL(requestId));
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 404) {
+        throw new Error('Caregiver request not found');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch caregiver request details');
+    }
+  },
+
+  /**
+   * Emergency Access System
+   */
+  initiateEmergencyAccess: async (emergencyData: {
+    patient_identifier: string;
+    reason: 'LIFE_THREATENING' | 'URGENT_CARE' | 'PATIENT_UNABLE' | 'IMMINENT_DANGER' | 'OTHER';
+    detailed_reason: string;
+  }): Promise<{ detail: string; access_id: number; expires_in: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.EMERGENCY_ACCESS.INITIATE,
+        emergencyData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only authorized personnel can initiate emergency access');
+      }
+      if (apiError.response?.status === 400) {
+        throw new Error(apiError.response?.data?.detail || 'Too many recent requests or invalid reason');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to initiate emergency access');
+    }
+  },
+
+  endEmergencyAccess: async (accessId: number, phiSummary: string): Promise<{ detail: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.EMERGENCY_ACCESS.END(accessId),
+        { phi_accessed: phiSummary }
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only the requester can end access');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to end emergency access');
+    }
+  },
+
+  getEmergencyAccessRecords: async (filters?: {
+    reason?: string;
+    reviewed?: boolean;
+    requester?: number;
+    ordering?: string;
+  }): Promise<EmergencyAccessRecord[]> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters?.reason) queryParams.append('reason', filters.reason);
+      if (filters?.reviewed !== undefined) queryParams.append('reviewed', filters.reviewed.toString());
+      if (filters?.requester) queryParams.append('requester', filters.requester.toString());
+      if (filters?.ordering) queryParams.append('ordering', filters.ordering);
+      
+      const response = await apiClient.get(
+        `${ENDPOINTS.EMERGENCY_ACCESS.LIST}?${queryParams}`
+      );
+      return extractDataFromResponse(response.data);
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to view emergency access records');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch emergency access records');
+    }
+  },
+
+  reviewEmergencyAccess: async (
+    accessId: number,
+    reviewData: { notes: string; justified: boolean }
+  ): Promise<{ detail: string }> => {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.EMERGENCY_ACCESS.REVIEW(accessId),
+        reviewData
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only compliance officers can review emergency access');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to review emergency access');
+    }
+  },
+
+  getEmergencyAccessSummary: async (): Promise<{
+    total_requests: number;
+    pending_review: number;
+    recent_requests: number;
+    justified_access: number;
+    unjustified_access: number;
+    by_reason: Record<string, number>;
+    active_sessions: number;
+  }> => {
+    try {
+      const response = await apiClient.get(ENDPOINTS.COMPLIANCE.EMERGENCY_SUMMARY);
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only compliance officers and admins can access emergency access summary');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch emergency access summary');
+    }
+  },
+
+  /**
+   * HIPAA Document Management
+   */
+  getHipaaDocuments: async (filters?: {
+    document_type?: string;
+    active?: boolean;
+    ordering?: string;
+  }): Promise<HipaaDocument[]> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters?.document_type) queryParams.append('document_type', filters.document_type);
+      if (filters?.active !== undefined) queryParams.append('active', filters.active.toString());
+      if (filters?.ordering) queryParams.append('ordering', filters.ordering);
+      
+      const response = await apiClient.get(
+        `${ENDPOINTS.HIPAA_DOCUMENTS.LIST}?${queryParams}`
+      );
+      return extractDataFromResponse(response.data);
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch HIPAA documents');
+    }
+  },
+
+  getHipaaDocumentDetails: async (documentId: number): Promise<HipaaDocument> => {
+    try {
+      const response = await apiClient.get(ENDPOINTS.HIPAA_DOCUMENTS.DETAIL(documentId));
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 404) {
+        throw new Error('HIPAA document not found');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch HIPAA document details');
+    }
+  },
+
+  getLatestHipaaDocuments: async (): Promise<HipaaDocument[]> => {
+    try {
+      const response = await apiClient.get(ENDPOINTS.HIPAA_DOCUMENTS.LATEST);
+      return extractDataFromResponse(response.data);
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch latest HIPAA documents');
+    }
+  },
+
+  signHipaaDocument: async (documentId: number): Promise<{
+    detail: string;
+    consent_id: number;
+    signed_at: string;
+  }> => {
+    try {
+      const response = await apiClient.post(ENDPOINTS.HIPAA_DOCUMENTS.SIGN(documentId));
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 400) {
+        throw new Error(apiError.response?.data?.detail || 'You have already signed this document');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to sign document');
+    }
+  },
+
+  /**
+   * Consent Record Management
+   */
+  getConsentRecords: async (filters?: {
+    consent_type?: string;
+    consented?: boolean;
+    revoked?: boolean;
+    ordering?: string;
+  }): Promise<ConsentRecord[]> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters?.consent_type) queryParams.append('consent_type', filters.consent_type);
+      if (filters?.consented !== undefined) queryParams.append('consented', filters.consented.toString());
+      if (filters?.revoked !== undefined) queryParams.append('revoked', filters.revoked.toString());
+      if (filters?.ordering) queryParams.append('ordering', filters.ordering);
+      
+      const response = await apiClient.get(
+        `${ENDPOINTS.CONSENT_RECORDS.LIST}?${queryParams}`
+      );
+      return extractDataFromResponse(response.data);
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('You do not have permission to view consent records');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch consent records');
+    }
+  },
+
+  getConsentAuditTrail: async (days?: number): Promise<{
+    summary: {
+      total_records: number;
+      by_type: Record<string, number>;
+      by_user_role: Record<string, number>;
+      revoked_count: number;
+    };
+    records: ConsentRecord[];
+    pagination: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+    };
+  }> => {
+    try {
+      const queryParams = days ? `?days=${days}` : '';
+      const response = await apiClient.get(
+        `${ENDPOINTS.COMPLIANCE.AUDIT_TRAIL}${queryParams}`
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as AxiosError<{ detail?: string }>;
+      if (apiError.response?.status === 403) {
+        throw new Error('Only compliance officers and admins can access audit trails');
+      }
+      throw new Error(apiError.response?.data?.detail || 'Failed to fetch consent audit trail');
+    }
   },
 
   /**

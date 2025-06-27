@@ -1,7 +1,6 @@
-// src/lib/auth/use-auth.ts
+// src/lib/auth/use-auth.ts - FIXED TYPE COMPATIBILITY
 import { useContext } from 'react';
-import { AuthContext } from './auth-provider';
-import { AuthContextType } from '@/types/auth.types';
+import { AuthContext, EnhancedAuthContextType } from './auth-provider';
 
 /**
  * Custom hook to access the authentication context
@@ -11,11 +10,12 @@ import { AuthContextType } from '@/types/auth.types';
  * - Authentication state
  * - Loading state
  * - Authentication methods (login, register, logout, etc.)
+ * - Enhanced methods with proper type safety
  * 
- * @returns AuthContextType object containing authentication state and methods
+ * @returns EnhancedAuthContextType object containing authentication state and methods
  * @throws Error if used outside of an AuthProvider
  */
-export const useAuth = (): AuthContextType => {
+export const useAuth = (): EnhancedAuthContextType => {
   const context = useContext(AuthContext);
   
   if (!context) {
