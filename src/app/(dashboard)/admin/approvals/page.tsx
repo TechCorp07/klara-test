@@ -6,17 +6,16 @@ import { FormButton, FormAlert } from '@/components/auth/common';
 import { Spinner } from '@/components/ui/spinner';
 import { authService } from '@/lib/api/services/auth.service';
 import { User } from '@/types/auth.types';
-import { UserFilters } from '@/components/admin/UserFilters';
-import { Pagination } from '@/components/admin/Pagination';
-import { BulkActions } from '@/components/admin/BulkActions';
-import { DashboardStats } from '@/components/admin/DashboardStats';
+import { UserFilters } from '@/app/(dashboard)/admin/common/UserFilters';
+import { Pagination } from '@/app/(dashboard)/admin/common/Pagination';
+import { BulkActions } from '@/app/(dashboard)/admin/common/BulkActions';
+import { DashboardStats } from '@/app/(dashboard)/admin/common/DashboardStats';
 import type { 
   UserFilters as UserFiltersType, 
   PaginatedUsersResponse, 
   DashboardStatsResponse 
 } from '@/types/admin.types';
 import { AdminGuard } from '@/components/guards/AdminGuard';
-
 
 // Enhanced User interface with credential information
 interface EnhancedUser extends User {
@@ -60,7 +59,7 @@ interface RiskLevel {
  * - Pagination for large datasets
  * - Permission-based access control
  */
-export default function ApprovalsPage() {
+export default function AdminApprovalsPage() {
   return (
     <AdminGuard>
       <ComprehensiveApprovalManagement />

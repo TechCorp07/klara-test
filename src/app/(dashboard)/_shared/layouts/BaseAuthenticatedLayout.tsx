@@ -1,4 +1,4 @@
-// src/app/(dashboard)/ClientDashboardLayout.tsx
+// src/app/(dashboard)/_shared/layouts/BaseAuthenticatedLayout.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,36 +8,67 @@ import { useAuth } from '@/lib/auth/use-auth';
 import { AuthGuard } from '@/lib/auth/guards/auth-guard';
 import { Spinner } from '@/components/ui/spinner';
 import { AppLogo } from '@/components/ui/AppLogo';
-//import { config } from '@/lib/config';
 import { useNavigationPermissions } from '@/hooks/useNavigationPermissions';
+import { useLayout, LayoutProvider } from './LayoutContext';
+import NotificationCenter from '../components/NotificationCenter';
 
-interface ClientDashboardLayoutProps {
+interface BaseAuthenticatedLayoutProps {
   children: React.ReactNode;
+  requiredRole?: string[];
+  showVerificationWarning?: boolean;
 }
 
 /**
- * Client-side dashboard layout with authentication and navigation.
- * 
- * This layout provides:
- * - Authentication protection via AuthGuard
- * - A responsive sidebar navigation
- * - Header with user information and logout
- * - Role-specific navigation based on the user's role
+ * Base authenticated layout component that provides common functionality
+ * for all role-specific dashboards including authentication, navigation,
+ * and responsive design.
  */
-export default function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) {
+function BaseAuthenticatedLayoutInner({ 
+  children, 
+  requiredRole,
+  showVerificationWarning = true 
+}: BaseAuthenticatedLayoutProps) {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { canAccess } = useNavigationPermissions();
+  const { 
+    sidebarOpen, 
+    setSidebarOpen, 
+    toggleSidebar, 
+    theme,
+    notifications,
+    emergencyAlerts,
+    isOnline 
+  } = useLayout();
   
-  // State for mobile navigation
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // State for user menu
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   
-  // Handle sidebar toggle for mobile
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  // Authentication and role checks
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
+
+      if (!user.is_approved && user.role !== 'admin') {
+        router.push('/auth/pending-approval');
+        return;
+      }
+
+      if (!user.email_verified) {
+        router.push('/auth/verify-email');
+        return;
+      }
+
+      if (requiredRole && user.role && !requiredRole.includes(user.role)) {
+        router.push('/dashboard/unauthorized');
+        return;
+      }
+    }
+  }, [isLoading, user, router, requiredRole]);
   
   // Handle user menu toggle
   const toggleUserMenu = () => {
@@ -68,9 +99,18 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
   
   // Define navigation items based on user role
   const getNavigationItems = () => {
+    if (!user?.role) return [];
+
     const items = [
+      // Role-specific dashboard links
+      { 
+        name: 'Dashboard', 
+        href: `/dashboard/${user.role}`, 
+        icon: 'home', 
+        show: true 
+      },
+      
       // Common items for all users
-      { name: 'Dashboard', href: '/dashboard', icon: 'home', show: canAccess.dashboard },
       { name: 'Profile', href: '/profile', icon: 'user', show: canAccess.profile },
       { name: 'Settings', href: '/settings', icon: 'settings', show: canAccess.settings },
       { name: 'Messages', href: '/messages', icon: 'mail', show: canAccess.messages },
@@ -204,9 +244,41 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
         );
     }
   };
+
+  // Get page title from pathname
+  const getPageTitle = () => {
+    if (pathname.includes('/dashboard')) {
+      const segments = pathname.split('/');
+      if (segments.length === 3) {
+        // /dashboard/role format
+        const role = segments[2];
+        switch (role) {
+          case 'patient': return 'Patient Dashboard';
+          case 'provider': return 'Provider Dashboard';
+          case 'researcher': return 'Researcher Dashboard';
+          case 'pharmco': return 'Pharmaceutical Dashboard';
+          case 'caregiver': return 'Caregiver Dashboard';
+          case 'compliance': return 'Compliance Dashboard';
+          case 'admin': return 'Admin Dashboard';
+          default: return 'Dashboard';
+        }
+      }
+    }
+    
+    return pathname === '/dashboard'
+      ? 'Dashboard'
+      : pathname.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) || 'Dashboard';
+  };
+  
+  // Check for identity verification warning (patients only)
+  const shouldShowVerificationWarning = 
+    showVerificationWarning && 
+    user?.role === 'patient' && 
+    user?.profile?.days_until_verification_required !== null &&
+    user?.profile?.days_until_verification_required <= 7;
   
   // If loading, show spinner
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Spinner size="lg" />
@@ -215,44 +287,73 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
   }
   
   return (
-    <AuthGuard>
-      <div className="min-h-screen bg-gray-100">
+    <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        {/* Verification Warning Banner */}
+        {shouldShowVerificationWarning && (
+          <div className="bg-yellow-600 text-white px-4 py-2">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <p className="text-sm">
+                ⚠️ Identity verification required within {user?.profile?.days_until_verification_required} days
+              </p>
+              <button 
+                onClick={() => router.push('/dashboard/patient/verify-identity')}
+                className="bg-yellow-700 hover:bg-yellow-800 px-3 py-1 rounded text-sm font-medium"
+              >
+                Verify Now
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="bg-red-600 text-white px-4 py-2">
+            <div className="max-w-7xl mx-auto text-center">
+              <p className="text-sm">
+                🔴 You are currently offline. Some features may not be available.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Mobile sidebar backdrop */}
-        {isSidebarOpen && (
+        {sidebarOpen && (
           <div
             className="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
-            onClick={toggleSidebar}
+            onClick={() => setSidebarOpen(false)}
           />
         )}
         
         {/* Sidebar */}
         <div
-          className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-center h-16 border-b border-gray-200">
-            <Link href="/dashboard" className="flex items-center">
+          <div className="flex items-center justify-center h-16 border-b border-gray-200 dark:border-gray-700">
+            <Link href={`/dashboard/${user.role}`} className="flex items-center">
               <AppLogo size='sm' />
-              <span className="ml-2 text-xl font-semibold text-gray-900">Klararety</span>
+              <span className="ml-2 text-xl font-semibold text-gray-900 dark:text-white">Klararety</span>
             </Link>
           </div>
           
           <nav className="mt-5 px-2 space-y-1">
             {navigationItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
-                      ? 'bg-blue-100 text-blue-900'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
                   }`}
+                  onClick={() => setSidebarOpen(false)} // Close mobile sidebar on navigation
                 >
-                  <span className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span className={`mr-3 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                     {renderIcon(item.icon)}
                   </span>
                   {item.name}
@@ -261,16 +362,17 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
             })}
           </nav>
           
-          <div className="absolute bottom-0 w-full border-t border-gray-200 p-4">
+          {/* Sidebar footer with user info */}
+          <div className="absolute bottom-0 w-full border-t border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
                 {user?.first_name?.[0]}{user?.last_name?.[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p className="text-xs text-gray-500 truncate capitalize">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">
                   {user?.role}
                 </p>
               </div>
@@ -278,7 +380,7 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
             
             <button
               onClick={handleLogout}
-              className="mt-4 w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="mt-4 w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:ring-offset-gray-800"
             >
               Sign Out
             </button>
@@ -288,10 +390,10 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
         {/* Main content */}
         <div className="lg:pl-64">
           {/* Top header */}
-          <div className="sticky top-0 z-10 flex h-16 bg-white shadow">
+          <div className="sticky top-0 z-10 flex h-16 bg-white dark:bg-gray-800 shadow">
             <button
               type="button"
-              className="px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 lg:hidden"
+              className="px-4 text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 lg:hidden"
               onClick={toggleSidebar}
             >
               <span className="sr-only">Open sidebar</span>
@@ -314,44 +416,31 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
             
             <div className="flex-1 px-4 flex justify-between">
               <div className="flex-1 flex items-center">
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  {/* Extract page title from pathname */}
-                  {pathname === '/dashboard'
-                    ? 'Dashboard'
-                    : pathname.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {getPageTitle()}
                 </h1>
               </div>
               
-              <div className="ml-4 flex items-center md:ml-6">
+              <div className="ml-4 flex items-center md:ml-6 space-x-4">
+                {/* Emergency alerts (for compliance/admin) */}
+                {emergencyAlerts > 0 && (user?.role === 'compliance' || user?.role === 'admin') && (
+                  <div className="flex items-center space-x-1 px-2 py-1 bg-red-100 text-red-800 rounded-full">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-sm font-medium">{emergencyAlerts}</span>
+                  </div>
+                )}
+
                 {/* Notifications */}
-                <button
-                  type="button"
-                  className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <span className="sr-only">View notifications</span>
-                  <svg
-                    className="h-6 w-6"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                    />
-                  </svg>
-                </button>
+                <NotificationCenter />
                 
                 {/* Profile dropdown */}
                 <div className="ml-3 relative">
                   <div>
                     <button
                       type="button"
-                      className="max-w-xs rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="max-w-xs rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:ring-offset-gray-800"
                       id="user-menu"
                       aria-expanded="false"
                       aria-haspopup="true"
@@ -361,7 +450,7 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
                       }}
                     >
                       <span className="sr-only">Open user menu</span>
-                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                      <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold">
                         {user?.first_name?.[0]}{user?.last_name?.[0]}
                       </div>
                     </button>
@@ -370,28 +459,28 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
                   {/* User menu dropdown */}
                   {isUserMenuOpen && (
                     <div
-                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1"
+                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 py-1"
                       role="menu"
                       aria-orientation="vertical"
                       aria-labelledby="user-menu"
                     >
                       <Link
                         href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                         role="menuitem"
                       >
                         Your Profile
                       </Link>
                       <Link
                         href="/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                         role="menuitem"
                       >
                         Settings
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                         role="menuitem"
                       >
                         Sign out
@@ -413,6 +502,16 @@ export default function ClientDashboardLayout({ children }: ClientDashboardLayou
           </main>
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function BaseAuthenticatedLayout(props: BaseAuthenticatedLayoutProps) {
+  return (
+    <AuthGuard>
+      <LayoutProvider>
+        <BaseAuthenticatedLayoutInner {...props} />
+      </LayoutProvider>
     </AuthGuard>
   );
 }
