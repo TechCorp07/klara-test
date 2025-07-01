@@ -1,323 +1,443 @@
 // src/app/(dashboard)/admin/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
-import { Spinner } from '@/components/ui/spinner';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { AdminGuard } from '@/components/guards/AdminGuard';
+import { usePermissions } from '@/hooks/usePermissions';
+import { apiClient } from '@/lib/api/client';
+import SystemOverviewCard from './components/SystemOverviewCard';
+import UserManagementCard from './components/UserManagementCard';
+import PendingApprovalsCard from './components/PendingApprovalsCard';
+import SystemHealthCard from './components/SystemHealthCard';
+import DashboardStats from './common/DashboardStats';
 
-interface AdminStats {
-  total_users: number;
-  pending_approvals: number;
-  users_by_role: {
-    patient: number;
-    provider: number;
-    caregiver: number;
-    pharmco: number;
-    researcher: number;
-    compliance: number;
+interface DashboardData {
+  quick_stats: {
+    total_users: number;
+    pending_approvals: number;
+    active_users_today: number;
+    system_alerts: number;
+    emergency_access_events: number;
+    failed_logins_24h: number;
   };
-  pending_caregiver_requests: number;
-  unreviewed_emergency_access: number;
-  recent_registrations: number;
-  unverified_patients: number;
-  system_alerts: number;
-  active_users_today: number;
+  recent_activities: Array<{
+    id: string;
+    type: 'user_registration' | 'user_approval' | 'security_alert' | 'emergency_access' | 'system_update';
+    description: string;
+    timestamp: string;
+    user?: string;
+    severity?: 'low' | 'medium' | 'high' | 'critical';
+    metadata?: any;
+  }>;
+  system_status: {
+    overall_health: 'healthy' | 'warning' | 'critical';
+    uptime_percentage: number;
+    response_time: number;
+    active_sessions: number;
+  };
 }
 
-interface Activity {
-  id: number;
-  type: 'user_registration' | 'approval_needed' | 'system_alert' | 'emergency_access' | 'caregiver_request' | 'verification';
-  description: string;
-  date: string;
-  priority?: 'high' | 'medium' | 'low';
-  user_id?: number;
+export default function AdminDashboardPage() {
+  return (
+    <AdminGuard>
+      <AdminDashboardInterface />
+    </AdminGuard>
+  );
 }
 
-export default function AdminDashboard() {
-  const { user, isLoading } = useAuth();
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
+function AdminDashboardInterface() {
+  const { permissions } = usePermissions();
+  const router = useRouter();
+  
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Permission checks
+  const canViewDashboard = permissions?.has_admin_access || false;
+  const canManageUsers = permissions?.has_user_management_access || false;
+  const canViewReports = permissions?.has_admin_access || false;
+  const canManageSystem = permissions?.has_system_settings_access || false;
+  const canViewAudit = permissions?.has_audit_access || false;
 
   useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'superadmin') {
-      fetchAdminData();
+    if (canViewDashboard) {
+      fetchDashboardData();
+      // Refresh data every 5 minutes
+      const interval = setInterval(fetchDashboardData, 300000);
+      return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [canViewDashboard]);
 
-  const fetchAdminData = async () => {
-    // In real implementation, this would call /api/users/admin/dashboard-stats/
-    setTimeout(() => {
-      const mockStats: AdminStats = {
-        total_users: 328,
-        pending_approvals: 7,
-        users_by_role: {
-          patient: 250,
-          provider: 45,
-          caregiver: 20,
-          pharmco: 5,
-          researcher: 6,
-          compliance: 2
-        },
-        pending_caregiver_requests: 3,
-        unreviewed_emergency_access: 1,
-        recent_registrations: 8,
-        unverified_patients: 12,
-        system_alerts: 2,
-        active_users_today: 156
-      };
-
-      const mockActivities: Activity[] = [
-        {
-          id: 1,
-          type: 'emergency_access',
-          description: 'Emergency access event requires review - Dr. Smith',
-          date: '2024-01-15',
-          priority: 'high',
-          user_id: 123
-        },
-        {
-          id: 2,
-          type: 'approval_needed',
-          description: '7 new user registrations awaiting approval',
-          date: '2024-01-18',
-          priority: 'high'
-        },
-        {
-          id: 3,
-          type: 'system_alert',
-          description: 'Database backup completed successfully',
-          date: '2024-01-19',
-          priority: 'low'
-        },
-        {
-          id: 4,
-          type: 'verification',
-          description: '5 patients approaching identity verification deadline',
-          date: '2024-01-17',
-          priority: 'medium'
-        },
-        {
-          id: 5,
-          type: 'user_registration',
-          description: 'New healthcare provider registered: Dr. Jane Wilson',
-          date: '2024-01-16',
-          priority: 'medium'
-        }
-      ];
-
-      setStats(mockStats);
-      setActivities(mockActivities);
-    }, 500);
+  const fetchDashboardData = async () => {
+    try {
+      const response = await apiClient.get('/api/admin/dashboard-overview/');
+      setDashboardData(response.data);
+      setError(null);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+      setError('Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    let greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    return `${greeting}, ${user?.first_name || 'Administrator'}`;
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'user_management':
+        router.push('/dashboard/admin/users');
+        break;
+      case 'approval_queue':
+        router.push('/dashboard/admin/approvals');
+        break;
+      case 'system_settings':
+        router.push('/dashboard/admin/system-settings');
+        break;
+      case 'audit_logs':
+        router.push('/dashboard/admin/audit-logs');
+        break;
+      case 'reports':
+        router.push('/dashboard/admin/reports');
+        break;
+      case 'monitoring':
+        router.push('/dashboard/admin/monitoring');
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
   };
 
-  const handleBulkApproval = () => {
-    console.log('Opening bulk approval interface...');
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'user_registration':
+        return '👤';
+      case 'user_approval':
+        return '✅';
+      case 'security_alert':
+        return '🚨';
+      case 'emergency_access':
+        return '🆘';
+      case 'system_update':
+        return '🔧';
+      default:
+        return '📋';
+    }
   };
 
-  const handleEmergencyReview = () => {
-    console.log('Opening emergency access review...');
+  const getActivityColor = (severity?: string) => {
+    switch (severity) {
+      case 'critical':
+        return 'border-l-red-500 bg-red-50';
+      case 'high':
+        return 'border-l-orange-500 bg-orange-50';
+      case 'medium':
+        return 'border-l-yellow-500 bg-yellow-50';
+      case 'low':
+        return 'border-l-blue-500 bg-blue-50';
+      default:
+        return 'border-l-gray-500 bg-gray-50';
+    }
   };
 
-  const handleSystemSettings = () => {
-    console.log('Opening system settings...');
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
-  if (isLoading || !user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+  if (!canViewDashboard) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <Spinner size="lg" />
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded max-w-md">
+          <h3 className="font-bold mb-2">🚫 Administrative Access Required</h3>
+          <p className="mb-4">This dashboard requires administrative privileges.</p>
+          <p className="text-sm">Contact your system administrator for access.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="py-6">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{getGreeting()}</h1>
-        <p className="text-lg text-gray-600">System Administration Dashboard</p>
+        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          System overview, user management, and administrative controls
+        </p>
       </div>
 
-      {stats && (
-        <>
-          {/* Critical Actions Alert */}
-          {(stats.pending_approvals > 0 || stats.unreviewed_emergency_access > 0) && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <h3 className="text-sm font-medium text-red-800">Urgent Actions Required</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <ul className="list-disc pl-5 space-y-1">
-                      {stats.pending_approvals > 0 && (
-                        <li>{stats.pending_approvals} user registrations awaiting approval</li>
-                      )}
-                      {stats.unreviewed_emergency_access > 0 && (
-                        <li>{stats.unreviewed_emergency_access} emergency access events require review</li>
-                      )}
-                    </ul>
-                  </div>
-                  <div className="mt-4 flex space-x-3">
-                    {stats.pending_approvals > 0 && (
-                      <button onClick={handleBulkApproval} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Review Approvals
-                      </button>
-                    )}
-                    {stats.unreviewed_emergency_access > 0 && (
-                      <button onClick={handleEmergencyReview} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Review Emergency Access
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
 
-          {/* System Overview */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">System Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Total Users</p>
-                <p className="mt-1 text-3xl font-semibold text-blue-600">{stats.total_users}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Pending Approvals</p>
-                <p className="mt-1 text-3xl font-semibold text-red-600">{stats.pending_approvals}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Active Today</p>
-                <p className="mt-1 text-3xl font-semibold text-green-600">{stats.active_users_today}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">System Alerts</p>
-                <p className="mt-1 text-3xl font-semibold text-orange-600">{stats.system_alerts}</p>
-              </div>
-            </div>
+      {/* Dashboard Stats */}
+      <div className="mb-8">
+        <DashboardStats />
+      </div>
+
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+        {/* System Overview */}
+        <SystemOverviewCard />
+        
+        {/* User Management */}
+        <UserManagementCard />
+        
+        {/* System Health */}
+        <SystemHealthCard />
+      </div>
+
+      {/* Secondary Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+        {/* Pending Approvals */}
+        <PendingApprovalsCard />
+
+        {/* Recent Activity */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
+            <button 
+              onClick={() => handleQuickAction('monitoring')}
+              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              View All →
+            </button>
           </div>
-
-          {/* User Distribution */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">User Distribution by Role</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {Object.entries(stats.users_by_role).map(([role, count]) => (
-                <div key={role} className="bg-white rounded-lg shadow p-4 text-center">
-                  <p className="text-sm font-medium text-gray-500 capitalize">{role}s</p>
-                  <p className="mt-1 text-2xl font-semibold text-gray-900">{count}</p>
+          
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-16 bg-gray-200 rounded"></div>
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Administrative Metrics */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Administrative Metrics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Caregiver Requests</p>
-                <p className="mt-1 text-2xl font-semibold text-yellow-600">{stats.pending_caregiver_requests}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Recent Registrations</p>
-                <p className="mt-1 text-2xl font-semibold text-blue-600">{stats.recent_registrations}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Unverified Patients</p>
-                <p className="mt-1 text-2xl font-semibold text-orange-600">{stats.unverified_patients}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-4">
-                <p className="text-sm font-medium text-gray-500">Emergency Access Reviews</p>
-                <p className="mt-1 text-2xl font-semibold text-red-600">{stats.unreviewed_emergency_access}</p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Administrative Activity</h2>
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200">
-            {activities.map((activity) => (
-              <li key={activity.id} className="p-4 hover:bg-gray-50">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <span className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${
-                      activity.priority === 'high' ? 'bg-red-100 text-red-600' :
-                      activity.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
-                      'bg-blue-100 text-blue-600'
-                    }`}>
-                      {activity.type === 'user_registration' ? '👤' :
-                       activity.type === 'approval_needed' ? '✋' :
-                       activity.type === 'system_alert' ? '⚠️' :
-                       activity.type === 'emergency_access' ? '🚨' :
-                       activity.type === 'caregiver_request' ? '👥' :
-                       activity.type === 'verification' ? '🔒' : '📋'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{activity.description}</p>
-                    <p className="text-sm text-gray-500">{activity.date}</p>
-                  </div>
-                  <div>
-                    <button className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200">
-                      {activity.type === 'approval_needed' ? 'Review' :
-                       activity.type === 'emergency_access' ? 'Investigate' :
-                       'View'}
-                    </button>
+          ) : dashboardData?.recent_activities && dashboardData.recent_activities.length > 0 ? (
+            <div className="space-y-3">
+              {dashboardData.recent_activities.slice(0, 8).map((activity) => (
+                <div 
+                  key={activity.id} 
+                  className={`border-l-4 p-3 rounded ${getActivityColor(activity.severity)}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3">
+                      <span className="text-lg">{getActivityIcon(activity.type)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">{activity.description}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <p className="text-xs text-gray-500">{formatTimeAgo(activity.timestamp)}</p>
+                          {activity.user && (
+                            <>
+                              <span className="text-xs text-gray-300">•</span>
+                              <p className="text-xs text-gray-500">{activity.user}</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {activity.severity && activity.severity !== 'low' && (
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        activity.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                        activity.severity === 'high' ? 'bg-orange-100 text-orange-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {activity.severity}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A10.003 10.003 0 0124 26c4.21 0 7.813 2.602 9.288 6.286" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <p className="mt-2 text-sm text-gray-500">No recent activity</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Administrative Tools</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Administrative Tools */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">Administrative Tools</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {/* User Management */}
+          {canManageUsers && (
+            <button 
+              onClick={() => handleQuickAction('user_management')}
+              className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+            >
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-3">👥</span>
+                <h3 className="text-lg font-medium text-gray-900">User Management</h3>
+              </div>
+              <p className="text-sm text-gray-500">Manage users, permissions, and account statuses</p>
+              <div className="mt-2 text-xs text-blue-600 group-hover:text-blue-700">
+                View all users →
+              </div>
+            </button>
+          )}
+
+          {/* Approval Queue */}
           <button 
-            onClick={handleBulkApproval}
-            className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
+            onClick={() => handleQuickAction('approval_queue')}
+            className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
           >
-            <h3 className="text-lg font-medium text-gray-900">User Management</h3>
-            <p className="mt-1 text-sm text-gray-500">Manage users, permissions, and account statuses</p>
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-3">✅</span>
+              <h3 className="text-lg font-medium text-gray-900">Approval Queue</h3>
+            </div>
+            <p className="text-sm text-gray-500">Review and approve pending user registrations</p>
+            {dashboardData?.quick_stats.pending_approvals > 0 && (
+              <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                {dashboardData.quick_stats.pending_approvals} pending
+              </div>
+            )}
           </button>
-          <button className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <h3 className="text-lg font-medium text-gray-900">Approval Queue</h3>
-            <p className="mt-1 text-sm text-gray-500">Review and approve pending user registrations</p>
-          </button>
+
+          {/* System Settings */}
+          {canManageSystem && (
+            <button 
+              onClick={() => handleQuickAction('system_settings')}
+              className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+            >
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-3">⚙️</span>
+                <h3 className="text-lg font-medium text-gray-900">System Settings</h3>
+              </div>
+              <p className="text-sm text-gray-500">Configure platform settings and preferences</p>
+              <div className="mt-2 text-xs text-blue-600 group-hover:text-blue-700">
+                Manage settings →
+              </div>
+            </button>
+          )}
+
+          {/* Audit Logs */}
+          {canViewAudit && (
+            <button 
+              onClick={() => handleQuickAction('audit_logs')}
+              className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+            >
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-3">📋</span>
+                <h3 className="text-lg font-medium text-gray-900">Audit Logs</h3>
+              </div>
+              <p className="text-sm text-gray-500">View system activity and security logs</p>
+              <div className="mt-2 text-xs text-blue-600 group-hover:text-blue-700">
+                View logs →
+              </div>
+            </button>
+          )}
+
+          {/* Reports & Analytics */}
+          {canViewReports && (
+            <button 
+              onClick={() => handleQuickAction('reports')}
+              className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+            >
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-3">📊</span>
+                <h3 className="text-lg font-medium text-gray-900">Reports & Analytics</h3>
+              </div>
+              <p className="text-sm text-gray-500">Generate usage reports and system analytics</p>
+              <div className="mt-2 text-xs text-blue-600 group-hover:text-blue-700">
+                View reports →
+              </div>
+            </button>
+          )}
+
+          {/* System Monitoring */}
           <button 
-            onClick={handleSystemSettings}
-            className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
+            onClick={() => handleQuickAction('monitoring')}
+            className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
           >
-            <h3 className="text-lg font-medium text-gray-900">System Settings</h3>
-            <p className="mt-1 text-sm text-gray-500">Configure platform settings and preferences</p>
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-3">📈</span>
+              <h3 className="text-lg font-medium text-gray-900">System Monitoring</h3>
+            </div>
+            <p className="text-sm text-gray-500">Real-time alerts and performance monitoring</p>
+            {dashboardData?.quick_stats.system_alerts > 0 && (
+              <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                {dashboardData.quick_stats.system_alerts} alerts
+              </div>
+            )}
           </button>
-          <button className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <h3 className="text-lg font-medium text-gray-900">Audit Logs</h3>
-            <p className="mt-1 text-sm text-gray-500">View system activity and security logs</p>
-          </button>
-          <button className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <h3 className="text-lg font-medium text-gray-900">Reports & Analytics</h3>
-            <p className="mt-1 text-sm text-gray-500">Generate usage reports and system analytics</p>
-          </button>
-          <button className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <h3 className="text-lg font-medium text-gray-900">HIPAA Documents</h3>
-            <p className="mt-1 text-sm text-gray-500">Manage privacy notices and compliance documents</p>
-          </button>
+
+          {/* HIPAA Documents */}
+          {canManageSystem && (
+            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group">
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-3">🏥</span>
+                <h3 className="text-lg font-medium text-gray-900">HIPAA Documents</h3>
+              </div>
+              <p className="text-sm text-gray-500">Manage privacy notices and compliance documents</p>
+              <div className="mt-2 text-xs text-blue-600 group-hover:text-blue-700">
+                Manage documents →
+              </div>
+            </button>
+          )}
+
+          {/* Emergency Access */}
+          {canViewAudit && (
+            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group">
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-3">🆘</span>
+                <h3 className="text-lg font-medium text-gray-900">Emergency Access</h3>
+              </div>
+              <p className="text-sm text-gray-500">Review emergency access requests and logs</p>
+              {dashboardData?.quick_stats.emergency_access_events > 0 && (
+                <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  {dashboardData.quick_stats.emergency_access_events} pending
+                </div>
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* System Status Footer */}
+      {dashboardData?.system_status && (
+        <div className="mt-8 bg-white shadow rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <div className={`h-3 w-3 rounded-full mr-2 ${
+                  dashboardData.system_status.overall_health === 'healthy' ? 'bg-green-500' :
+                  dashboardData.system_status.overall_health === 'warning' ? 'bg-yellow-500' :
+                  'bg-red-500'
+                }`}></div>
+                <span className="text-sm font-medium text-gray-900">
+                  System Status: {dashboardData.system_status.overall_health === 'healthy' ? 'Operational' : 'Issues Detected'}
+                </span>
+              </div>
+              <div className="text-sm text-gray-500">
+                Uptime: {dashboardData.system_status.uptime_percentage}%
+              </div>
+              <div className="text-sm text-gray-500">
+                Response: {dashboardData.system_status.response_time}ms
+              </div>
+              <div className="text-sm text-gray-500">
+                Active Sessions: {dashboardData.system_status.active_sessions}
+              </div>
+            </div>
+            <div className="text-xs text-gray-400">
+              Last updated: {new Date().toLocaleTimeString()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

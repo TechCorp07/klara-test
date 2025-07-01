@@ -1,18 +1,50 @@
-// Example: src/app/(dashboard)/admin/layout.tsx
- import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
- 
- interface AdminLayoutProps {
-   children: React.ReactNode;
- }
- 
- export default function AdminLayout({ children }: AdminLayoutProps) {
-   return (
-     <BaseAuthenticatedLayout 
-       requiredRole={['admin', 'superadmin']}
-       showVerificationWarning={false}
-     >
-       {children}
-     </BaseAuthenticatedLayout>
-   );
- }
- 
+// src/app/(dashboard)/admin/layout.tsx
+'use client';
+
+import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
+import { AdminGuard } from '@/components/guards/AdminGuard';
+
+interface AdminLayoutProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Admin-specific dashboard layout.
+ * 
+ * This layout:
+ * - Restricts access to admin and superadmin users only
+ * - Provides admin-specific navigation and features
+ * - Shows administrative security warnings
+ * - Includes audit trail tracking for admin actions
+ */
+export default function AdminLayout({ children }: AdminLayoutProps) {
+  return (
+    <AdminGuard>
+      <BaseAuthenticatedLayout 
+        requiredRole={['admin', 'superadmin']}
+        showVerificationWarning={false}
+      >
+        <div className="relative">
+          {/* Admin Security Banner */}
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">
+                  <strong>Administrative Access:</strong> All actions in this area are logged and monitored for compliance.
+                  Ensure you have proper authorization before making system changes.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {children}
+        </div>
+      </BaseAuthenticatedLayout>
+    </AdminGuard>
+  );
+}
