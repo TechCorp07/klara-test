@@ -34,19 +34,18 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
       '/medications'], // Provider-specific patient management
   admin: ['/dashboard', '/profile', '/settings', '/settings/password',
      '/messages', '/users', '/reports',  '/admin',
-    '/approvals', '/users', '/audit-logs', '/system-settings'],
+    '/approvals', '/users', '/audit-logs', '/system-settings', '/monitoring'],
   pharmco: ['/dashboard', '/profile', '/settings', '/settings/password',
      '/messages', '/medications', '/clinical-trials', '/reports', // Pharmaceutical reports
      '/research'],
   caregiver: ['/dashboard', '/profile', '/settings', '/settings/password',
-    '/messages', '/health-records', '/appointments', '/telemedicine',
-    '/medications', '/patients'], // For their assigned patients
+    '/messages', '/health-records', '/appointments', '/patients'], // For their assigned patients
   researcher: ['/dashboard', '/profile', '/settings', '/settings/password',
-    '/messages', '/research', '/clinical-trials', '/reports'], // Research reports
+    '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'], // Research reports
   superadmin: ['/'],
   compliance: ['/dashboard', '/profile', '/settings', '/settings/password',
-    '/messages', '/audit-logs', '/compliance-reports', '/emergency-access',
-    '/consent-records', '/compliance'], // HIPAA consent tracking, // Review emergency access
+    '/messages', '/audit-logs', '/emergency-access', '/consent-management',
+    '/reports', '/compliance'], // HIPAA consent tracking, // Review emergency access
 };
 
 function hasRedirectLoop(returnUrl: string): boolean {

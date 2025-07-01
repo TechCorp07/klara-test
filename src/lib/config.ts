@@ -1,10 +1,11 @@
 // src/lib/config.ts
 
 export const config = {
-  // Enhanced API configuration with validation
   apiBaseUrl: (() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.klararety.com/api';
-    // Ensure no trailing slash for consistency
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 
+      (process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8000/api' 
+        : 'https://api.klararety.com/api');
     return baseUrl.replace(/\/$/, '');
   })(),
 

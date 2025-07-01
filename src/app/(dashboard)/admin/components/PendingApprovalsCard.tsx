@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import { FormButton } from '@/components/ui/common/FormButton';
 
 interface PendingUser {
   id: number;
