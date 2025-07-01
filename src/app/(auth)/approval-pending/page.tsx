@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FormAlert, FormButton } from '@/components/auth/common';
+import { FormAlert, FormButton } from '@/components/ui/common';
 import { useAuth } from '@/lib/auth/use-auth';
 import { config } from '@/lib/config';
 import { AppLogo } from '@/components/ui/AppLogo';

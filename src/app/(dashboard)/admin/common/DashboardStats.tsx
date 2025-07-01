@@ -1,190 +1,317 @@
-// src/components/admin/DashboardStats.tsx
-import { DashboardStatsResponse } from '@/types/admin.types';
+// src/app/(dashboard)/admin/common/DashboardStats.tsx
+'use client';
 
-interface DashboardStatsProps {
-  stats: DashboardStatsResponse;
-  isLoading?: boolean;
+import { useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api/client';
+
+export interface DashboardStatsData {
+  total_users: number;
+  pending_approvals: number;
+  active_users_today: number;
+  system_alerts: number;
+  emergency_access_events: number;
+  failed_logins_24h: number;
+  new_registrations_7d: number;
+  locked_accounts: number;
+  verification_required: number;
+  compliance_issues: number;
+  uptime_percentage: number;
+  response_time_ms: number;
 }
 
-export const DashboardStats = ({ stats, isLoading = false }: DashboardStatsProps) => {
+interface StatCard {
+  title: string;
+  value: number | string;
+  change?: number;
+  changeType?: 'increase' | 'decrease';
+  icon: string;
+  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'gray';
+  description?: string;
+  link?: string;
+}
+
+interface DashboardStatsProps {
+  data?: DashboardStatsData;
+  onRefresh?: () => void;
+  showRefresh?: boolean;
+  layout?: 'grid' | 'row';
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export function DashboardStats({ 
+  data, 
+  onRefresh, 
+  showRefresh = true,
+  layout = 'grid',
+  size = 'md'
+}: DashboardStatsProps) {
+  const [stats, setStats] = useState<DashboardStatsData | null>(data || null);
+  const [isLoading, setIsLoading] = useState(!data);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  useEffect(() => {
+    if (!data) {
+      fetchStats();
+    }
+  }, [data]);
+
+  const fetchStats = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.get('/users/admin/dashboard-stats/');
+      setStats(response.data);
+      setLastUpdated(new Date());
+      onRefresh?.();
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatCards = (stats: DashboardStatsData): StatCard[] => {
+    return [
+      {
+        title: 'Total Users',
+        value: stats.total_users.toLocaleString(),
+        icon: '👥',
+        color: 'blue',
+        description: 'All registered users',
+        link: '/dashboard/admin/users',
+      },
+      {
+        title: 'Pending Approvals',
+        value: stats.pending_approvals,
+        icon: '⏳',
+        color: stats.pending_approvals > 0 ? 'yellow' : 'green',
+        description: 'Users awaiting approval',
+        link: '/dashboard/admin/approvals',
+      },
+      {
+        title: 'Active Today',
+        value: stats.active_users_today,
+        icon: '🟢',
+        color: 'green',
+        description: 'Users active in last 24h',
+      },
+      {
+        title: 'New Registrations',
+        value: stats.new_registrations_7d,
+        icon: '📈',
+        color: 'purple',
+        description: 'Last 7 days',
+        link: '/dashboard/admin/users?date_joined_after=' + 
+               new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      },
+      {
+        title: 'System Alerts',
+        value: stats.system_alerts,
+        icon: '🚨',
+        color: stats.system_alerts > 0 ? 'red' : 'green',
+        description: 'Active system issues',
+        link: '/dashboard/admin/monitoring',
+      },
+      {
+        title: 'Emergency Access',
+        value: stats.emergency_access_events,
+        icon: '🆘',
+        color: stats.emergency_access_events > 0 ? 'red' : 'green',
+        description: 'Events requiring review',
+        link: '/dashboard/admin/compliance/emergency-access',
+      },
+      {
+        title: 'Failed Logins',
+        value: stats.failed_logins_24h,
+        icon: '🔒',
+        color: stats.failed_logins_24h > 10 ? 'red' : stats.failed_logins_24h > 5 ? 'yellow' : 'green',
+        description: 'Last 24 hours',
+        link: '/dashboard/admin/security',
+      },
+      {
+        title: 'Locked Accounts',
+        value: stats.locked_accounts,
+        icon: '🚫',
+        color: stats.locked_accounts > 0 ? 'red' : 'green',
+        description: 'Temporarily locked',
+        link: '/dashboard/admin/users?is_locked=true',
+      },
+      {
+        title: 'Verification Required',
+        value: stats.verification_required,
+        icon: '📋',
+        color: stats.verification_required > 0 ? 'yellow' : 'green',
+        description: 'Users needing verification',
+        link: '/dashboard/admin/users?verification_status=pending',
+      },
+      {
+        title: 'Compliance Issues',
+        value: stats.compliance_issues,
+        icon: '⚖️',
+        color: stats.compliance_issues > 0 ? 'red' : 'green',
+        description: 'Items requiring attention',
+        link: '/dashboard/admin/compliance',
+      },
+      {
+        title: 'System Uptime',
+        value: `${stats.uptime_percentage}%`,
+        icon: '⚡',
+        color: stats.uptime_percentage >= 99 ? 'green' : stats.uptime_percentage >= 95 ? 'yellow' : 'red',
+        description: 'Last 30 days',
+      },
+      {
+        title: 'Response Time',
+        value: `${stats.response_time_ms}ms`,
+        icon: '🚀',
+        color: stats.response_time_ms <= 200 ? 'green' : stats.response_time_ms <= 500 ? 'yellow' : 'red',
+        description: 'Average API response',
+      },
+    ];
+  };
+
+  const formatLastUpdated = () => {
+    const now = new Date();
+    const diffMs = now.getTime() - lastUpdated.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    return lastUpdated.toLocaleDateString();
+  };
+
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        {[...Array(4)].map((_, index) => (
-          <div key={index} className="bg-white overflow-hidden shadow rounded-lg animate-pulse">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 w-6 h-6 bg-gray-300 rounded"></div>
-                <div className="ml-5 w-0 flex-1">
-                  <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                  <div className="h-6 bg-gray-300 rounded w-16"></div>
-                </div>
-              </div>
-            </div>
+      <div className={`grid ${
+        layout === 'grid' 
+          ? size === 'sm' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' 
+          : 'grid-cols-1'
+      } gap-4`}>
+        {Array.from({ length: layout === 'grid' ? 8 : 4 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-full"></div>
           </div>
         ))}
       </div>
     );
   }
 
-  const statCards = [
-    {
-      title: 'Total Users',
-      value: stats.total_users,
-      icon: (
-        <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-        </svg>
-      ),
-      bgColor: 'bg-blue-500',
-      textColor: 'text-blue-600',
-    },
-    {
-      title: 'Pending Approvals',
-      value: stats.pending_approvals,
-      icon: (
-        <svg className="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      bgColor: 'bg-yellow-500',
-      textColor: 'text-yellow-600',
-      urgent: stats.pending_approvals > 10,
-    },
-    {
-      title: 'Recent Registrations',
-      value: stats.recent_registrations,
-      icon: (
-        <svg className="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-        </svg>
-      ),
-      bgColor: 'bg-green-500',
-      textColor: 'text-green-600',
-    },
-    {
-      title: 'Emergency Access',
-      value: stats.unreviewed_emergency_access,
-      icon: (
-        <svg className="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-        </svg>
-      ),
-      bgColor: 'bg-red-500',
-      textColor: 'text-red-600',
-      urgent: stats.unreviewed_emergency_access > 0,
-    },
-  ];
+  if (!stats) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 text-center">
+        <p className="text-gray-500">Failed to load dashboard statistics</p>
+        <button
+          onClick={fetchStats}
+          className="mt-2 text-blue-600 hover:text-blue-500"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  const statCards = getStatCards(stats);
 
   return (
-    <>
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        {statCards.map((stat, index) => (
-          <div 
-            key={index} 
-            className={`bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md ${
-              stat.urgent ? 'ring-2 ring-red-200 ring-opacity-50' : ''
-            }`}
-          >
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  {stat.icon}
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      {stat.title}
-                      {stat.urgent && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Needs Attention
-                        </span>
-                      )}
-                    </dt>
-                    <dd className={`text-lg font-medium ${stat.textColor}`}>
-                      {stat.value.toLocaleString()}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-            {stat.urgent && (
-              <div className={`${stat.bgColor} px-5 py-3`}>
-                <div className="text-sm text-white">
-                  {stat.title === 'Pending Approvals' && 'High volume of pending approvals'}
-                  {stat.title === 'Emergency Access' && 'Unreviewed emergency access requests'}
-                </div>
-              </div>
-            )}
-          </div>
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-medium text-gray-900">Dashboard Overview</h2>
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-500">
+            Updated {formatLastUpdated()}
+          </span>
+          {showRefresh && (
+            <button
+              onClick={fetchStats}
+              disabled={isLoading}
+              className="text-blue-600 hover:text-blue-500 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className={`grid ${
+        layout === 'grid' 
+          ? size === 'sm' 
+            ? 'grid-cols-2 lg:grid-cols-4 xl:grid-cols-6' 
+            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+      } gap-4`}>
+        {statCards.map((card, index) => (
+          <StatCardComponent key={index} card={card} size={size} />
         ))}
       </div>
 
-      {/* Additional Stats - User Role Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Users by Role */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Users by Role
-            </h3>
-            <div className="space-y-3">
-              {Object.entries(stats.users_by_role).map(([role, count]) => {
-                const percentage = stats.total_users > 0 ? (count / stats.total_users) * 100 : 0;
-                return (
-                  <div key={role} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="text-sm font-medium text-gray-700 capitalize">
-                        {role.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-500 w-12 text-right">
-                        {count}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {/* Quick Actions for Critical Items */}
+      {(stats.pending_approvals > 0 || stats.system_alerts > 0 || stats.emergency_access_events > 0) && (
+        <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-yellow-800 mb-2">⚠️ Items Requiring Attention</h3>
+          <div className="text-sm text-yellow-700 space-y-1">
+            {stats.pending_approvals > 0 && (
+              <div>• {stats.pending_approvals} user approval{stats.pending_approvals !== 1 ? 's' : ''} pending</div>
+            )}
+            {stats.system_alerts > 0 && (
+              <div>• {stats.system_alerts} system alert{stats.system_alerts !== 1 ? 's' : ''} active</div>
+            )}
+            {stats.emergency_access_events > 0 && (
+              <div>• {stats.emergency_access_events} emergency access event{stats.emergency_access_events !== 1 ? 's' : ''} need review</div>
+            )}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Quick Actions */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Quick Actions
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-700">Pending Caregiver Requests</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {stats.pending_caregiver_requests}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-700">Unverified Patients</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {stats.unverified_patients}
-                </span>
-              </div>
-              <div className="mt-4">
-                <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md text-sm font-medium transition-colors">
-                  Generate Admin Report
-                </button>
-              </div>
-            </div>
-          </div>
+function StatCardComponent({ card, size }: { card: StatCard; size: 'sm' | 'md' | 'lg' }) {
+  const colorClasses = {
+    blue: 'text-blue-600 bg-blue-100',
+    green: 'text-green-600 bg-green-100',
+    yellow: 'text-yellow-600 bg-yellow-100',
+    red: 'text-red-600 bg-red-100',
+    purple: 'text-purple-600 bg-purple-100',
+    gray: 'text-gray-600 bg-gray-100',
+  };
+
+  const CardContent = () => (
+    <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-4">
+      <div className="flex items-center">
+        <div className={`flex-shrink-0 rounded-md p-2 ${colorClasses[card.color]}`}>
+          <span className={size === 'sm' ? 'text-lg' : 'text-xl'}>{card.icon}</span>
+        </div>
+        <div className="ml-4 flex-1 min-w-0">
+          <p className={`${size === 'sm' ? 'text-xs' : 'text-sm'} font-medium text-gray-900 truncate`}>
+            {card.title}
+          </p>
+          <p className={`${size === 'sm' ? 'text-lg' : 'text-2xl'} font-semibold text-gray-900`}>
+            {card.value}
+          </p>
+          {card.description && (
+            <p className={`${size === 'sm' ? 'text-xs' : 'text-sm'} text-gray-500 truncate`}>
+              {card.description}
+            </p>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
-};
+
+  if (card.link) {
+    return (
+      <a href={card.link} className="block hover:opacity-75 transition-opacity">
+        <CardContent />
+      </a>
+    );
+  }
+
+  return <CardContent />;
+}
+
+export default DashboardStats;

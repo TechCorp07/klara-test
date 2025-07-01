@@ -1,135 +1,225 @@
 // src/app/(dashboard)/admin/common/Pagination.tsx
-
 'use client';
 
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  pageSize: number;
-  onPageChange: (page: number) => void;
+import { useMemo } from 'react';
+
+interface PaginationInfo {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  current_page?: number;
+  total_pages?: number;
 }
 
-export default function Pagination({ 
-  currentPage, 
-  totalPages, 
-  totalCount, 
-  pageSize, 
-  onPageChange 
+interface PaginationProps {
+  pagination: PaginationInfo;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  showPageSizeSelector?: boolean;
+  showInfo?: boolean;
+}
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+export function Pagination({
+  pagination,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  showPageSizeSelector = true,
+  showInfo = true,
 }: PaginationProps) {
-  if (totalPages <= 1) {
-    return null;
+  const totalPages = useMemo(() => {
+    return Math.ceil(pagination.count / pageSize);
+  }, [pagination.count, pageSize]);
+
+  const startItem = useMemo(() => {
+    return (currentPage - 1) * pageSize + 1;
+  }, [currentPage, pageSize]);
+
+  const endItem = useMemo(() => {
+    return Math.min(currentPage * pageSize, pagination.count);
+  }, [currentPage, pageSize, pagination.count]);
+
+  const visiblePages = useMemo(() => {
+    const pages: number[] = [];
+    const maxVisible = 7; // Show up to 7 page numbers
+    
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Smart pagination logic
+      const start = Math.max(1, currentPage - 3);
+      const end = Math.min(totalPages, currentPage + 3);
+      
+      // Always show first page
+      if (start > 1) {
+        pages.push(1);
+        if (start > 2) {
+          pages.push(-1); // Represents ellipsis
+        }
+      }
+      
+      // Show pages around current page
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      // Always show last page
+      if (end < totalPages) {
+        if (end < totalPages - 1) {
+          pages.push(-1); // Represents ellipsis
+        }
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const canGoPrevious = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
+
+  if (pagination.count === 0) {
+    return (
+      <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
+        <div className="text-sm text-gray-700">No items to display</div>
+      </div>
+    );
   }
 
-  const startIndex = (currentPage - 1) * pageSize + 1;
-  const endIndex = Math.min(currentPage * pageSize, totalCount);
-
-  const getPageNumbers = () => {
-    const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
-
-    for (
-      let i = Math.max(2, currentPage - delta);
-      i <= Math.min(totalPages - 1, currentPage + delta);
-      i++
-    ) {
-      range.push(i);
-    }
-
-    if (currentPage - delta > 2) {
-      rangeWithDots.push(1, '...');
-    } else {
-      rangeWithDots.push(1);
-    }
-
-    rangeWithDots.push(...range);
-
-    if (currentPage + delta < totalPages - 1) {
-      rangeWithDots.push('...', totalPages);
-    } else {
-      rangeWithDots.push(totalPages);
-    }
-
-    return rangeWithDots;
-  };
-
-  const pageNumbers = getPageNumbers();
-
   return (
-    <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-      <div className="flex-1 flex justify-between sm:hidden">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white px-4 py-3 border-t border-gray-200 space-y-3 sm:space-y-0">
+      {/* Info and Page Size Selector */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+        {showInfo && (
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startItem}</span> to{' '}
+            <span className="font-medium">{endItem}</span> of{' '}
+            <span className="font-medium">{pagination.count}</span> results
+          </div>
+        )}
+        
+        {showPageSizeSelector && (
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-700">Show:</label>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-gray-700">per page</span>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center space-x-1">
+        {/* Previous Button */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!canGoPrevious}
+          className={`
+            px-3 py-2 text-sm font-medium rounded-md
+            ${canGoPrevious
+              ? 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+              : 'text-gray-300 bg-white border border-gray-300 cursor-not-allowed'
+            }
+          `}
         >
           Previous
         </button>
+
+        {/* Page Numbers */}
+        <div className="hidden sm:flex items-center space-x-1">
+          {visiblePages.map((page, index) => {
+            if (page === -1) {
+              return (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-3 py-2 text-sm text-gray-400"
+                >
+                  ...
+                </span>
+              );
+            }
+
+            const isCurrentPage = page === currentPage;
+            return (
+              <button
+                key={page}
+                onClick={() => onPageChange(page)}
+                className={`
+                  px-3 py-2 text-sm font-medium rounded-md
+                  ${isCurrentPage
+                    ? 'bg-blue-600 text-white border border-blue-600'
+                    : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+                  }
+                `}
+              >
+                {page}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mobile Page Info */}
+        <div className="sm:hidden px-3 py-2 text-sm text-gray-700">
+          Page {currentPage} of {totalPages}
+        </div>
+
+        {/* Next Button */}
         <button
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!canGoNext}
+          className={`
+            px-3 py-2 text-sm font-medium rounded-md
+            ${canGoNext
+              ? 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+              : 'text-gray-300 bg-white border border-gray-300 cursor-not-allowed'
+            }
+          `}
         >
           Next
         </button>
       </div>
-      
-      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-gray-700">
-            Showing <span className="font-medium">{startIndex}</span> to{' '}
-            <span className="font-medium">{endIndex}</span> of{' '}
-            <span className="font-medium">{totalCount}</span> results
-          </p>
-        </div>
-        
-        <div>
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            {/* Previous button */}
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="sr-only">Previous</span>
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
 
-            {/* Page numbers */}
-            {pageNumbers.map((pageNumber, index) => (
-              <button
-                key={index}
-                onClick={() => typeof pageNumber === 'number' && onPageChange(pageNumber)}
-                disabled={pageNumber === '...'}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                  pageNumber === currentPage
-                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                    : pageNumber === '...'
-                    ? 'border-gray-300 bg-white text-gray-700 cursor-default'
-                    : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
-                }`}
-              >
-                {pageNumber}
-              </button>
-            ))}
-
-            {/* Next button */}
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="sr-only">Next</span>
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </nav>
+      {/* Quick Jump (for large datasets) */}
+      {totalPages > 10 && (
+        <div className="sm:hidden w-full mt-3">
+          <div className="flex items-center justify-center space-x-2">
+            <label className="text-sm text-gray-700">Go to page:</label>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={currentPage}
+              onChange={(e) => {
+                const page = Number(e.target.value);
+                if (page >= 1 && page <= totalPages) {
+                  onPageChange(page);
+                }
+              }}
+              className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">of {totalPages}</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
+export default Pagination;

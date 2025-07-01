@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FormButton, FormAlert } from '../common';
+import { FormButton, FormAlert } from '../../ui/common';
 import { useAuth } from '@/lib/auth/use-auth';
 import Image from 'next/image';
 

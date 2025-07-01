@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { FormInput, FormButton, FormAlert } from '../common';
+import { FormInput, FormButton, FormAlert } from '../../ui/common';
 import { useAuth } from '@/lib/auth/use-auth';
 
 // Validation schema for forgot password

@@ -1,11 +1,10 @@
 // src/app/(dashboard)/admin/common/UserFilters.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
-interface UserFiltersType {
+export interface UserFilters {
   page: number;
   page_size: number;
   search: string;
@@ -13,254 +12,342 @@ interface UserFiltersType {
   is_active?: boolean;
   is_approved?: boolean;
   is_locked?: boolean;
+  verification_status?: string;
+  date_joined_after?: string;
+  date_joined_before?: string;
+  last_login_after?: string;
+  last_login_before?: string;
   ordering: string;
 }
 
 interface UserFiltersProps {
-  filters: UserFiltersType;
-  onFilterChange: (filters: Partial<UserFiltersType>) => void;
+  filters: UserFilters;
+  onFiltersChange: (filters: UserFilters) => void;
+  showAdvanced?: boolean;
 }
 
-export default function UserFilters({ filters, onFilterChange }: UserFiltersProps) {
-  const [localSearch, setLocalSearch] = useState(filters.search);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const ROLE_OPTIONS = [
+  { value: '', label: 'All Roles' },
+  { value: 'patient', label: 'Patient' },
+  { value: 'provider', label: 'Healthcare Provider' },
+  { value: 'researcher', label: 'Researcher' },
+  { value: 'compliance', label: 'Compliance Officer' },
+  { value: 'caregiver', label: 'Caregiver' },
+  { value: 'pharmco', label: 'Pharmaceutical Company' },
+  { value: 'admin', label: 'Administrator' },
+];
 
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== filters.search) {
-        onFilterChange({ search: localSearch });
-      }
-    }, 300);
+const VERIFICATION_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'pending', label: 'Pending Verification' },
+  { value: 'expired', label: 'Verification Expired' },
+  { value: 'not_required', label: 'Not Required' },
+];
 
-    return () => clearTimeout(timer);
-  }, [localSearch, filters.search, onFilterChange]);
+const ORDERING_OPTIONS = [
+  { value: '-date_joined', label: 'Newest First' },
+  { value: 'date_joined', label: 'Oldest First' },
+  { value: '-last_login', label: 'Recent Login' },
+  { value: 'last_login', label: 'Oldest Login' },
+  { value: 'username', label: 'Username A-Z' },
+  { value: '-username', label: 'Username Z-A' },
+  { value: 'email', label: 'Email A-Z' },
+  { value: '-email', label: 'Email Z-A' },
+];
 
-  const handleFilterChange = (key: keyof UserFiltersType, value: any) => {
-    onFilterChange({ [key]: value });
+export function UserFilters({ filters, onFiltersChange, showAdvanced = false }: UserFiltersProps) {
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(showAdvanced);
+  const [localFilters, setLocalFilters] = useState(filters);
+
+  const updateFilter = (key: keyof UserFilters, value: any) => {
+    const newFilters = { ...localFilters, [key]: value, page: 1 };
+    setLocalFilters(newFilters);
+    onFiltersChange(newFilters);
   };
 
   const clearFilters = () => {
-    setLocalSearch('');
-    onFilterChange({
+    const clearedFilters: UserFilters = {
+      page: 1,
+      page_size: filters.page_size,
       search: '',
       role: '',
       is_active: undefined,
       is_approved: undefined,
       is_locked: undefined,
+      verification_status: '',
+      date_joined_after: '',
+      date_joined_before: '',
+      last_login_after: '',
+      last_login_before: '',
       ordering: '-date_joined',
-      page: 1,
-    });
+    };
+    setLocalFilters(clearedFilters);
+    onFiltersChange(clearedFilters);
   };
 
-  const hasActiveFilters = filters.search || filters.role || 
-    filters.is_active !== undefined || filters.is_approved !== undefined || 
-    filters.is_locked !== undefined;
+  const hasActiveFilters = () => {
+    return !!(
+      filters.search ||
+      filters.role ||
+      filters.is_active !== undefined ||
+      filters.is_approved !== undefined ||
+      filters.is_locked !== undefined ||
+      filters.verification_status ||
+      filters.date_joined_after ||
+      filters.date_joined_before ||
+      filters.last_login_after ||
+      filters.last_login_before
+    );
+  };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6 mb-6">
+    <div className="bg-white p-6 rounded-lg shadow">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Filters</h3>
-        {hasActiveFilters && (
+        <h3 className="text-lg font-medium text-gray-900">Filter Users</h3>
+        <div className="flex items-center space-x-2">
+          {hasActiveFilters() && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Clear All
+            </button>
+          )}
           <button
-            onClick={clearFilters}
+            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
             className="text-sm text-blue-600 hover:text-blue-500"
           >
-            Clear All Filters
+            {isAdvancedOpen ? 'Hide' : 'Show'} Advanced
           </button>
-        )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      {/* Basic Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         {/* Search */}
-        <div className="col-span-1 md:col-span-2">
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Search
           </label>
           <input
             type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Search by name, email, username..."
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            value={localFilters.search}
+            onChange={(e) => updateFilter('search', e.target.value)}
+            placeholder="Username, email, name..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        {/* Role Filter */}
+        {/* Role */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Role
           </label>
           <select
-            value={filters.role}
-            onChange={(e) => handleFilterChange('role', e.target.value)}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            value={localFilters.role}
+            onChange={(e) => updateFilter('role', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">All Roles</option>
-            <option value="patient">Patient</option>
-            <option value="provider">Provider</option>
-            <option value="admin">Admin</option>
-            <option value="researcher">Researcher</option>
-            <option value="caregiver">Caregiver</option>
-            <option value="compliance">Compliance</option>
-            <option value="pharmco">Pharmaceutical</option>
+            {ROLE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Active Status */}
+        {/* Status */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Status
+            Account Status
           </label>
           <select
-            value={filters.is_active === undefined ? '' : filters.is_active.toString()}
-            onChange={(e) => handleFilterChange('is_active', 
-              e.target.value === '' ? undefined : e.target.value === 'true'
+            value={
+              localFilters.is_active === undefined ? '' :
+              localFilters.is_active ? 'active' : 'inactive'
+            }
+            onChange={(e) => updateFilter('is_active', 
+              e.target.value === '' ? undefined :
+              e.target.value === 'active'
             )}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Status</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
         </div>
 
-        {/* Approval Status */}
+        {/* Ordering */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Approval
+            Sort By
           </label>
           <select
-            value={filters.is_approved === undefined ? '' : filters.is_approved.toString()}
-            onChange={(e) => handleFilterChange('is_approved', 
-              e.target.value === '' ? undefined : e.target.value === 'true'
-            )}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            value={localFilters.ordering}
+            onChange={(e) => updateFilter('ordering', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">All Approvals</option>
-            <option value="true">Approved</option>
-            <option value="false">Pending</option>
-          </select>
-        </div>
-
-        {/* Lock Status */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Lock Status
-          </label>
-          <select
-            value={filters.is_locked === undefined ? '' : filters.is_locked.toString()}
-            onChange={(e) => handleFilterChange('is_locked', 
-              e.target.value === '' ? undefined : e.target.value === 'true'
-            )}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="">All Lock Status</option>
-            <option value="false">Unlocked</option>
-            <option value="true">Locked</option>
+            {ORDERING_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      {/* Sort Options */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="flex items-center space-x-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Sort by:
-          </label>
-          <select
-            value={filters.ordering}
-            onChange={(e) => handleFilterChange('ordering', e.target.value)}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="-date_joined">Newest First</option>
-            <option value="date_joined">Oldest First</option>
-            <option value="username">Username A-Z</option>
-            <option value="-username">Username Z-A</option>
-            <option value="email">Email A-Z</option>
-            <option value="-email">Email Z-A</option>
-            <option value="-last_login">Last Login (Recent)</option>
-            <option value="last_login">Last Login (Oldest)</option>
-          </select>
+      {/* Advanced Filters */}
+      {isAdvancedOpen && (
+        <div className="border-t pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Approval Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Approval Status
+              </label>
+              <select
+                value={
+                  localFilters.is_approved === undefined ? '' :
+                  localFilters.is_approved ? 'approved' : 'pending'
+                }
+                onChange={(e) => updateFilter('is_approved', 
+                  e.target.value === '' ? undefined :
+                  e.target.value === 'approved'
+                )}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending Approval</option>
+              </select>
+            </div>
 
-          <label className="block text-sm font-medium text-gray-700">
-            Per page:
-          </label>
-          <select
-            value={filters.page_size}
-            onChange={(e) => handleFilterChange('page_size', parseInt(e.target.value))}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
+            {/* Lock Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lock Status
+              </label>
+              <select
+                value={
+                  localFilters.is_locked === undefined ? '' :
+                  localFilters.is_locked ? 'locked' : 'unlocked'
+                }
+                onChange={(e) => updateFilter('is_locked', 
+                  e.target.value === '' ? undefined :
+                  e.target.value === 'locked'
+                )}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All</option>
+                <option value="unlocked">Unlocked</option>
+                <option value="locked">Locked</option>
+              </select>
+            </div>
+
+            {/* Verification Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Verification Status
+              </label>
+              <select
+                value={localFilters.verification_status || ''}
+                onChange={(e) => updateFilter('verification_status', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {VERIFICATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Date Joined Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Registration Date Range
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="date"
+                  value={localFilters.date_joined_after || ''}
+                  onChange={(e) => updateFilter('date_joined_after', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="From"
+                />
+                <input
+                  type="date"
+                  value={localFilters.date_joined_before || ''}
+                  onChange={(e) => updateFilter('date_joined_before', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="To"
+                />
+              </div>
+            </div>
+
+            {/* Last Login Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Last Login Range
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="date"
+                  value={localFilters.last_login_after || ''}
+                  onChange={(e) => updateFilter('last_login_after', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="From"
+                />
+                <input
+                  type="date"
+                  value={localFilters.last_login_before || ''}
+                  onChange={(e) => updateFilter('last_login_before', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="To"
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Active Filters Summary */}
-      {hasActiveFilters && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
+      {/* Active Filters Display */}
+      {hasActiveFilters() && (
+        <div className="mt-4 pt-4 border-t">
           <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-gray-500">Active filters:</span>
             {filters.search && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                Search: "{filters.search}"
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Search: {filters.search}
                 <button
-                  onClick={() => {
-                    setLocalSearch('');
-                    handleFilterChange('search', '');
-                  }}
-                  className="ml-2 text-blue-600 hover:text-blue-500"
+                  onClick={() => updateFilter('search', '')}
+                  className="ml-1 text-blue-600 hover:text-blue-500"
                 >
                   ×
                 </button>
               </span>
             )}
-            
             {filters.role && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Role: {filters.role}
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Role: {ROLE_OPTIONS.find(r => r.value === filters.role)?.label}
                 <button
-                  onClick={() => handleFilterChange('role', '')}
-                  className="ml-2 text-green-600 hover:text-green-500"
+                  onClick={() => updateFilter('role', '')}
+                  className="ml-1 text-green-600 hover:text-green-500"
                 >
                   ×
                 </button>
               </span>
             )}
-
-            {filters.is_active !== undefined && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                Status: {filters.is_active ? 'Active' : 'Inactive'}
-                <button
-                  onClick={() => handleFilterChange('is_active', undefined)}
-                  className="ml-2 text-purple-600 hover:text-purple-500"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-
             {filters.is_approved !== undefined && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                Approval: {filters.is_approved ? 'Approved' : 'Pending'}
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                {filters.is_approved ? 'Approved' : 'Pending Approval'}
                 <button
-                  onClick={() => handleFilterChange('is_approved', undefined)}
-                  className="ml-2 text-yellow-600 hover:text-yellow-500"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-
-            {filters.is_locked !== undefined && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                Lock: {filters.is_locked ? 'Locked' : 'Unlocked'}
-                <button
-                  onClick={() => handleFilterChange('is_locked', undefined)}
-                  className="ml-2 text-red-600 hover:text-red-500"
+                  onClick={() => updateFilter('is_approved', undefined)}
+                  className="ml-1 text-yellow-600 hover:text-yellow-500"
                 >
                   ×
                 </button>

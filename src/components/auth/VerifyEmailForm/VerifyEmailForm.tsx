@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { FormButton, FormAlert } from '../common';
+import { FormButton, FormAlert } from '../../ui/common';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Spinner } from '@/components/ui/spinner';
 

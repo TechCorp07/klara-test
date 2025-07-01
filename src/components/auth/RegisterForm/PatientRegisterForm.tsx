@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormInput, FormButton, FormAlert } from '../common';
+import { FormInput, FormButton, FormAlert } from '../../ui/common';
 import { useAuth } from '@/lib/auth/use-auth';
 import { config } from '@/lib/config';
 

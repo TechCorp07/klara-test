@@ -1,107 +1,241 @@
 // src/hooks/usePermissions.ts
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
-import type { UserPermissions, UsePermissionsResult } from '@/types/permissions';
+'use client';
 
-export const usePermissions = (): UsePermissionsResult => {
-  const { user, isLoading: authLoading } = useAuth();
-  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
+import { useState, useEffect, useContext } from 'react';
+import { useAuth } from '@/lib/auth/use-auth';
+import { apiClient } from '@/lib/api/client';
+import { AdminPermissions } from '@/types/admin.types';
+
+interface PermissionsContextType {
+  permissions: AdminPermissions | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export const usePermissions = (): PermissionsContextType => {
+  const { user, isAuthenticated } = useAuth();
+  const [permissions, setPermissions] = useState<AdminPermissions | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const calculatePermissions = () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        if (!user) {
-          setPermissions(null);
-          return;
-        }
-
-        // Role-based permission logic
-        const userRole = user.role?.toLowerCase() || '';
-        
-        // Define role categories
-        const allAuthenticatedRoles = [
-          'patient', 'provider', 'researcher', 'pharmco', 'caregiver', 
-          'compliance', 'admin', 'superadmin'
-        ];
-        const adminRoles = ['admin', 'superadmin'];
-        const complianceRoles = ['admin', 'superadmin', 'compliance'];
-        const patientDataRoles = ['patient', 'provider', 'caregiver', 'admin', 'superadmin'];
-
-        // Calculate comprehensive permissions
-        const calculatedPermissions: UserPermissions = {
-          // General dashboard access - ALL authenticated users
-          has_dashboard_access: allAuthenticatedRoles.includes(userRole),
-          
-          // Admin-specific permissions
-          has_approval_permissions: adminRoles.includes(userRole),
-          has_admin_access: adminRoles.includes(userRole),
-          has_user_management_access: adminRoles.includes(userRole),
-          has_system_settings_access: adminRoles.includes(userRole),
-          
-          // Compliance permissions
-          has_audit_access: complianceRoles.includes(userRole),
-          has_compliance_reports_access: complianceRoles.includes(userRole),
-          
-          // Healthcare permissions
-          has_patient_data_access: patientDataRoles.includes(userRole),
-          has_medical_records_access: patientDataRoles.includes(userRole),
-          
-          // Role-specific permissions
-          can_view_own_data: true, // All users can view their own data
-          can_manage_appointments: ['patient', 'provider', 'caregiver', 'admin', 'superadmin'].includes(userRole),
-          can_access_telemedicine: ['patient', 'provider', 'caregiver', 'admin', 'superadmin'].includes(userRole),
-          can_view_research_data: ['researcher', 'admin', 'superadmin'].includes(userRole),
-          can_access_clinical_trials: ['researcher', 'pharmco', 'provider', 'admin', 'superadmin'].includes(userRole),
-          can_manage_medications: ['provider', 'pharmco', 'caregiver', 'admin', 'superadmin'].includes(userRole),
-          
-          // User role for reference
-          user_role: userRole,
-        };
-
-        // Debug logging (only in development)
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.error('🔍 Comprehensive Permission Check:', {
-            user_email: user.email,
-            user_role: userRole,
-            is_approved: user.is_approved,
-            key_permissions: {
-              dashboard_access: calculatedPermissions.has_dashboard_access,
-              admin_access: calculatedPermissions.has_admin_access,
-              approval_permissions: calculatedPermissions.has_approval_permissions,
-              audit_access: calculatedPermissions.has_audit_access,
-            }
-          });
-        }
-
-        setPermissions(calculatedPermissions);
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to calculate permissions';
-        setError(errorMessage);
-        
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.error('Permission calculation error:', err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Only calculate permissions when auth is not loading
-    if (!authLoading) {
-      calculatePermissions();
+  const fetchPermissions = async () => {
+    if (!isAuthenticated || !user) {
+      setPermissions(null);
+      setLoading(false);
+      return;
     }
-  }, [user, authLoading]);
 
-  return { 
-    permissions, 
-    loading: loading || authLoading, 
-    error
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch user permissions from the API
+      const response = await apiClient.get('/api/users/me/permissions/');
+      const permissionsData = response.data;
+
+      // Create the permissions object based on user role and specific permissions
+      const userPermissions: AdminPermissions = {
+        has_admin_access: permissionsData.has_admin_access || user.role === 'admin' || user.role === 'superadmin' || user.is_staff,
+        has_user_management_access: permissionsData.has_user_management_access || user.role === 'admin' || user.role === 'superadmin',
+        has_system_settings_access: permissionsData.has_system_settings_access || user.role === 'superadmin',
+        has_audit_access: permissionsData.has_audit_access || user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
+        has_compliance_access: permissionsData.has_compliance_access || user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
+        has_export_access: permissionsData.has_export_access || user.role === 'admin' || user.role === 'superadmin',
+        user_role: user.role,
+        is_superadmin: user.role === 'superadmin' || user.is_superuser,
+      };
+
+      setPermissions(userPermissions);
+    } catch (err: any) {
+      console.error('Failed to fetch permissions:', err);
+      
+      // Fallback to basic role-based permissions if API fails
+      if (user) {
+        const fallbackPermissions: AdminPermissions = {
+          has_admin_access: user.role === 'admin' || user.role === 'superadmin' || user.is_staff,
+          has_user_management_access: user.role === 'admin' || user.role === 'superadmin',
+          has_system_settings_access: user.role === 'superadmin',
+          has_audit_access: user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
+          has_compliance_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
+          has_export_access: user.role === 'admin' || user.role === 'superadmin',
+          user_role: user.role,
+          is_superadmin: user.role === 'superadmin' || user.is_superuser,
+        };
+        setPermissions(fallbackPermissions);
+      } else {
+        setError(err.response?.data?.detail || 'Failed to load permissions');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPermissions();
+  }, [user, isAuthenticated]);
+
+  const refetch = async () => {
+    await fetchPermissions();
+  };
+
+  return {
+    permissions,
+    loading,
+    error,
+    refetch,
   };
 };
+
+// Helper hooks for specific permission checks
+export const useAdminAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.has_admin_access || false,
+    loading,
+  };
+};
+
+export const useUserManagementAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.has_user_management_access || false,
+    loading,
+  };
+};
+
+export const useSystemSettingsAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.has_system_settings_access || false,
+    loading,
+  };
+};
+
+export const useAuditAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.has_audit_access || false,
+    loading,
+  };
+};
+
+export const useComplianceAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.has_compliance_access || false,
+    loading,
+  };
+};
+
+export const useExportAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.has_export_access || false,
+    loading,
+  };
+};
+
+export const useSuperAdminAccess = () => {
+  const { permissions, loading } = usePermissions();
+  return {
+    hasAccess: permissions?.is_superadmin || false,
+    loading,
+  };
+};
+
+// Permission checker utility functions
+export const checkPermission = (
+  permissions: AdminPermissions | null,
+  requiredPermission: keyof AdminPermissions
+): boolean => {
+  if (!permissions) return false;
+  return permissions[requiredPermission] as boolean;
+};
+
+export const checkAnyPermission = (
+  permissions: AdminPermissions | null,
+  requiredPermissions: (keyof AdminPermissions)[]
+): boolean => {
+  if (!permissions) return false;
+  return requiredPermissions.some(permission => permissions[permission] as boolean);
+};
+
+export const checkAllPermissions = (
+  permissions: AdminPermissions | null,
+  requiredPermissions: (keyof AdminPermissions)[]
+): boolean => {
+  if (!permissions) return false;
+  return requiredPermissions.every(permission => permissions[permission] as boolean);
+};
+
+// Role-based permission checks
+export const hasRoleAccess = (
+  userRole: string | undefined,
+  allowedRoles: string[]
+): boolean => {
+  if (!userRole) return false;
+  return allowedRoles.includes(userRole);
+};
+
+export const isAdminUser = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'has_admin_access');
+};
+
+export const isSuperAdminUser = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'is_superadmin');
+};
+
+export const canManageUsers = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'has_user_management_access');
+};
+
+export const canAccessAuditLogs = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'has_audit_access');
+};
+
+export const canManageSystemSettings = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'has_system_settings_access');
+};
+
+export const canAccessCompliance = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'has_compliance_access');
+};
+
+export const canExportData = (permissions: AdminPermissions | null): boolean => {
+  return checkPermission(permissions, 'has_export_access');
+};
+
+// Permission-based navigation guards
+export const getAccessibleAdminRoutes = (permissions: AdminPermissions | null): string[] => {
+  const routes: string[] = [];
+
+  if (checkPermission(permissions, 'has_admin_access')) {
+    routes.push('/dashboard/admin');
+  }
+
+  if (checkPermission(permissions, 'has_user_management_access')) {
+    routes.push('/dashboard/admin/users', '/dashboard/admin/approvals');
+  }
+
+  if (checkPermission(permissions, 'has_audit_access')) {
+    routes.push('/dashboard/admin/audit-logs');
+  }
+
+  if (checkPermission(permissions, 'has_compliance_access')) {
+    routes.push('/dashboard/admin/compliance');
+  }
+
+  if (checkPermission(permissions, 'has_system_settings_access')) {
+    routes.push('/dashboard/admin/system-settings');
+  }
+
+  if (checkPermission(permissions, 'has_admin_access')) {
+    routes.push('/dashboard/admin/monitoring', '/dashboard/admin/reports');
+  }
+
+  return routes;
+};
+
+// Default export for convenience
+export default usePermissions;

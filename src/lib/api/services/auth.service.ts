@@ -873,9 +873,14 @@ export const authService = {
       if (params?.search) queryParams.append('search', params.search);
       if (params?.role) queryParams.append('role', params.role);
       if (params?.is_approved !== undefined) queryParams.append('is_approved', params.is_approved.toString());
+      if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
+      if (params?.is_locked !== undefined) queryParams.append('is_locked', params.is_locked.toString());
+      if (params?.verification_status) queryParams.append('verification_status', params.verification_status);
+      if (params?.date_joined_after) queryParams.append('date_joined_after', params.date_joined_after);
+      if (params?.date_joined_before) queryParams.append('date_joined_before', params.date_joined_before);
       if (params?.ordering) queryParams.append('ordering', params.ordering);
-      
-      const response = await apiClient.get(`${ENDPOINTS.USERS.USERS}?${queryParams}`);
+            
+      const response = await apiClient.get(`${ENDPOINTS.USERS.LIST}?${queryParams}`);
       return response.data;
     } catch (error: unknown) {
       const apiError = error as AxiosError<{ detail?: string }>;
@@ -891,7 +896,7 @@ export const authService = {
    */
   getUserDetails: async (userId: number): Promise<User> => {
     try {
-      const response = await apiClient.get(ENDPOINTS.USERS.USER_DETAIL(userId));
+      const response = await apiClient.get(ENDPOINTS.USERS.DETAIL(userId));
       return response.data;
     } catch (error: unknown) {
       const apiError = error as AxiosError<{ detail?: string }>;
@@ -910,7 +915,7 @@ export const authService = {
    */
   updateUser: async (userId: number, userData: Partial<User>): Promise<User> => {
     try {
-      const response = await apiClient.patch(ENDPOINTS.USERS.USER_DETAIL(userId), userData);
+      const response = await apiClient.patch(ENDPOINTS.USERS.UPDATE(userId), userData);
       return response.data;
     } catch (error: unknown) {
       const apiError = error as AxiosError<{ detail?: string }>;
@@ -948,6 +953,25 @@ export const authService = {
     return response.data;
   },
   
+    /**
+   * Get user statistics for admin dashboard
+   */
+    getUserStats: async (): Promise<{
+      total_users: number;
+      users_by_role: Record<string, number>;
+      recent_registrations: number;
+      pending_approvals: number;
+      locked_accounts: number;
+      users_requiring_verification: number;
+      new_users_last_7_days: number;
+      active_users_today: number;
+      inactive_users: number;
+    }> => {
+
+      const response = await apiClient.get(ENDPOINTS.ADMIN.USER_STATS);
+      return response.data;
+    },
+
   /**
    * Update user profile
    */
@@ -964,7 +988,7 @@ export const authService = {
     newPassword: string,
     newPasswordConfirm: string
   ): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post(`${ENDPOINTS.USERS.ME}/change-password/`, {
+    const response = await apiClient.post(ENDPOINTS.USERS.CHANGE_PASSWORD, {
       current_password: currentPassword,
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
-import { FormButton, FormAlert } from '@/components/auth/common';
+import { FormButton, FormAlert } from '@/components/ui/common';
 import { Spinner } from '@/components/ui/spinner';
 import { authService } from '@/lib/api/services/auth.service';
 import { User } from '@/types/auth.types';

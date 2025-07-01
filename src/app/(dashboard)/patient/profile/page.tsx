@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usePatientProfile } from '@/hooks/patient/usePatientProfile';
-import { FormInput, FormButton, FormAlert } from '@/components/auth/common';
+import { FormInput, FormButton, FormAlert } from '@/components/ui/common';
 import { Spinner } from '@/components/ui/spinner';
 import type { PatientProfile, PatientPreferences, EmergencyContact } from '@/types/patient.types';
 

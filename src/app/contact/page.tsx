@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { FormInput, FormButton, FormAlert } from '@/components/auth/common';
+import { FormInput, FormButton, FormAlert } from '@/components/ui/common';
 import { config } from '@/lib/config';
 import { AppLogo } from '@/components/ui/AppLogo';
 
