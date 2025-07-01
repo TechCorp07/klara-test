@@ -1,4 +1,4 @@
-// src/middleware.ts - WITH DEBUG LOGGING
+// src/middleware.ts - FIXED: Direct role-based dashboard routing
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
@@ -25,27 +25,27 @@ const PUBLIC_ROUTES = [
 ];
 
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  patient: ['/dashboard', '/profile', '/settings', '/messages', 
-    '/health-records', '/appointments','/settings/password',
+  patient: ['/dashboard/patient', '/profile', '/settings', '/messages', 
+    '/health-records', '/appointments', '/settings/password',
      '/telemedicine', '/research', '/clinical-trials', '/medications'],
-  provider: ['/dashboard', '/profile', '/settings', '/settings/password',
+  provider: ['/dashboard/provider', '/profile', '/settings', '/settings/password',
      '/messages', '/clinical-trials', '/patients',
       '/health-records', '/appointments', '/telemedicine', 
-      '/medications'], // Provider-specific patient management
-  admin: ['/dashboard', '/profile', '/settings', '/settings/password',
-     '/messages', '/users', '/reports',  '/admin',
+      '/medications'],
+  admin: ['/dashboard/admin', '/profile', '/settings', '/settings/password',
+     '/messages', '/users', '/reports', '/admin',
     '/approvals', '/users', '/audit-logs', '/system-settings', '/monitoring'],
-  pharmco: ['/dashboard', '/profile', '/settings', '/settings/password',
-     '/messages', '/medications', '/clinical-trials', '/reports', // Pharmaceutical reports
+  pharmco: ['/dashboard/pharmco', '/profile', '/settings', '/settings/password',
+     '/messages', '/medications', '/clinical-trials', '/reports',
      '/research'],
-  caregiver: ['/dashboard', '/profile', '/settings', '/settings/password',
-    '/messages', '/health-records', '/appointments', '/patients'], // For their assigned patients
-  researcher: ['/dashboard', '/profile', '/settings', '/settings/password',
-    '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'], // Research reports
-  superadmin: ['/'],
-  compliance: ['/dashboard', '/profile', '/settings', '/settings/password',
+  caregiver: ['/dashboard/caregiver', '/profile', '/settings', '/settings/password',
+    '/messages', '/health-records', '/appointments', '/patients'],
+  researcher: ['/dashboard/researcher', '/profile', '/settings', '/settings/password',
+    '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
+  superadmin: ['/dashboard/admin', '/dashboard/patient', '/dashboard/provider', '/dashboard/pharmco', '/dashboard/caregiver', '/dashboard/researcher', '/dashboard/compliance'],
+  compliance: ['/dashboard/compliance', '/profile', '/settings', '/settings/password',
     '/messages', '/audit-logs', '/emergency-access', '/consent-management',
-    '/reports', '/compliance'], // HIPAA consent tracking, // Review emergency access
+    '/reports', '/compliance'],
 };
 
 function hasRedirectLoop(returnUrl: string): boolean {
@@ -80,80 +80,96 @@ export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const returnUrl = searchParams.get('returnUrl');
 
+  console.log('🔍 Middleware processing:', { pathname, returnUrl });
+
+  // Allow public routes
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     pathname === route || pathname.startsWith(route + '/')
   );
   
   if (isPublicRoute) {
+    console.log('✅ Public route, allowing access');
     return NextResponse.next();
   }
 
+  // Check for redirect loops
   if (returnUrl && hasRedirectLoop(returnUrl)) {
+    console.log('🔄 Redirect loop detected, going to default dashboard');
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  if (pathname === '/login' && returnUrl) {
-    try {
-      const decodedUrl = decodeURIComponent(returnUrl);
-      
-      if (decodedUrl.includes('/login') || 
-          decodedUrl.includes('/register') ||
-          decodedUrl.includes('/verify-email') ||
-          decodedUrl.includes('/reset-password')) {
-        console.warn('🚫 Login page with auth returnUrl - redirecting to dashboard');
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-    } catch {
-      console.warn('🚫 Failed to decode returnUrl - redirecting to dashboard');
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  const token   = request.cookies.get(appConfig.authCookieName)?.value;
-  const role    = request.cookies.get(appConfig.userRoleCookieName)?.value as UserRole | undefined;
+  // Get authentication data from cookies
+  const token = request.cookies.get(appConfig.authCookieName)?.value;
+  const role = request.cookies.get(appConfig.userRoleCookieName)?.value as UserRole | undefined;
   const verified = request.cookies.get(appConfig.emailVerifiedCookieName)?.value === 'true';
   const approved = request.cookies.get(appConfig.isApprovedCookieName)?.value !== 'false';
 
+  console.log('🍪 Cookie data:', { hasToken: !!token, role, verified, approved });
+
+  // Handle unauthenticated users
   if (!token) {
+    console.log('❌ No token found, redirecting to login');
     const loginUrl = new URL('/login', request.url);
     
+    // Don't use /dashboard as returnUrl since it's not a valid page
     if (!pathname.includes('/login') && 
         pathname.length < 100 && 
-        !hasRedirectLoop(pathname)) {
+        !hasRedirectLoop(pathname) &&
+        pathname !== '/dashboard') {
       loginUrl.searchParams.set('returnUrl', pathname);
     }
     
     return NextResponse.redirect(loginUrl);
   }
 
+  // Handle account approval status
   if (!approved) {
+    console.log('⏳ Account not approved, redirecting to approval pending');
     return NextResponse.redirect(new URL('/approval-pending', request.url));
   }
   
+  // Handle email verification
   if (!verified) {
+    console.log('📧 Email not verified, redirecting to verification');
     return NextResponse.redirect(new URL('/verify-email', request.url));
   }
 
+  // Handle invalid or missing role
   if (!role || !(role in ROLE_ROUTES)) {
+    console.log('❌ Invalid or missing role, clearing cookies and redirecting to login');
     const response = NextResponse.redirect(new URL('/login', request.url));
     response.cookies.delete(appConfig.authCookieName);
     response.cookies.delete(appConfig.userRoleCookieName);
     return response;
   }
 
+  // MAIN FIX: Handle /dashboard root path - redirect to role-specific dashboard
+  if (pathname === '/dashboard') {
+    const roleDashboard = `/dashboard/${role}`;
+    console.log(`🎯 Redirecting from /dashboard to ${roleDashboard} for role: ${role}`);
+    return NextResponse.redirect(new URL(roleDashboard, request.url));
+  }
+
+  // Handle role-based route access (skip for superadmin)
   if (role !== 'superadmin') {
-    const allowed = ROLE_ROUTES[role].some(base =>
-      pathname === base || pathname.startsWith(base + '/')
+    const allowed = ROLE_ROUTES[role].some(allowedRoute =>
+      pathname === allowedRoute || pathname.startsWith(allowedRoute + '/')
     );
+    
     if (!allowed) {
+      console.log(`❌ Access denied to ${pathname} for role ${role}`);
+      console.log(`✅ Allowed routes for ${role}:`, ROLE_ROUTES[role]);
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
 
+  console.log('✅ Access granted, proceeding to route');
+
+  // Set security headers
   const res = NextResponse.next();
   
   if (process.env.NODE_ENV === 'production') {
-    // Production CSP - Still secure but allows Next.js to function
+    // Production CSP
     res.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
@@ -163,7 +179,7 @@ export function middleware(request: NextRequest) {
       "frame-ancestors 'none';"
     );
   } else {
-    // Development CSP - More permissive for Next.js dev features
+    // Development CSP
     res.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
