@@ -94,7 +94,7 @@ export default function ProviderDashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    let greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     return `${greeting}, Dr. ${user?.last_name || user?.first_name || 'Doctor'}`;
   };
 
@@ -126,7 +126,7 @@ export default function ProviderDashboard() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Practice Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm font-medium text-gray-500">Today's Appointments</p>
+              <p className="text-sm font-medium text-gray-500">Today&apos;s Appointments</p>
               <p className="mt-1 text-3xl font-semibold text-blue-600">{stats.todays_appointments}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">

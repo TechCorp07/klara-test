@@ -1,7 +1,7 @@
 // src/app/(dashboard)/patient/appointments/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
 import { Spinner } from '@/components/ui/spinner';
@@ -48,20 +48,22 @@ export default function AppointmentsPage() {
           startDate: today.toISOString().split('T')[0], 
           endDate: today.toISOString().split('T')[0] 
         };
-      case 'this_week':
-        const weekEnd = new Date(today);
-        weekEnd.setDate(today.getDate() + 7);
-        return { 
-          startDate: today.toISOString().split('T')[0], 
-          endDate: weekEnd.toISOString().split('T')[0] 
-        };
-      case 'this_month':
-        const monthEnd = new Date(today);
-        monthEnd.setMonth(today.getMonth() + 1);
-        return { 
-          startDate: today.toISOString().split('T')[0], 
-          endDate: monthEnd.toISOString().split('T')[0] 
-        };
+        case 'this_week': {
+          const weekEnd = new Date(today);
+          weekEnd.setDate(today.getDate() + 7);
+          return { 
+            startDate: today.toISOString().split('T')[0], 
+            endDate: weekEnd.toISOString().split('T')[0] 
+          };
+        }
+        case 'this_month': {
+          const monthEnd = new Date(today);
+          monthEnd.setMonth(today.getMonth() + 1);
+          return { 
+            startDate: today.toISOString().split('T')[0], 
+            endDate: monthEnd.toISOString().split('T')[0] 
+          };
+        }
       case 'custom':
         return { 
           startDate: filters.customStartDate, 
@@ -282,7 +284,7 @@ export default function AppointmentsPage() {
             ].map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
+                onClick={() => setActiveTab(tab.key as 'upcoming' | 'past' | 'all')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.key
                     ? 'border-blue-500 text-blue-600'
@@ -305,7 +307,10 @@ export default function AppointmentsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
               <select
                 value={filters.dateRange}
-                onChange={(e) => setFilters({ ...filters, dateRange: e.target.value as any })}
+                onChange={(e) => setFilters({ 
+                  ...filters, 
+                  dateRange: e.target.value as 'upcoming' | 'past' | 'today' | 'this_week' | 'this_month' | 'custom'
+                })}
                 className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="upcoming">Upcoming</option>

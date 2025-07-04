@@ -13,9 +13,11 @@ export const ENDPOINTS = {
     REGISTER: '/users/auth/register/',
     LOGOUT: '/users/auth/logout/',
     
-    // Email verification
+    // Email verification and phone verification
     VERIFY_EMAIL: '/users/auth/verify-email/',
     REQUEST_EMAIL_VERIFICATION: '/users/auth/request-verification/',
+    REQUEST_PHONE_VERIFICATION: '/users/auth/request-phone-verification/',
+    VERIFY_PHONE: '/users/auth/verify-phonenumber/',
     
     // Password management
     FORGOT_PASSWORD: '/users/auth/forgot-password/',
@@ -304,7 +306,7 @@ export const buildPaginatedUrl = (
   endpoint: string, 
   page: number = 1, 
   pageSize: number = 25,
-  filters: Record<string, any> = {}
+  filters: Record<string, string | number | boolean | undefined> = {}
 ): string => {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -312,7 +314,7 @@ export const buildPaginatedUrl = (
     ...Object.fromEntries(
       Object.entries(filters).filter(([_, value]) => 
         value !== null && value !== undefined && value !== ''
-      ).map(([key, value]) => [key, value.toString()])
+      ).map(([key, value]) => [key, (value ?? '').toString()])
     )
   });
   
@@ -321,12 +323,12 @@ export const buildPaginatedUrl = (
 
 export const buildQueryUrl = (
   endpoint: string,
-  params: Record<string, any> = {}
+  params: Record<string, string | number | boolean | undefined> = {}
 ): string => {
   const filteredParams = Object.fromEntries(
     Object.entries(params).filter(([_, value]) => 
       value !== null && value !== undefined && value !== ''
-    ).map(([key, value]) => [key, value.toString()])
+    ).map(([key, value]) => [key, (value ?? '').toString()])
   );
   
   if (Object.keys(filteredParams).length === 0) {
@@ -358,7 +360,7 @@ export const requiresAuth = (endpoint: string): boolean => {
     ENDPOINTS.SYSTEM.REDOC,
   ];
   
-  return !publicEndpoints.includes(endpoint);
+  return !publicEndpoints.some(publicEndpoint => publicEndpoint === endpoint);
 };
 
 // Check if endpoint requires admin access

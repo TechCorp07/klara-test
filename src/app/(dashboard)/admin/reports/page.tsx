@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
 
 interface ReportData {
@@ -117,8 +117,12 @@ function ReportsInterface() {
       window.URL.revokeObjectURL(url);
 
       setSuccess('Report exported successfully');
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to export report');
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'detail' in error.response.data) {
+        setError((error.response.data as { detail?: string }).detail || 'Failed to export report');
+      } else {
+        setError('Failed to export report');
+      }
     } finally {
       setIsExporting(false);
     }
@@ -137,7 +141,7 @@ function ReportsInterface() {
       <div className="flex flex-col items-center justify-center h-96 text-center">
         <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded max-w-md">
           <h3 className="font-bold mb-2">🚫 Insufficient Permissions</h3>
-          <p className="mb-4">You don't have permission to view reports.</p>
+          <p className="mb-4">You don&apos;t have permission to view reports.</p>
           <p className="text-sm">Required: Admin access</p>
         </div>
       </div>
@@ -196,7 +200,7 @@ function ReportsInterface() {
               <label className="block text-sm font-medium text-gray-700">Format</label>
               <select
                 value={exportRequest.format}
-                onChange={(e) => setExportRequest({...exportRequest, format: e.target.value as any})}
+                onChange={(e) => setExportRequest({...exportRequest,format: e.target.value as ExportRequest['format']})}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="pdf">PDF</option>
@@ -239,7 +243,7 @@ function ReportsInterface() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'

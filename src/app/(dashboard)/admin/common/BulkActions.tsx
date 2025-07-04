@@ -3,13 +3,19 @@
 
 import { useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
 
 interface BulkActionsProps {
   selectedItems: number[]; // Array of user IDs
+  selectedUserIds: number[];
   onAction: (action: string, note?: string) => Promise<void>;
   onSelectAll: () => void;
+  onBulkApprove: () => Promise<void>;
+  onDeselectAll: () => void;
+  onBulkDeny: () => Promise<void>;
+  //users: EnhancedUser[];
+  canPerformActions: boolean;
   onClearSelection: () => void;
   totalItems: number;
   isAllSelected: boolean;
@@ -286,7 +292,7 @@ export function BulkActions({
                 </button>
                 <FormButton
                   onClick={() => executeAction(currentAction, actionNote)}
-                  loading={isProcessing}
+                  isLoading={isProcessing}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Confirm Action
@@ -325,7 +331,7 @@ export function BulkActions({
                 </button>
                 <FormButton
                   onClick={() => executeAction(currentAction)}
-                  loading={isProcessing}
+                  isLoading={isProcessing}
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
                   Confirm

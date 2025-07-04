@@ -114,10 +114,10 @@ export const usePatientHealthRecords = (
       if (!append) setLoading(true);
       setError(null);
 
-      const params: any = {
+      const params: Record<string, string | number | boolean | undefined> = {
         limit: options.limit || 20,
         offset: append ? records.length : 0,
-        ordering: '-date', // Most recent first
+        ordering: '-date',
       };
 
       // Apply filters
@@ -179,17 +179,17 @@ export const usePatientHealthRecords = (
     }
   }, [records, totalCount]);
 
+    // Fetch summary when records change
+    useEffect(() => {
+      if (records.length > 0) {
+        fetchSummary();
+      }
+    }, [fetchSummary, records.length]);
+
   // Initial fetch and when filters change
   useEffect(() => {
     fetchHealthRecords();
   }, [fetchHealthRecords]);
-
-  // Fetch summary when records change
-  useEffect(() => {
-    if (records.length > 0) {
-      fetchSummary();
-    }
-  }, [fetchSummary]);
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -237,7 +237,11 @@ export const usePatientHealthRecords = (
   const requestRecords = useCallback(async (requestData: RecordRequest): Promise<RecordRequestResponse> => {
     try {
       const response = await patientService.requestHealthRecords(requestData);
-      return response;
+      // Add the required status field to match RecordRequestResponse interface
+      return {
+        ...response,
+        status: 'submitted' // Default status for new requests
+      };
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to submit record request');
     }

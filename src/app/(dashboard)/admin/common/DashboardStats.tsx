@@ -1,7 +1,7 @@
 // src/app/(dashboard)/admin/common/DashboardStats.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
 
 export interface DashboardStatsData {
@@ -49,13 +49,7 @@ export function DashboardStats({
   const [isLoading, setIsLoading] = useState(!data);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  useEffect(() => {
-    if (!data) {
-      fetchStats();
-    }
-  }, [data]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await apiClient.get('/users/admin/dashboard-stats/');
@@ -67,7 +61,13 @@ export function DashboardStats({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onRefresh]);
+
+  useEffect(() => {
+    if (!data) {
+      fetchStats();
+    }
+  }, [data, fetchStats]);
 
   const getStatCards = (stats: DashboardStatsData): StatCard[] => {
     return [

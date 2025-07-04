@@ -28,7 +28,7 @@ interface DashboardData {
     timestamp: string;
     user?: string;
     severity?: 'low' | 'medium' | 'high' | 'critical';
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }>;
   system_status: {
     overall_health: 'healthy' | 'warning' | 'critical';
@@ -300,9 +300,9 @@ function AdminDashboardInterface() {
               <h3 className="text-lg font-medium text-gray-900">Approval Queue</h3>
             </div>
             <p className="text-sm text-gray-500">Review and approve pending user registrations</p>
-            {dashboardData?.quick_stats.pending_approvals > 0 && (
+            {(dashboardData?.quick_stats.pending_approvals ?? 0) > 0 && (
               <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                {dashboardData.quick_stats.pending_approvals} pending
+                {dashboardData?.quick_stats.pending_approvals} pending
               </div>
             )}
           </button>
@@ -368,9 +368,9 @@ function AdminDashboardInterface() {
               <h3 className="text-lg font-medium text-gray-900">System Monitoring</h3>
             </div>
             <p className="text-sm text-gray-500">Real-time alerts and performance monitoring</p>
-            {dashboardData?.quick_stats.system_alerts > 0 && (
+            {(dashboardData?.quick_stats?.system_alerts ?? 0) > 0 && (
               <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                {dashboardData.quick_stats.system_alerts} alerts
+                {dashboardData?.quick_stats?.system_alerts ?? 0} alerts
               </div>
             )}
           </button>
@@ -397,9 +397,9 @@ function AdminDashboardInterface() {
                 <h3 className="text-lg font-medium text-gray-900">Emergency Access</h3>
               </div>
               <p className="text-sm text-gray-500">Review emergency access requests and logs</p>
-              {dashboardData?.quick_stats.emergency_access_events > 0 && (
+              {(dashboardData?.quick_stats?.emergency_access_events ?? 0) > 0 && (
                 <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  {dashboardData.quick_stats.emergency_access_events} pending
+                  {dashboardData?.quick_stats?.emergency_access_events ?? 0} pending
                 </div>
               )}
             </button>

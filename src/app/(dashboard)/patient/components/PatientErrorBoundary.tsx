@@ -4,6 +4,12 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import Link from 'next/link';
 
+declare global {
+  interface Window {
+    gtag?: (command: string, eventName: string, params?: Record<string, unknown>) => void;
+  }
+}
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -38,7 +44,6 @@ export class PatientErrorBoundary extends Component<Props, State> {
 
     this.setState({ error, errorInfo });
 
-    // Report to error tracking service (e.g., Sentry)
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'exception', {
         description: error.toString(),

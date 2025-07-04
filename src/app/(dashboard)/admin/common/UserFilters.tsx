@@ -1,8 +1,7 @@
 // src/app/(dashboard)/admin/common/UserFilters.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export interface UserFilters {
   page: number;
@@ -20,8 +19,9 @@ export interface UserFilters {
   ordering: string;
 }
 
-interface UserFiltersProps {
+export interface UserFiltersProps {
   filters: UserFilters;
+  currentFilters: UserFilters;
   onFiltersChange: (filters: UserFilters) => void;
   showAdvanced?: boolean;
 }
@@ -60,7 +60,7 @@ export function UserFilters({ filters, onFiltersChange, showAdvanced = false }: 
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(showAdvanced);
   const [localFilters, setLocalFilters] = useState(filters);
 
-  const updateFilter = (key: keyof UserFilters, value: any) => {
+  const updateFilter = (key: keyof UserFilters, value: UserFilters[keyof UserFilters]) => {
     const newFilters = { ...localFilters, [key]: value, page: 1 };
     setLocalFilters(newFilters);
     onFiltersChange(newFilters);

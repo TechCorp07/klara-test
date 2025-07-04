@@ -88,7 +88,7 @@ function ComprehensiveApprovalManagement() {
   });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [, setIsStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<number[]>([]);
@@ -174,7 +174,8 @@ function ComprehensiveApprovalManagement() {
     try {
       setIsStatsLoading(true);
       const stats = await authService.getDashboardStats();
-      setDashboardStats(stats);
+      // Explicitly cast to ensure type compatibility
+      setDashboardStats(stats as unknown as DashboardStatsResponse);
     } catch (err: unknown) {
       console.error('Error fetching dashboard stats:', err);
       // Don't show error for stats as it's not critical
@@ -270,7 +271,7 @@ function ComprehensiveApprovalManagement() {
   };
 
   // Calculate pagination info
-  const totalPages = Math.ceil(pagination.count / (filters.page_size || 25));
+  //const totalPages = Math.ceil(pagination.count / (filters.page_size || 25));
   const currentPage = filters.page || 1;
 
   // Selection handlers
@@ -432,7 +433,7 @@ function ComprehensiveApprovalManagement() {
 
         {/* Dashboard Statistics */}
         {dashboardStats && (
-          <DashboardStats stats={dashboardStats} isLoading={isStatsLoading} />
+          <DashboardStats data={dashboardStats} />
         )}
 
         {/* Alerts */}
@@ -480,6 +481,7 @@ function ComprehensiveApprovalManagement() {
         {/* Filters - Only show in 'all' mode */}
         {viewMode === 'all' && (
           <UserFilters 
+            filters={filters}
             currentFilters={filters}
             onFiltersChange={handleFiltersChange}
           />
@@ -489,11 +491,18 @@ function ComprehensiveApprovalManagement() {
         {users.length > 0 && (
           <BulkActions
             selectedUserIds={selectedUserIds}
-            onSelectAll={handleSelectAll}
+            selectedItems={selectedUserIds}
+            onSelectAll={() => handleSelectAll(users)}
             onDeselectAll={handleDeselectAll}
             onBulkApprove={handleBulkApprove}
             onBulkDeny={handleBulkDeny}
-            users={users}
+            onAction={async (action) => {
+              if (action === 'approve') await handleBulkApprove();
+              if (action === 'deny') await handleBulkDeny();
+            }}
+            onClearSelection={handleDeselectAll}
+            totalItems={users.length}
+            isAllSelected={selectedUserIds.length === users.length}
             canPerformActions={canApproveReject || false}
             isProcessing={isBulkProcessing}
           />
@@ -685,11 +694,11 @@ function ComprehensiveApprovalManagement() {
           {/* Pagination - Only show in 'all' mode */}
           {viewMode === 'all' && pagination.count > 0 && (
             <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              totalCount={pagination.count}
+              pagination={pagination}
               pageSize={filters.page_size || 25}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              onPageSizeChange={(newPageSize) => setFilters(prev => ({ ...prev, page_size: newPageSize }))}
             />
           )}
         </div>

@@ -67,7 +67,7 @@ export const usePatientMedications = (
       setError(null);
 
       // Fetch medications
-      const medicationsParams: any = {};
+      const medicationsParams: Record<string, string | number | undefined> = {};
       if (filters.status) medicationsParams.status = filters.status;
       if (filters.prescribedBy) medicationsParams.prescribed_by = filters.prescribedBy;
 
@@ -151,7 +151,7 @@ export const usePatientMedications = (
         scheduled_time: scheduledTime,
         taken_time: new Date().toISOString(),
         taken: false,
-        missed_reason: reason,
+        notes: reason,
       });
 
       // Update local state
@@ -164,7 +164,7 @@ export const usePatientMedications = (
               ? {
                   ...adherence,
                   taken: false,
-                  missed_reason: reason,
+                  notes: reason,
                 }
               : adherence
           ),

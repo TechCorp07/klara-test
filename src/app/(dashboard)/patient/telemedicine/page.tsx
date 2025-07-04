@@ -1,7 +1,7 @@
 // src/app/(dashboard)/patient/telemedicine/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { patientService } from '@/lib/api/services/patient.service';
@@ -49,6 +49,29 @@ export default function TelemedicinePage() {
   const [showPreJoinChecklist, setShowPreJoinChecklist] = useState(false);
   const [inSession, setInSession] = useState(false);
 
+    // Check session status for selected appointment
+    const checkSessionStatus = useCallback(async (appointmentId: number) => {
+      try {
+        const status = await patientService.getTelemedicineSessionStatus(appointmentId);
+        // Create a mock session object for demo purposes
+        const mockSession: TelemedicineSession = {
+          id: 1,
+          appointment: selectedAppointment!,
+          status: status.status,
+          platform: 'zoom',
+          meeting_id: '123456789',
+          join_url: 'https://zoom.us/j/123456789',
+          passcode: 'patient123',
+          can_join: status.can_join,
+          provider_joined: status.provider_joined,
+          patient_joined: false,
+        };
+        setSession(mockSession);
+      } catch (err) {
+        console.error('Failed to check session status:', err);
+      }
+    }, [selectedAppointment]);
+    
   // Fetch telemedicine appointments
   useEffect(() => {
     const fetchTelemedicineAppointments = async () => {
@@ -85,30 +108,7 @@ export default function TelemedicinePage() {
     };
 
     fetchTelemedicineAppointments();
-  }, [appointmentId]);
-
-  // Check session status for selected appointment
-  const checkSessionStatus = async (appointmentId: number) => {
-    try {
-      const status = await patientService.getTelemedicineSessionStatus(appointmentId);
-      // Create a mock session object for demo purposes
-      const mockSession: TelemedicineSession = {
-        id: 1,
-        appointment: selectedAppointment!,
-        status: status.status,
-        platform: 'zoom',
-        meeting_id: '123456789',
-        join_url: 'https://zoom.us/j/123456789',
-        passcode: 'patient123',
-        can_join: status.can_join,
-        provider_joined: status.provider_joined,
-        patient_joined: false,
-      };
-      setSession(mockSession);
-    } catch (err) {
-      console.error('Failed to check session status:', err);
-    }
-  };
+  }, [appointmentId, checkSessionStatus]);
 
   // Test connection
   const testConnection = async () => {
@@ -334,11 +334,11 @@ export default function TelemedicinePage() {
             </div>
           )}
 
-          {connectionTest?.recommended_actions.length > 0 && (
+          {(connectionTest?.recommended_actions?.length ?? 0) > 0 && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <h4 className="font-medium text-yellow-800 mb-2">Recommendations:</h4>
               <ul className="text-sm text-yellow-700 space-y-1">
-                {connectionTest.recommended_actions.map((action, index) => (
+                {(connectionTest?.recommended_actions ?? []).map((action, index) => (
                   <li key={index}>• {action}</li>
                 ))}
               </ul>

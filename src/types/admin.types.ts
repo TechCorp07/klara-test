@@ -125,17 +125,27 @@ export interface AuditLogEntry {
   resource_id?: string;
   ip_address: string;
   user_agent?: string;
-  request_data?: any;
+  request_data?: Record<string, unknown>;
   response_status?: number;
   changes?: {
-    before?: any;
-    after?: any;
+    before?: Record<string, unknown>;
+    after?: Record<string, unknown>;
   };
   compliance_event: boolean;
   hipaa_event: boolean;
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   notes?: string;
 }
+
+type BulkActionType =
+  | 'approve'
+  | 'reject'
+  | 'activate'
+  | 'deactivate'
+  | 'lock'
+  | 'unlock'
+  | 'reset_password';
+export type { BulkActionType };
 
 export interface SystemHealthData {
   overall_status: 'healthy' | 'warning' | 'critical';
@@ -276,13 +286,24 @@ export interface AdminUserCreateData {
 
 export interface AdminPermissions {
   has_admin_access: boolean;
+  has_dashboard_access: boolean;
+  has_approval_permissions?: boolean;
   has_user_management_access: boolean;
   has_system_settings_access: boolean;
   has_audit_access: boolean;
   has_compliance_access: boolean;
+  has_compliance_reports_access: boolean;
   has_export_access: boolean;
   user_role: string;
   is_superadmin: boolean;
+  has_patient_data_access?: boolean;
+  has_medical_records_access?: boolean;
+  can_manage_appointments?: boolean;
+  can_view_own_data?: boolean;
+  can_access_telemedicine?: boolean;
+  can_manage_medications?: boolean;
+  can_view_research_data?: boolean;
+  can_access_clinical_trials?: boolean;
 }
 
 export interface UserActionLog {
@@ -356,7 +377,7 @@ export interface AdminDashboardResponse {
     timestamp: string;
     user?: string;
     severity?: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }>;
   system_status: SystemHealthData;
 }
@@ -376,7 +397,7 @@ export interface UserManagementResponse {
 export interface ExportRequest {
   export_type: 'users' | 'audit_logs' | 'compliance_report' | 'system_report';
   format: 'csv' | 'xlsx' | 'pdf';
-  filters?: any;
+  filters?: Record<string, unknown>;
   date_range?: {
     start: string;
     end: string;

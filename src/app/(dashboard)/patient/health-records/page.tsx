@@ -17,7 +17,7 @@ interface HealthRecord {
     name: string;
     specialty: string;
   };
-  status: 'final' | 'preliminary' | 'pending' | 'amended';
+  status: 'final' | 'preliminary' | 'pending' | 'amended' | 'cancelled';
   has_attachments: boolean;
   is_critical: boolean;
   summary?: string;
@@ -34,7 +34,7 @@ interface RecordFilters {
 
 export default function HealthRecordsPage() {
   const searchParams = useSearchParams();
-  const { records, summary, loading, error, refetch, requestRecords, downloadRecord } = usePatientHealthRecords();
+  const { records, summary, loading, error, refetch, downloadRecord } = usePatientHealthRecords();
   
   const [filteredRecords, setFilteredRecords] = useState<HealthRecord[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<number[]>([]);
@@ -154,19 +154,6 @@ export default function HealthRecordsPage() {
       }
     }
     clearSelection();
-  };
-
-  // Handle record request
-  const handleRecordRequest = async (requestData: any) => {
-    try {
-      const response = await requestRecords(requestData);
-      setShowRequestModal(false);
-      // Show success message
-      console.log('Request submitted:', response);
-    } catch (err) {
-      console.error('Request failed:', err);
-      // Show error message
-    }
   };
 
   if (loading) {

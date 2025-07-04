@@ -1,7 +1,7 @@
 // src/hooks/usePermissions.ts
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/use-auth';
 import { apiClient } from '@/lib/api/client';
 import { AdminPermissions } from '@/types/admin.types';
@@ -19,7 +19,7 @@ export const usePermissions = (): PermissionsContextType => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPermissions = async () => {
+  const fetchPermissions = useCallback(async () => {
     if (!isAuthenticated || !user) {
       setPermissions(null);
       setLoading(false);
@@ -42,42 +42,56 @@ export const usePermissions = (): PermissionsContextType => {
         has_audit_access: permissionsData.has_audit_access || user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
         has_compliance_access: permissionsData.has_compliance_access || user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
         has_export_access: permissionsData.has_export_access || user.role === 'admin' || user.role === 'superadmin',
+        has_dashboard_access: permissionsData.has_dashboard_access || user.role === 'admin' || user.role === 'superadmin',
+        has_compliance_reports_access: permissionsData.has_compliance_reports_access || user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
         user_role: user.role,
-        is_superadmin: user.role === 'superadmin' || user.is_superuser,
+        is_superadmin: user.role === 'superadmin' || !!user.is_superuser,
       };
 
       setPermissions(userPermissions);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch permissions:', err);
-      
-      // Fallback to basic role-based permissions if API fails
+
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+            setError('An unknown error occurred');
+          }
+          // Fallback to basic role-based permissions if API fails
       if (user) {
         const fallbackPermissions: AdminPermissions = {
-          has_admin_access: user.role === 'admin' || user.role === 'superadmin' || user.is_staff,
+          has_admin_access: user.role === 'admin' || user.role === 'superadmin' || !!user.is_staff,
           has_user_management_access: user.role === 'admin' || user.role === 'superadmin',
           has_system_settings_access: user.role === 'superadmin',
           has_audit_access: user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
           has_compliance_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
           has_export_access: user.role === 'admin' || user.role === 'superadmin',
+          has_dashboard_access: user.role === 'admin' || user.role === 'superadmin',
+          has_compliance_reports_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
           user_role: user.role,
-          is_superadmin: user.role === 'superadmin' || user.is_superuser,
+          is_superadmin: user.role === 'superadmin' || !!user.is_superuser,
         };
         setPermissions(fallbackPermissions);
       } else {
-        setError(err.response?.data?.detail || 'Failed to load permissions');
+        if (typeof err === 'object' && err !== null && 'response' in err) {
+          const errorWithResponse = err as { response: { data?: { detail?: string } } };
+          setError(errorWithResponse.response?.data?.detail || 'Failed to load permissions');
+        } else {
+          setError('Failed to load permissions');
+        }
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, isAuthenticated]);
 
   useEffect(() => {
     fetchPermissions();
-  }, [user, isAuthenticated]);
+  }, [fetchPermissions]);
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     await fetchPermissions();
-  };
+  }, [fetchPermissions]);
 
   return {
     permissions,

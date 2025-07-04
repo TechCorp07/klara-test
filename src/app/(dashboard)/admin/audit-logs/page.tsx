@@ -1,12 +1,12 @@
 // src/app/(dashboard)/admin/audit-logs/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
 import Pagination from '../common/Pagination';
 
@@ -21,11 +21,11 @@ interface AuditLog {
   resource_id?: string;
   ip_address: string;
   user_agent?: string;
-  request_data?: any;
+  request_data?: string;
   response_status?: number;
   changes?: {
-    before?: any;
-    after?: any;
+    before?: string;
+    after?: string;
   };
   compliance_event: boolean;
   hipaa_event: boolean;
@@ -126,13 +126,7 @@ function AuditLogsInterface() {
   const canViewAudit = permissions?.has_audit_access || false;
   const canExportAudit = permissions?.has_admin_access || false;
 
-  useEffect(() => {
-    if (canViewAudit) {
-      fetchAuditLogs();
-    }
-  }, [filters, canViewAudit]);
-
-  const fetchAuditLogs = async () => {
+  const fetchAuditLogs = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -150,14 +144,25 @@ function AuditLogsInterface() {
         previous: response.data.previous,
       });
       setError(null);
-    } catch (error: any) {
-      console.error('Failed to fetch audit logs:', error);
-      setError('Failed to load audit logs');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Failed to fetch audit logs:', error.message);
+        setError(error.message);
+      } else {
+        console.error('Failed to fetch audit logs:', error);
+        setError('An unknown error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filters]);
 
+  useEffect(() => {
+    if (canViewAudit) {
+      fetchAuditLogs();
+    }
+  }, [filters, canViewAudit, fetchAuditLogs]);
+  
   const updateFilters = (newFilters: Partial<AuditFilters>) => {
     const updatedFilters = { ...filters, ...newFilters, page: 1 };
     setFilters(updatedFilters);
@@ -225,7 +230,7 @@ function AuditLogsInterface() {
   if (!canViewAudit) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">You don't have permission to view audit logs.</p>
+        <p className="text-gray-500">You don&apos;t have permission to view audit logs.</p>
       </div>
     );
   }
@@ -242,7 +247,7 @@ function AuditLogsInterface() {
           <div className="flex items-center space-x-2">
             <FormButton
               onClick={() => exportAuditLogs('csv')}
-              loading={isExporting}
+              isLoading={isExporting}
               variant="outline"
               size="sm"
             >
@@ -250,7 +255,7 @@ function AuditLogsInterface() {
             </FormButton>
             <FormButton
               onClick={() => exportAuditLogs('xlsx')}
-              loading={isExporting}
+              isLoading={isExporting}
               variant="outline"
               size="sm"
             >

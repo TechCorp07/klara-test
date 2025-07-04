@@ -102,7 +102,7 @@ export default function PharmcoDashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    let greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     return `${greeting}, ${user?.first_name || 'Pharmaceutical Researcher'}`;
   };
 

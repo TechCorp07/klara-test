@@ -1,23 +1,22 @@
 // src/app/(dashboard)/admin/users/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
-import { UserFilters, Pagination, BulkActions, DashboardStats } from '../common';
+import { UserFilters, Pagination, BulkActions } from '../common';
 import type { 
-  UserFilters as UserFiltersType, 
-  PaginatedUsersResponse, 
-  DashboardStatsResponse,
+  UserFilters as UserFiltersType,
   AdminUserDetail,
   BulkActionRequest,
-  BulkActionResponse
+  BulkActionResponse,
+  BulkActionType
 } from '@/types/admin.types';
-
+  
 export default function AdminUsersPage() {
   return (
     <AdminGuard>
@@ -60,18 +59,12 @@ function UserManagementInterface() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [, setShowCreateModal] = useState(false);
 
   const canManageUsers = permissions?.has_user_management_access || false;
   const canViewUsers = permissions?.has_admin_access || false;
 
-  useEffect(() => {
-    if (canViewUsers) {
-      fetchUsers();
-    }
-  }, [filters, canViewUsers]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -89,13 +82,19 @@ function UserManagementInterface() {
         previous: response.data.previous,
       });
       setError(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to fetch users:', error);
       setError('Failed to load users');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    if (canViewUsers) {
+      fetchUsers();
+    }
+  }, [filters, canViewUsers, fetchUsers]);
 
   const updateFilters = (newFilters: Partial<UserFiltersType>) => {
     const updatedFilters = { ...filters, ...newFilters, page: 1 };
@@ -113,7 +112,7 @@ function UserManagementInterface() {
   };
 
   const handleBulkAction = async (action: string, note?: string) => {
-    if (!canManageUsers || selectedUsers.length === 0) return;
+    if (!canManageUsers || selectedUsers.length === 0) return;  
 
     setIsProcessing(true);
     setError(null);
@@ -121,13 +120,13 @@ function UserManagementInterface() {
 
     try {
       const bulkRequest: BulkActionRequest = {
-        action: action as any,
+        action: action as BulkActionType,
         user_ids: selectedUsers,
         note,
       };
 
       let endpoint = '';
-      switch (action) {
+      switch (action as BulkActionType) {
         case 'approve': endpoint = '/users/admin/bulk-approve/'; break;
         case 'reject': endpoint = '/users/admin/bulk-deny/'; break;
         case 'activate': endpoint = '/users/admin/bulk-activate/'; break;
@@ -152,9 +151,18 @@ function UserManagementInterface() {
 
       setSelectedUsers([]);
       await fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Bulk action failed:', error);
-      setError(error.response?.data?.detail || 'Bulk action failed');
+      
+      // Type checking before accessing properties
+      if (error && typeof error === 'object' && 'response' in error && 
+          error.response && typeof error.response === 'object' && 
+          'data' in error.response && error.response.data && 
+          typeof error.response.data === 'object' && 'detail' in error.response.data) {
+        setError(error.response.data.detail as string || 'Bulk action failed');
+      } else {
+        setError('Bulk action failed');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -206,7 +214,7 @@ function UserManagementInterface() {
   if (!canViewUsers) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">You don't have permission to view users.</p>
+        <p className="text-gray-500">You don&apos;t have permission to view users.</p>
       </div>
     );
   }
@@ -253,6 +261,7 @@ function UserManagementInterface() {
       {/* Filters */}
       <UserFilters
         filters={filters}
+        currentFilters={filters}
         onFiltersChange={updateFilters}
         showAdvanced={true}
       />
@@ -261,12 +270,17 @@ function UserManagementInterface() {
       {canManageUsers && (
         <BulkActions
           selectedItems={selectedUsers}
+          selectedUserIds={selectedUsers}
           onAction={handleBulkAction}
+          onBulkApprove={() => handleBulkAction('approve')}
+          onBulkDeny={() => handleBulkAction('reject')}
           onSelectAll={selectAllUsers}
+          onDeselectAll={clearSelection}
           onClearSelection={clearSelection}
           totalItems={users.length}
           isAllSelected={selectedUsers.length === users.length && users.length > 0}
           isProcessing={isProcessing}
+          canPerformActions={canManageUsers}
           actionType="users"
         />
       )}

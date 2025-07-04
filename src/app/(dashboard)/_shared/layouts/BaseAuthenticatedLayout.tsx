@@ -37,7 +37,6 @@ function BaseAuthenticatedLayoutInner({
     setSidebarOpen, 
     toggleSidebar, 
     theme,
-    notifications,
     emergencyAlerts,
     isOnline 
   } = useLayout();
@@ -275,6 +274,7 @@ function BaseAuthenticatedLayoutInner({
     showVerificationWarning && 
     user?.role === 'patient' && 
     user?.profile?.days_until_verification_required !== null &&
+    user?.profile?.days_until_verification_required !== undefined &&
     user?.profile?.days_until_verification_required <= 7;
   
   // If loading, show spinner

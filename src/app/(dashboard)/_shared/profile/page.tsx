@@ -261,7 +261,7 @@ export default function ProfilePage() {
 
       // Call API to verify OTP (you'll need to implement this endpoint)
       const response = await authService.verifyPhoneNumber({
-        phone_number: profileData?.phone_number!,
+        phone_number: profileData?.phone_number ?? '',
         otp: phoneOTP
       });
 

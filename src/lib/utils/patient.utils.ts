@@ -1,6 +1,6 @@
 // src/lib/utils/patient.utils.ts
 
-import type { VitalSigns, MedicationAdherence, Appointment } from '@/types/patient.types';
+import type { VitalSigns, MedicationAdherence } from '@/types/patient.types';
 
 /**
  * Health data formatting utilities
@@ -113,7 +113,7 @@ export const getHealthIndicators = {
     }
   },
 
-  heartRateStatus: (rate?: number, age?: number): {
+  heartRateStatus: (rate?: number): {
     status: 'low' | 'normal' | 'high';
     label: string;
     color: string;
@@ -343,12 +343,13 @@ export const privacyUtils = {
         return data.replace(/\d{3}-?\d{2}-?(\d{4})/, 'XXX-XX-$1');
       case 'phone':
         return data.replace(/(\d{3})-?(\d{3})-?(\d{4})/, '$1-XXX-$3');
-      case 'email':
-        const [local, domain] = data.split('@');
-        if (local.length > 2) {
-          return `${local.charAt(0)}${'*'.repeat(local.length - 2)}${local.charAt(local.length - 1)}@${domain}`;
+        case 'email': {
+          const [local, domain] = data.split('@');
+          if (local.length > 2) {
+            return `${local.charAt(0)}${'*'.repeat(local.length - 2)}${local.charAt(local.length - 1)}@${domain}`;
+          }
+          return data;
         }
-        return data;
       case 'address':
         return data.replace(/\d+/, 'XXX');
       default:

@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { BaseAuthenticatedLayout } from '../_shared/layouts/BaseAuthenticatedLayout';
+import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
 import { PatientGuard } from '@/components/guards/PatientGuard';
 import { LayoutProvider } from '../_shared/layouts/LayoutContext';
 

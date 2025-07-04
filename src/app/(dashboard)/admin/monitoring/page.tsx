@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
 import { SystemMonitoringData, SecurityAlert, SystemHealthData } from '@/types/admin.types';
 
@@ -68,7 +68,7 @@ function MonitoringInterface() {
         recent_activities: healthResponse.data.recent_alerts || [],
       });
       setError(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to fetch monitoring data:', error);
       setError('Failed to load monitoring data');
     } finally {
@@ -110,7 +110,7 @@ function MonitoringInterface() {
   if (!canViewMonitoring) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">You don't have permission to view system monitoring.</p>
+        <p className="text-gray-500">You don&apos;t have permission to view system monitoring.</p>
       </div>
     );
   }
@@ -188,7 +188,7 @@ function MonitoringInterface() {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'performance' | 'security' | 'logs')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
                   ? 'border-blue-500 text-blue-600'

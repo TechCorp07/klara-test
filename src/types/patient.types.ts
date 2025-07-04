@@ -374,3 +374,133 @@ export interface PatientProfile {
     };
   }
   
+  export interface ClinicalStudy {
+    id: number;
+    title: string;
+    description: string;
+    phase: 'I' | 'II' | 'III' | 'IV' | 'Observational';
+    status: 'recruiting' | 'active' | 'completed' | 'suspended' | 'terminated';
+    sponsor: {
+      name: string;
+      type: 'academic' | 'industry' | 'government';
+    };
+    principal_investigator: {
+      name: string;
+      affiliation: string;
+    };
+    condition: string;
+    intervention_type: 'drug' | 'device' | 'behavioral' | 'procedure' | 'other';
+    intervention_name: string;
+    duration_weeks: number;
+    location: {
+      city: string;
+      state: string;
+      facility: string;
+    };
+    eligibility_criteria: {
+      min_age: number;
+      max_age: number;
+      gender: 'all' | 'male' | 'female';
+      conditions: string[];
+      exclusions: string[];
+    };
+    compensation: {
+      provided: boolean;
+      amount?: number;
+      description?: string;
+    };
+    estimated_enrollment: number;
+    start_date: string;
+    completion_date: string;
+    contact_info: {
+      name: string;
+      phone: string;
+      email: string;
+    };
+    nct_number?: string; // ClinicalTrials.gov identifier
+    irb_approved: boolean;
+    user_interested: boolean;
+    user_eligible: boolean | null; // null = not assessed yet
+  }
+
+  export interface ResearchParticipation {
+    id: number;
+    study: ClinicalStudy;
+    status: 'interested' | 'screening' | 'enrolled' | 'completed' | 'withdrawn';
+    enrolled_date?: string;
+    completion_date?: string;
+    withdrawal_reason?: string;
+    notes?: string;
+  }
+  export interface PaginatedResponse<T> {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[];
+  }
+  
+  export interface Study {
+    id: number;
+    title: string;
+    condition: string;
+    phase: string;
+    location: string;
+    description: string;
+  }
+  
+  export interface Message {
+    id: number;
+    thread_id: number;
+    sender: string;
+    recipient: string;
+    subject: string;
+    message: string;
+    timestamp: string;
+    read: boolean;
+  }
+  
+  export interface SendMessageResponse {
+    id: number;
+    status: string;
+    timestamp: string;
+  }
+
+  export interface LogMedicationTakenPayload {
+    prescription: number;
+    scheduled_time: string;
+    taken_time: string;
+    taken: boolean;
+    notes?: string;
+    data_source?: string;
+  }
+
+export interface ConnectedDevice {
+  id: number;
+  device_type: string;
+  device_id: string;
+  manufacturer: string;
+  model: string;
+  connected_at: string;
+  [key: string]: unknown;
+}
+
+export interface BillingStatement {
+  id: number;
+  amount_due: number;
+  due_date: string;
+  status: string;
+  [key: string]: unknown; 
+}
+
+export interface PaymentResponse {
+  payment_id: number;
+  status: string;
+  amount: number;
+  [key: string]: unknown;
+}
+
+export interface AutoPayResponse {
+  autopay_id: number;
+  enabled: boolean;
+  [key: string]: unknown;
+}

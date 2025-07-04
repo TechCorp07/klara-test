@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/common/FormButton';
+import FormButton from '@/components/ui/common/FormButton';
 
 interface PendingUser {
   id: number;
@@ -259,7 +259,7 @@ export default function PendingApprovalsCard() {
                   <div className="flex items-center space-x-2 ml-4">
                     <FormButton
                       onClick={() => handleQuickApproval(user.id)}
-                      loading={isProcessing}
+                      isLoading={isProcessing}
                       size="sm"
                       variant="success"
                       disabled={isProcessing}
@@ -268,7 +268,7 @@ export default function PendingApprovalsCard() {
                     </FormButton>
                     <FormButton
                       onClick={() => handleQuickReject(user.id)}
-                      loading={isProcessing}
+                      isLoading={isProcessing}
                       size="sm"
                       variant="danger"
                       disabled={isProcessing}

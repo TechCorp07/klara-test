@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
+import { AxiosError } from 'axios';
 
 interface SystemSettings {
   // Security Settings
@@ -88,14 +89,15 @@ function SystemSettingsInterface() {
     try {
       await apiClient.put('/api/admin/system-settings/', settings);
       setSuccess('System settings updated successfully');
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to update system settings');
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<{ detail?: string }>;
+      setError(axiosError.response?.data?.detail || 'Failed to update system settings');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateSetting = (key: keyof SystemSettings, value: any) => {
+  const updateSetting = (key: keyof SystemSettings, value: SystemSettings[keyof SystemSettings]) => {
     if (!settings) return;
     setSettings({ ...settings, [key]: value });
   };
@@ -119,7 +121,9 @@ function SystemSettingsInterface() {
     });
   };
 
-  const tabs = [
+  type TabId = 'security' | 'registration' | 'compliance' | 'features' | 'maintenance';
+  
+  const tabs: { id: TabId; name: string; icon: string }[] = [
     { id: 'security', name: 'Security', icon: '🔒' },
     { id: 'registration', name: 'Registration', icon: '👥' },
     { id: 'compliance', name: 'HIPAA Compliance', icon: '🏥' },
@@ -132,7 +136,7 @@ function SystemSettingsInterface() {
       <div className="flex flex-col items-center justify-center h-96 text-center">
         <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded max-w-md">
           <h3 className="font-bold mb-2">🚫 Insufficient Permissions</h3>
-          <p className="mb-4">You don't have permission to modify system settings.</p>
+          <p className="mb-4">You don&apos;t have permission to modify system settings.</p>
           <p className="text-sm">Required: System settings access</p>
         </div>
       </div>
@@ -176,7 +180,7 @@ function SystemSettingsInterface() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'

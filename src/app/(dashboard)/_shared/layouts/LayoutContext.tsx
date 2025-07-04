@@ -72,6 +72,26 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     }));
   }, []);
 
+    // Toast management
+    const showToast = useCallback((
+      message: string, 
+      type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const newToast: Toast = {
+        id,
+        message,
+        type,
+        timestamp: new Date()
+      };
+      
+      setToasts(prev => [...prev, newToast]);
+      
+      // Auto-remove toast after 5 seconds
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+      }, 5000);
+    }, []);
+    
   // Save preferences to localStorage
   useEffect(() => {
     localStorage.setItem('klararety-theme', state.theme);
@@ -97,7 +117,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [showToast]);
 
   // Apply theme to document
   useEffect(() => {
@@ -149,7 +169,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
       const results = await Promise.all(promises);
       
       const notificationData = results[0] as { unread_count: number; has_unread: boolean };
-      const systemData = results[1] as { status: string };
+      //const systemData = results[1] as { status: string };
       const emergencyData = results[2] as { active_alerts: number } | undefined;
 
       setState(prev => ({
@@ -171,7 +191,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
         showToast('Failed to refresh data', 'error');
       }
     }
-  }, [user, state.isRefreshing, state.isOnline]);
+  }, [user, state.isRefreshing, state.isOnline, showToast]);
 
   // Auto-refresh data every 5 minutes
   useEffect(() => {
@@ -245,27 +265,6 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     // 
     // return () => ws.close();
   }, [user, state.isOnline]);
-
-  // Toast management
-  const showToast = useCallback((
-    message: string, 
-    type: 'success' | 'error' | 'warning' | 'info' = 'info'
-  ) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const newToast: Toast = {
-      id,
-      message,
-      type,
-      timestamp: new Date()
-    };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    // Auto-remove toast after 5 seconds
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, 5000);
-  }, []);
 
   // Context value
   const contextValue: LayoutContextType = {
@@ -419,8 +418,7 @@ export function DashboardHeader() {
   const { 
     toggleSidebar, 
     theme, 
-    toggleTheme, 
-    notifications, 
+    toggleTheme,
     emergencyAlerts,
     isOnline,
     lastUpdated 

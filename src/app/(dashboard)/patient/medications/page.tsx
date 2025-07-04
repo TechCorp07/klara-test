@@ -1,11 +1,11 @@
 // src/app/(dashboard)/patient/medications/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePatientMedications } from '@/hooks/patient/usePatientMedications';
 import { Spinner } from '@/components/ui/spinner';
-import type { Prescription, MedicationAdherence } from '@/types/patient.types';
+import type { Prescription } from '@/types/patient.types';
 
 interface MedicationFilters {
   status: string;
@@ -18,9 +18,9 @@ export default function MedicationsPage() {
   const { medications, todaySchedule, loading, error, refetch, markDoseAsTaken, getMedicationAdherence } = usePatientMedications();
   
   const [activeTab, setActiveTab] = useState<'current' | 'schedule' | 'history'>('current');
-  const [selectedMedication, setSelectedMedication] = useState<Prescription | null>(null);
+  const [, setSelectedMedication] = useState<Prescription | null>(null);
   const [showReminderModal, setShowReminderModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  //const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [filters, setFilters] = useState<MedicationFilters>({
     status: 'active',
@@ -161,7 +161,7 @@ export default function MedicationsPage() {
             ].map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
+                onClick={() => setActiveTab(tab.key as 'current' | 'schedule' | 'history')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.key
                     ? 'border-blue-500 text-blue-600'
@@ -181,9 +181,9 @@ export default function MedicationsPage() {
           {/* Today's Progress */}
           {todayMedicationsWithSchedule.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Progress</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Today&apos;s Progress</h3>
               <div className="space-y-4">
-                {todayMedicationsWithSchedule.map(({ prescription, scheduled_times, adherence_data, adherence }) => {
+                {todayMedicationsWithSchedule.map(({ prescription, adherence_data }) => {
                   const takenCount = adherence_data.filter(d => d.taken).length;
                   const totalCount = adherence_data.length;
                   const progressPercent = totalCount > 0 ? (takenCount / totalCount) * 100 : 0;

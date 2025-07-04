@@ -68,22 +68,38 @@ export const usePatientProfile = (): UsePatientProfileReturn => {
 
       // Extract preferences from profile if they exist
       if (profileResponse.communication_preferences || profileResponse.privacy_settings) {
+        const defaultCommunication = {
+          preferred_contact_method: 'email' as 'email' | 'phone' | 'sms' | 'portal',
+          appointment_reminders: true,
+          medication_reminders: true,
+          lab_result_notifications: true,
+          marketing_communications: false,
+          research_invitations: false,
+          email_reminders: true,
+          sms_reminders: true,
+          phone_calls: false,
+        };
+        
+        const defaultPrivacy = {
+          share_with_family: false,
+          research_participation: false,
+          marketing_communications: false,
+          share_data_for_research: false,
+          allow_family_access: false,
+          directory_listing: false,
+          photo_consent: false,
+        };
+        
         setPreferences({
           id: profileResponse.id,
           patient: profileResponse.id,
-          communication: profileResponse.communication_preferences || {
-            preferred_contact_method: 'email',
-            appointment_reminders: true,
-            medication_reminders: true,
-            lab_result_notifications: true,
-            marketing_communications: false,
-            research_invitations: false,
+          communication: {
+            ...defaultCommunication,
+            ...profileResponse.communication_preferences,
           },
-          privacy: profileResponse.privacy_settings || {
-            share_data_for_research: false,
-            allow_family_access: false,
-            directory_listing: false,
-            photo_consent: false,
+          privacy: {
+            ...defaultPrivacy,
+            ...profileResponse.privacy_settings,
           },
           accessibility: {
             large_text: false,
@@ -256,7 +272,7 @@ export const usePatientProfile = (): UsePatientProfileReturn => {
 
     if (!profileData.emergency_contact_phone?.trim()) {
       errors.emergency_contact_phone = 'Emergency contact phone is required';
-    } else if (!/^\+?[\d\s\-\(\)]{10,}$/.test(profileData.emergency_contact_phone)) {
+    } else if (!/^\+?[\d\s\-()]{10,}$/.test(profileData.emergency_contact_phone)) {
       errors.emergency_contact_phone = 'Invalid phone number format';
     }
 
@@ -308,10 +324,10 @@ export const usePatientProfile = (): UsePatientProfileReturn => {
 
     allFields.forEach(field => {
       const fieldPath = field.split('.');
-      let value: any = profile;
+      let value: unknown = profile;
       
       for (const path of fieldPath) {
-        value = value?.[path];
+        value = (value as Record<string, unknown>)?.[path];
       }
 
       if (value && value.toString().trim()) {

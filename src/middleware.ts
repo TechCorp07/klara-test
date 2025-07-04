@@ -30,7 +30,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
      '/telemedicine', '/research', '/clinical-trials', '/medications'],
   provider: ['/dashboard/provider', '/profile', '/settings', '/settings/password',
      '/messages', '/clinical-trials', '/patients',
-      '/health-records', '/appointments', '/telemedicine', 
+      '/health-records', '/appointments', '/telemedicine', '/dashboard/provider/emergency-access', 
       '/medications'],
   admin: ['/dashboard/admin', '/profile', '/settings', '/settings/password',
      '/messages', '/users', '/reports', '/admin',
@@ -44,7 +44,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
   superadmin: ['/dashboard/admin', '/dashboard/patient', '/dashboard/provider', '/dashboard/pharmco', '/dashboard/caregiver', '/dashboard/researcher', '/dashboard/compliance'],
   compliance: ['/dashboard/compliance', '/profile', '/settings', '/settings/password',
-    '/messages', '/audit-logs', '/emergency-access', '/consent-management',
+    '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/dashboard/compliance/emergency-access',
     '/reports', '/compliance'],
 };
 

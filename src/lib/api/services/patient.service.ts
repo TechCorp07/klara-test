@@ -1,5 +1,6 @@
 // src/lib/api/services/patient.service.ts
 
+import { DashboardResponse, HealthRecord } from '@/hooks/patient/types';
 import { apiClient } from '../client';
 import type {
   PatientProfile,
@@ -16,29 +17,16 @@ import type {
   PatientDashboardStats,
   HealthAlert,
   PatientPreferences,
+  ResearchParticipation,
+  PaginatedResponse,
+  Message,
+  SendMessageResponse,
+  Study,
+  LogMedicationTakenPayload,
+  ConnectedDevice,
+  BillingStatement,
+  AutoPayResponse,
 } from '@/types/patient.types';
-
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
-
-export interface DashboardResponse {
-  stats: PatientDashboardStats;
-  recent_vitals: VitalSigns[];
-  upcoming_appointments: Appointment[];
-  active_medications: Prescription[];
-  pending_results: LabResult[];
-  health_alerts: HealthAlert[];
-  care_gaps: Array<{
-    type: string;
-    description: string;
-    priority: 'low' | 'medium' | 'high';
-    action_url?: string;
-  }>;
-}
 
 class PatientService {
   // Dashboard Overview
@@ -130,14 +118,8 @@ class PatientService {
     return response.data;
   }
 
-  async logMedicationTaken(data: {
-    prescription: number;
-    scheduled_time: string;
-    taken_time: string;
-    taken: boolean;
-    notes?: string;
-  }): Promise<MedicationAdherence> {
-    const response = await apiClient.post('/patient/medication-adherence/', data);
+  async logMedicationTaken(payload: LogMedicationTakenPayload): Promise<MedicationAdherence> {
+    const response = await apiClient.post('/patient/medication-adherence/', payload);
     return response.data;
   }
 
@@ -228,12 +210,12 @@ class PatientService {
     provider?: number;
     limit?: number;
     offset?: number;
-  }): Promise<PaginatedResponse<any>> {
+  }): Promise<PaginatedResponse<HealthRecord>> {
     const response = await apiClient.get('/patient/health-records/', { params });
     return response.data;
   }
 
-  async getHealthRecord(id: number): Promise<any> {
+  async getHealthRecord(id: number): Promise<HealthRecord> {
     const response = await apiClient.get(`/patient/health-records/${id}/`);
     return response.data;
   }
@@ -394,7 +376,7 @@ class PatientService {
     unread?: boolean;
     limit?: number;
     offset?: number;
-  }): Promise<PaginatedResponse<any>> {
+  }): Promise<PaginatedResponse<Message>> {
     const response = await apiClient.get('/patient/messages/', { params });
     return response.data;
   }
@@ -405,7 +387,7 @@ class PatientService {
     message: string;
     priority?: 'low' | 'normal' | 'high';
     attachments?: File[];
-  }): Promise<any> {
+  }): Promise<SendMessageResponse> {
     const formData = new FormData();
     formData.append('recipient', data.recipient.toString());
     formData.append('subject', data.subject);
@@ -438,7 +420,7 @@ class PatientService {
     location?: string;
     limit?: number;
     offset?: number;
-  }): Promise<PaginatedResponse<any>> {
+  }): Promise<PaginatedResponse<Study>> {
     const response = await apiClient.get('/patient/research/studies/', { params });
     return response.data;
   }
@@ -447,13 +429,13 @@ class PatientService {
     await apiClient.post(`/patient/research/studies/${studyId}/interest/`, { notes });
   }
 
-  async getResearchParticipation(): Promise<any[]> {
+  async getResearchParticipation(): Promise<ResearchParticipation[]> {
     const response = await apiClient.get('/patient/research/participation/');
     return response.data;
   }
 
   // Wearable Device Integration
-  async getConnectedDevices(): Promise<any[]> {
+  async getConnectedDevices(): Promise<ConnectedDevice[]> {
     const response = await apiClient.get('/patient/devices/');
     return response.data;
   }
@@ -463,7 +445,7 @@ class PatientService {
     device_id: string;
     manufacturer: string;
     model: string;
-  }): Promise<any> {
+  }): Promise<ConnectedDevice> {
     const response = await apiClient.post('/patient/devices/', data);
     return response.data;
   }
@@ -483,7 +465,7 @@ class PatientService {
     status?: string;
     limit?: number;
     offset?: number;
-  }): Promise<PaginatedResponse<any>> {
+  }): Promise<PaginatedResponse<BillingStatement>> {
     const response = await apiClient.get('/patient/billing/', { params });
     return response.data;
   }
@@ -492,7 +474,7 @@ class PatientService {
     statement_id: number;
     amount: number;
     payment_method: string;
-  }): Promise<any> {
+  }): Promise<PaymentResponse> {
     const response = await apiClient.post('/patient/billing/payments/', data);
     return response.data;
   }
@@ -500,7 +482,7 @@ class PatientService {
   async setupAutoPay(data: {
     payment_method: string;
     enabled: boolean;
-  }): Promise<any> {
+  }): Promise<AutoPayResponse> {
     const response = await apiClient.post('/patient/billing/autopay/', data);
     return response.data;
   }

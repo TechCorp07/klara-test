@@ -194,7 +194,7 @@ export const MedicationTracker: React.FC = () => {
             {/* Today's Doses Summary */}
             {todayDoses.length > 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">Today's Doses</h4>
+                <h4 className="text-sm font-medium text-blue-900 mb-2">Today&apos;s Doses</h4>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-blue-700">
                     {todayDoses.filter(d => d.taken).length} of {todayDoses.length} doses taken
@@ -237,7 +237,7 @@ export const MedicationTracker: React.FC = () => {
                   {/* Today's doses for this medication */}
                   {medicationDoses.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-gray-700">Today's Schedule:</p>
+                      <p className="text-xs font-medium text-gray-700">Today&apos;s Schedule:</p>
                       {medicationDoses.map((dose, index) => {
                         const isOverdue = !dose.taken && isDoseOverdue(dose.scheduled_time);
                         

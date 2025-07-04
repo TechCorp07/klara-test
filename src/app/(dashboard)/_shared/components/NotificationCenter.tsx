@@ -1,7 +1,7 @@
 // src/app/(dashboard)/_shared/components/NotificationCenter.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/use-auth';
 
 interface Notification {
@@ -22,15 +22,7 @@ export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      // In real implementation, set up WebSocket connection for real-time notifications
-      // setupWebSocketConnection(user.id);
-    }
-  }, [user]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     // In real implementation, this would fetch from /api/notifications/
     const mockNotifications: Notification[] = [
       {
@@ -67,7 +59,7 @@ export default function NotificationCenter() {
         actionText: 'Verify Now'
       }
     ];
-
+    
     // Filter notifications based on user role
     const filteredNotifications = mockNotifications.filter(notification => {
       switch (user?.role) {
@@ -86,7 +78,15 @@ export default function NotificationCenter() {
 
     setNotifications(filteredNotifications);
     setUnreadCount(filteredNotifications.filter(n => !n.read).length);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      // In real implementation, set up WebSocket connection for real-time notifications
+      // setupWebSocketConnection(user.id);
+    }
+  }, [user, fetchNotifications]);
 
   const markAsRead = async (notificationId: string) => {
     // In real implementation, this would call /api/notifications/{id}/mark-read/

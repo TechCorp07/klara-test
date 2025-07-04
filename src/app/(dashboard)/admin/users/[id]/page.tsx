@@ -1,12 +1,12 @@
 // src/app/(dashboard)/admin/users/[id]/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { apiClient } from '@/lib/api/client';
-import { FormButton } from '@/components/ui/form-button';
+import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
 
 interface UserDetail {
@@ -49,7 +49,7 @@ interface UserDetail {
     timestamp: string;
     ip_address?: string;
     user_agent?: string;
-    details?: any;
+    details?: Record<string, unknown>;
   }>;
   emergency_access_events?: Array<{
     id: string;
@@ -85,6 +85,8 @@ export default function AdminUserDetailPage() {
   );
 }
 
+type TabId = 'profile' | 'security' | 'compliance' | 'actions';
+
 function UserDetailInterface() {
   const { permissions } = usePermissions();
   const params = useParams();
@@ -97,17 +99,13 @@ function UserDetailInterface() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'compliance' | 'actions'>('profile');
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [actionNote, setActionNote] = useState('');
 
   const canManageUsers = permissions?.has_user_management_access || false;
   const canViewCompliance = permissions?.has_audit_access || false;
 
-  useEffect(() => {
-    fetchUserDetail();
-  }, [userId]);
-
-  const fetchUserDetail = async () => {
+  const fetchUserDetail = useCallback(async () => {
     try {
       const response = await apiClient.get(`/api/admin/users/${userId}/`);
       setUser(response.data);
@@ -117,16 +115,28 @@ function UserDetailInterface() {
         const logsResponse = await apiClient.get(`/api/admin/users/${userId}/action-logs/`);
         setActionLogs(logsResponse.data.results || []);
       }
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        setError('User not found');
+    } catch (error: unknown) {
+      // Type guard to check if error is an object with expected properties
+      if (error && typeof error === 'object' && 'response' in error && 
+          error.response && typeof error.response === 'object' && 'status' in error.response) {
+        if (error.response.status === 404) {
+          setError('User not found');
+        } else {
+          setError('Failed to load user details');
+        }
       } else {
-        setError('Failed to load user details');
+        // Handle unexpected error format
+        setError('An unexpected error occurred');
+        console.error(error);
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId, canViewCompliance, setUser, setActionLogs, setError, setIsLoading]);
+
+  useEffect(() => {
+    fetchUserDetail();
+  }, [fetchUserDetail]);
 
   const handleUserAction = async (action: string) => {
     if (!canManageUsers || !user) return;
@@ -142,8 +152,15 @@ function UserDetailInterface() {
       setSuccess(`User ${action}d successfully`);
       setActionNote('');
       fetchUserDetail(); // Refresh data
-    } catch (error: any) {
-      setError(error.response?.data?.detail || `Failed to ${action} user`);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error &&
+          error.response && typeof error.response === 'object' && 
+          'data' in error.response && error.response.data && 
+          typeof error.response.data === 'object' && 'detail' in error.response.data) {
+        setError(error.response.data.detail as string);
+      } else {
+        setError(`Failed to ${action} user`);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -158,8 +175,15 @@ function UserDetailInterface() {
         window.open(response.data.redirect_url, '_blank');
         setSuccess('User impersonation session started');
       }
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to start impersonation');
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error &&
+          error.response && typeof error.response === 'object' && 
+          'data' in error.response && error.response.data && 
+          typeof error.response.data === 'object' && 'detail' in error.response.data) {
+        setError(error.response.data.detail as string);
+      } else {
+        setError('Failed to start impersonation');
+      }
     }
   };
 
@@ -179,7 +203,7 @@ function UserDetailInterface() {
       window.URL.revokeObjectURL(url);
 
       setSuccess('User data exported successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       setError('Failed to export user data');
     }
   };
@@ -221,7 +245,7 @@ function UserDetailInterface() {
       <div className="flex flex-col items-center justify-center h-96 text-center">
         <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded max-w-md">
           <h3 className="font-bold mb-2">🚫 Insufficient Permissions</h3>
-          <p className="mb-4">You don't have permission to view user details.</p>
+          <p className="mb-4">You don&apos;t have permission to view user details.</p>
           <p className="text-sm">Required: User management or audit access</p>
         </div>
       </div>
@@ -424,7 +448,7 @@ function UserDetailInterface() {
             {tabs.filter(tab => !tab.restricted).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as TabId)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
@@ -559,9 +583,10 @@ function UserDetailInterface() {
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Verification Status</dt>
                         <dd className="text-sm">
-                          {user.profile.days_until_verification_required <= 0 ? (
+                        const days = user.profile.days_until_verification_required;
+                          {user.profile.days_until_verification_required !== undefined && user.profile.days_until_verification_required <= 0 ? (
                             <span className="text-red-600">Verification overdue</span>
-                          ) : user.profile.days_until_verification_required <= 7 ? (
+                          ) : (user.profile.days_until_verification_required ?? Infinity) <= 7 ? (
                             <span className="text-yellow-600">Due in {user.profile.days_until_verification_required} days</span>
                           ) : (
                             <span className="text-green-600">Up to date</span>

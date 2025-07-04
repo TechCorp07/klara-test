@@ -4,6 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { patientService } from '@/lib/api/services/patient.service';
 import type { Appointment } from '@/types/patient.types';
 
+export interface ScheduleAppointmentPayload {
+  provider: number;
+  appointment_type: string;
+  visit_type: string;
+  preferred_datetime: string;
+  reason_for_visit: string;
+  symptoms?: string;
+  urgency: string;
+}
+
 interface UsePatientAppointmentsOptions {
   status?: string;
   appointmentType?: string;
@@ -24,7 +34,7 @@ interface UsePatientAppointmentsReturn {
   // Actions
   refetch: () => Promise<void>;
   loadMore: () => Promise<void>;
-  scheduleAppointment: (appointmentData: any) => Promise<Appointment>;
+  scheduleAppointment: (appointmentData: ScheduleAppointmentPayload) => Promise<Appointment>;
   cancelAppointment: (id: number, reason?: string) => Promise<void>;
   rescheduleAppointment: (id: number, newDateTime: string) => Promise<Appointment>;
   // Filters
@@ -48,7 +58,7 @@ export const usePatientAppointments = (
       if (!append) setLoading(true);
       setError(null);
 
-      const params: any = {
+      const params: Record<string, string | number | boolean | undefined> = {
         limit: filters.limit || 10,
         offset: append ? appointments.length : 0,
       };
@@ -99,11 +109,12 @@ export const usePatientAppointments = (
       await fetchAppointments(true);
     }
   }, [hasMore, loading, fetchAppointments]);
-
+  
   // Schedule new appointment
-  const scheduleAppointment = useCallback(async (appointmentData: any) => {
-    try {
-      const newAppointment = await patientService.scheduleAppointment(appointmentData);
+  const scheduleAppointment = useCallback(
+    async (appointmentData: ScheduleAppointmentPayload) => {
+      try {
+        const newAppointment = await patientService.scheduleAppointment(appointmentData);
       
       // Add to local state if it matches current filters
       const shouldInclude = (

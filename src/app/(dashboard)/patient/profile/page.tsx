@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { usePatientProfile } from '@/hooks/patient/usePatientProfile';
 import { FormInput, FormButton, FormAlert } from '@/components/ui/common';
 import { Spinner } from '@/components/ui/spinner';
-import type { PatientProfile, PatientPreferences, EmergencyContact } from '@/types/patient.types';
+import type { EmergencyContact } from '@/types/patient.types';
 
 // Validation schemas
 const profileSchema = z.object({
@@ -47,7 +47,7 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 type EmergencyContactFormData = z.infer<typeof emergencyContactSchema>;
 
 export default function PatientProfilePage() {
-  const { profile, preferences, loading, error, updateProfile, updatePreferences } = usePatientProfile();
+  const { profile, loading, error, updateProfile, updatePreferences } = usePatientProfile();
   
   const [activeTab, setActiveTab] = useState<'personal' | 'emergency' | 'preferences' | 'privacy'>('personal');
   const [isEditing, setIsEditing] = useState(false);
@@ -60,7 +60,7 @@ export default function PatientProfilePage() {
   });
 
   // Emergency contact form
-  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [emergencyContacts, ] = useState<EmergencyContact[]>([]);
   const [editingContactId, setEditingContactId] = useState<number | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
 
@@ -72,8 +72,20 @@ export default function PatientProfilePage() {
     },
   });
 
-  // Communication preferences
-  const [communicationPrefs, setCommunicationPrefs] = useState({
+  type PreferredContactMethod = "email" | "phone" | "sms" | "portal";
+
+  const [communicationPrefs, setCommunicationPrefs] = useState<{
+    preferred_contact_method: PreferredContactMethod;
+    email_reminders: boolean;
+    sms_reminders: boolean;
+    phone_calls: boolean;
+    appointment_reminders: boolean;
+    medication_reminders: boolean;
+    lab_result_notifications: boolean;
+    marketing_communications: boolean;
+    research_invitations: boolean;
+  }>({
+    preferred_contact_method: "email",
     email_reminders: true,
     sms_reminders: true,
     phone_calls: false,
@@ -94,6 +106,11 @@ export default function PatientProfilePage() {
     share_data_for_research: false,
     allow_family_access: false,
   });
+
+  type Preferences = {
+    communication: typeof communicationPrefs;
+    privacy: typeof privacySettings;
+  };
 
   // Load profile data
   useEffect(() => {
@@ -122,7 +139,13 @@ export default function PatientProfilePage() {
   const onSubmitProfile = async (data: ProfileFormData) => {
     try {
       setSaveError(null);
-      await updateProfile(data);
+      await updateProfile({
+        ...data,
+        user: {
+          ...data.user,
+          id: profile?.user.id ?? 0, // fallback to 0 if not available
+        },
+      });
       setSaveMessage('Profile updated successfully');
       setIsEditing(false);
       setTimeout(() => setSaveMessage(null), 3000);
@@ -154,7 +177,7 @@ export default function PatientProfilePage() {
       await updatePreferences({
         communication: communicationPrefs,
         privacy: privacySettings,
-      } as any);
+      } as Preferences);
       setSaveMessage('Preferences updated successfully');
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err) {
@@ -212,7 +235,7 @@ export default function PatientProfilePage() {
             ].map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
+                onClick={() => setActiveTab(tab.key as 'personal' | 'emergency' | 'preferences' | 'privacy')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.key
                     ? 'border-blue-500 text-blue-600'
@@ -245,38 +268,43 @@ export default function PatientProfilePage() {
               <h3 className="text-md font-medium text-gray-900 mb-4">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormInput
+                  id="user_first_name"
                   label="First Name"
                   type="text"
                   {...profileForm.register('user.first_name')}
-                  error={profileForm.formState.errors.user?.first_name?.message}
+                  error={profileForm.formState.errors.user?.first_name}
                   disabled={!isEditing}
                 />
                 <FormInput
+                  id="user_last_name"
                   label="Last Name"
                   type="text"
                   {...profileForm.register('user.last_name')}
-                  error={profileForm.formState.errors.user?.last_name?.message}
+                  error={profileForm.formState.errors.user?.last_name}
                   disabled={!isEditing}
                 />
                 <FormInput
+                  id="user_email"
                   label="Email"
                   type="email"
                   {...profileForm.register('user.email')}
-                  error={profileForm.formState.errors.user?.email?.message}
+                  error={profileForm.formState.errors.user?.email}
                   disabled={!isEditing}
                 />
                 <FormInput
+                  id="user_phone_number"
                   label="Phone Number"
                   type="tel"
                   {...profileForm.register('user.phone_number')}
-                  error={profileForm.formState.errors.user?.phone_number?.message}
+                  error={profileForm.formState.errors.user?.phone_number}
                   disabled={!isEditing}
                 />
                 <FormInput
+                  id="date_of_birth"
                   label="Date of Birth"
                   type="date"
                   {...profileForm.register('date_of_birth')}
-                  error={profileForm.formState.errors.date_of_birth?.message}
+                  error={profileForm.formState.errors.date_of_birth}
                   disabled={!isEditing}
                 />
                 <div>
@@ -303,32 +331,36 @@ export default function PatientProfilePage() {
               <h3 className="text-md font-medium text-gray-900 mb-4">Address</h3>
               <div className="space-y-4">
                 <FormInput
+                  id="address"
                   label="Street Address"
                   type="text"
                   {...profileForm.register('address')}
-                  error={profileForm.formState.errors.address?.message}
+                  error={profileForm.formState.errors.address}
                   disabled={!isEditing}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormInput
+                    id="city"
                     label="City"
                     type="text"
                     {...profileForm.register('city')}
-                    error={profileForm.formState.errors.city?.message}
+                    error={profileForm.formState.errors.city}
                     disabled={!isEditing}
                   />
                   <FormInput
+                    id="state"
                     label="State"
                     type="text"
                     {...profileForm.register('state')}
-                    error={profileForm.formState.errors.state?.message}
+                    error={profileForm.formState.errors.state}
                     disabled={!isEditing}
                   />
                   <FormInput
+                    id="zip_code"
                     label="ZIP Code"
                     type="text"
                     {...profileForm.register('zip_code')}
-                    error={profileForm.formState.errors.zip_code?.message}
+                    error={profileForm.formState.errors.zip_code}
                     disabled={!isEditing}
                   />
                 </div>
@@ -340,24 +372,27 @@ export default function PatientProfilePage() {
               <h3 className="text-md font-medium text-gray-900 mb-4">Healthcare Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormInput
+                  id="primary_care_provider"
                   label="Primary Care Provider"
                   type="text"
                   {...profileForm.register('primary_care_provider')}
-                  error={profileForm.formState.errors.primary_care_provider?.message}
+                  error={profileForm.formState.errors.primary_care_provider}
                   disabled={!isEditing}
                 />
                 <FormInput
+                  id="insurance_provider"
                   label="Insurance Provider"
                   type="text"
                   {...profileForm.register('insurance_provider')}
-                  error={profileForm.formState.errors.insurance_provider?.message}
+                  error={profileForm.formState.errors.insurance_provider}
                   disabled={!isEditing}
                 />
                 <FormInput
+                  id="insurance_policy_number"
                   label="Insurance Policy Number"
                   type="text"
                   {...profileForm.register('insurance_policy_number')}
-                  error={profileForm.formState.errors.insurance_policy_number?.message}
+                  error={profileForm.formState.errors.insurance_policy_number}
                   disabled={!isEditing}
                 />
                 <div>
@@ -389,7 +424,7 @@ export default function PatientProfilePage() {
                 </button>
                 <FormButton
                   type="submit"
-                  loading={profileForm.formState.isSubmitting}
+                  isLoading={profileForm.formState.isSubmitting}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
                 >
                   Save Changes
@@ -423,43 +458,49 @@ export default function PatientProfilePage() {
               <form onSubmit={emergencyForm.handleSubmit(onSubmitEmergencyContact)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormInput
+                    id="emergency_contact_name"
                     label="Full Name"
                     type="text"
                     {...emergencyForm.register('name')}
-                    error={emergencyForm.formState.errors.name?.message}
+                    error={emergencyForm.formState.errors.name}
                   />
                   <FormInput
+                    id="emergency_contact_relationship"
                     label="Relationship"
                     type="text"
                     placeholder="e.g., Spouse, Parent, Sibling"
                     {...emergencyForm.register('relationship')}
-                    error={emergencyForm.formState.errors.relationship?.message}
+                    error={emergencyForm.formState.errors.relationship}
                   />
                   <FormInput
+                    id="emergency_contact_phone_primary"
                     label="Primary Phone"
                     type="tel"
                     {...emergencyForm.register('phone_primary')}
-                    error={emergencyForm.formState.errors.phone_primary?.message}
+                    error={emergencyForm.formState.errors.phone_primary}
                   />
                   <FormInput
+                    id="emergency_contact_phone_secondary"
                     label="Secondary Phone (Optional)"
                     type="tel"
                     {...emergencyForm.register('phone_secondary')}
-                    error={emergencyForm.formState.errors.phone_secondary?.message}
+                    error={emergencyForm.formState.errors.phone_secondary}
                   />
                   <FormInput
+                    id="emergency_contact_email"
                     label="Email (Optional)"
                     type="email"
                     {...emergencyForm.register('email')}
-                    error={emergencyForm.formState.errors.email?.message}
+                    error={emergencyForm.formState.errors.email}
                   />
                 </div>
                 
                 <FormInput
+                  id="emergency_contact_address"
                   label="Address (Optional)"
                   type="text"
                   {...emergencyForm.register('address')}
-                  error={emergencyForm.formState.errors.address?.message}
+                  error={emergencyForm.formState.errors.address}
                 />
 
                 <div className="space-y-3">
@@ -500,7 +541,7 @@ export default function PatientProfilePage() {
                   </button>
                   <FormButton
                     type="submit"
-                    loading={emergencyForm.formState.isSubmitting}
+                    isLoading={emergencyForm.formState.isSubmitting}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
                   >
                     Save Contact
@@ -521,7 +562,7 @@ export default function PatientProfilePage() {
                 <p className="text-sm text-gray-400 mt-1">Add emergency contacts for peace of mind</p>
               </div>
             ) : (
-              emergencyContacts.map((contact, index) => (
+              emergencyContacts.map((contact) => (
                 <div key={contact.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -590,7 +631,9 @@ export default function PatientProfilePage() {
                   <div key={item.key} className="flex items-start">
                     <input
                       type="checkbox"
-                      checked={communicationPrefs[item.key as keyof typeof communicationPrefs]}
+                      checked={typeof communicationPrefs[item.key as keyof typeof communicationPrefs] === 'boolean'
+                        ? communicationPrefs[item.key as keyof typeof communicationPrefs] as boolean
+                        : false}
                       onChange={(e) => setCommunicationPrefs(prev => ({
                         ...prev,
                         [item.key]: e.target.checked
@@ -620,7 +663,8 @@ export default function PatientProfilePage() {
                   <div key={item.key} className="flex items-start">
                     <input
                       type="checkbox"
-                      checked={communicationPrefs[item.key as keyof typeof communicationPrefs]}
+                      checked={typeof communicationPrefs[item.key as keyof typeof communicationPrefs] === 
+                        'boolean'? communicationPrefs[item.key as keyof typeof communicationPrefs] as boolean: false}
                       onChange={(e) => setCommunicationPrefs(prev => ({
                         ...prev,
                         [item.key]: e.target.checked

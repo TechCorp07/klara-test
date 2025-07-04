@@ -5,65 +5,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { patientService } from '@/lib/api/services/patient.service';
 import { Spinner } from '@/components/ui/spinner';
-
-interface ClinicalStudy {
-  id: number;
-  title: string;
-  description: string;
-  phase: 'I' | 'II' | 'III' | 'IV' | 'Observational';
-  status: 'recruiting' | 'active' | 'completed' | 'suspended' | 'terminated';
-  sponsor: {
-    name: string;
-    type: 'academic' | 'industry' | 'government';
-  };
-  principal_investigator: {
-    name: string;
-    affiliation: string;
-  };
-  condition: string;
-  intervention_type: 'drug' | 'device' | 'behavioral' | 'procedure' | 'other';
-  intervention_name: string;
-  duration_weeks: number;
-  location: {
-    city: string;
-    state: string;
-    facility: string;
-  };
-  eligibility_criteria: {
-    min_age: number;
-    max_age: number;
-    gender: 'all' | 'male' | 'female';
-    conditions: string[];
-    exclusions: string[];
-  };
-  compensation: {
-    provided: boolean;
-    amount?: number;
-    description?: string;
-  };
-  estimated_enrollment: number;
-  start_date: string;
-  completion_date: string;
-  contact_info: {
-    name: string;
-    phone: string;
-    email: string;
-  };
-  nct_number?: string; // ClinicalTrials.gov identifier
-  irb_approved: boolean;
-  user_interested: boolean;
-  user_eligible: boolean | null; // null = not assessed yet
-}
-
-interface ResearchParticipation {
-  id: number;
-  study: ClinicalStudy;
-  status: 'interested' | 'screening' | 'enrolled' | 'completed' | 'withdrawn';
-  enrolled_date?: string;
-  completion_date?: string;
-  withdrawal_reason?: string;
-  notes?: string;
-}
+import { ClinicalStudy, ResearchParticipation } from '@/types/patient.types';
 
 interface StudyFilters {
   condition: string;
@@ -109,7 +51,8 @@ export default function ResearchParticipationPage() {
           patientService.getResearchParticipation(),
         ]);
 
-        setAvailableStudies(studiesResponse.results || []);
+        // Map the API response to match the ClinicalStudy type
+        setAvailableStudies((studiesResponse.results || []).map(study => study as unknown as ClinicalStudy));
         setMyParticipation(participationResponse || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load research data');
@@ -297,7 +240,7 @@ export default function ResearchParticipationPage() {
             ].map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
+                onClick={() => setActiveTab(tab.key as 'available' | 'my_studies' | 'completed')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.key
                     ? 'border-blue-500 text-blue-600'

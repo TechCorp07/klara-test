@@ -17,7 +17,7 @@ import type {
     recent_vitals: VitalSigns[];
     upcoming_appointments: Appointment[];
     active_medications: Prescription[];
-    pending_results: any[];
+    pending_results: HealthRecord[];
     health_alerts: HealthAlert[];
     care_gaps: Array<{
       type: string;
@@ -77,7 +77,7 @@ import type {
     totalCount: number;
     refetch: () => Promise<void>;
     loadMore: () => Promise<void>;
-    scheduleAppointment: (appointmentData: any) => Promise<Appointment>;
+    scheduleAppointment: (appointmentData: Partial<Appointment>) => Promise<Appointment>;
     cancelAppointment: (id: number, reason?: string) => Promise<void>;
     rescheduleAppointment: (id: number, newDateTime: string) => Promise<Appointment>;
     setFilters: (filters: Partial<UsePatientAppointmentsOptions>) => void;
@@ -179,7 +179,7 @@ import type {
     downloadRecord: (recordId: number) => Promise<void>;
     requestRecords: (requestData: RecordRequest) => Promise<RecordRequestResponse>;
     shareRecord: (recordId: number, recipientEmail: string, message?: string) => Promise<void>;
-    setFilters: (filters: any) => void;
+    setFilters: (filters: Partial<RecordRequest>) => void;
     clearFilters: () => void;
     searchRecords: (query: string) => void;
     getRecordsByType: (type: string) => HealthRecord[];

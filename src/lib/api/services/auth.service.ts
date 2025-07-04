@@ -721,6 +721,16 @@ export const authService = {
     return response.data;
   },
 
+  requestPhoneVerification: async (phoneNumber: string): Promise<{ detail: string }> => {
+    const response = await apiClient.post(ENDPOINTS.AUTH.REQUEST_PHONE_VERIFICATION, { phone_number: phoneNumber });
+    return response.data;
+  },
+
+  verifyPhoneNumber: async (data: { phone_number: string; otp: string }): Promise<{ detail: string }> => {
+    const response = await apiClient.post(ENDPOINTS.AUTH.VERIFY_PHONE, data);
+    return response.data;
+  },
+
   /**
    * Email verification with token
    */

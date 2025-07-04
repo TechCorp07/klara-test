@@ -2,9 +2,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { UseFormRegister, FieldError } from 'react-hook-form';
+import { FieldError, UseFormRegister, FieldValues } from 'react-hook-form';
 
-// Base form input with patient-specific styling
 interface PatientFormInputProps {
   label: string;
   name: string;
@@ -15,7 +14,7 @@ interface PatientFormInputProps {
   error?: FieldError;
   helpText?: string;
   icon?: React.ReactNode;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 
@@ -82,7 +81,7 @@ interface PatientFormSelectProps {
   disabled?: boolean;
   error?: FieldError;
   helpText?: string;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 
@@ -146,7 +145,7 @@ interface PatientFormTextareaProps {
   error?: FieldError;
   helpText?: string;
   maxLength?: number;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 
@@ -221,7 +220,7 @@ interface PatientFormCheckboxProps {
   required?: boolean;
   disabled?: boolean;
   error?: FieldError;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 
@@ -271,7 +270,7 @@ interface PatientFormRadioGroupProps {
   required?: boolean;
   disabled?: boolean;
   error?: FieldError;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 
@@ -334,7 +333,7 @@ interface PatientFormFileUploadProps {
   disabled?: boolean;
   error?: FieldError;
   helpText?: string;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 
@@ -543,7 +542,7 @@ interface HIPAAConsentCheckboxProps {
   name: string;
   required?: boolean;
   error?: FieldError;
-  register?: any;
+  register?: UseFormRegister<FieldValues>;
   className?: string;
 }
 

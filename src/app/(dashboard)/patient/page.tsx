@@ -120,7 +120,7 @@ export default function PatientDashboard() {
           Welcome back, {user?.first_name || 'Patient'}
         </h1>
         <p className="mt-2 text-gray-600">
-          Here's an overview of your health information and upcoming activities.
+          Here&apos;s an overview of your health information and upcoming activities.
         </p>
       </div>
 

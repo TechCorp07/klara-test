@@ -41,7 +41,8 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
   'initiateIdentityVerification' | 
   'completeIdentityVerification' | 
   'getCaregiverRequests' | 
-  'initiateEmergencyAccess'
+  'initiateEmergencyAccess' |
+  'getDashboardStats'
 > {
   // Identity verification methods with proper types (overriding base interface)
   initiateIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; method: string }>;
@@ -769,7 +770,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const getDashboardStats = async (): Promise<DashboardStatsResponse> => {
     setIsLoading(true);
     try {
-      return await authService.getDashboardStats();
+      const stats = await authService.getDashboardStats();
+      return stats as unknown as DashboardStatsResponse;
     } finally {
       setIsLoading(false);
     }

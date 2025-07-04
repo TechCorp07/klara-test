@@ -54,7 +54,7 @@ export default function UserManagementCard() {
       setRecentUsers(recentResponse.data.results || []);
       
       setError(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to fetch user stats:', error);
       setError('Failed to load user statistics');
     } finally {
@@ -77,10 +77,6 @@ export default function UserManagementCard() {
 
   const getRolePercentage = (count: number, total: number) => {
     return total > 0 ? Math.round((count / total) * 100) : 0;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   if (loading) {

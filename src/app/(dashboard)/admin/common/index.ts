@@ -19,10 +19,11 @@ export { DashboardStats } from './DashboardStats';
 export type { DashboardStatsData } from './DashboardStats';
 export { default as DashboardStatsDefault } from './DashboardStats';
 
-// Re-export everything for easy importing
-export default {
+const commonComponents = {
   UserFilters,
   Pagination,
   BulkActions,
   DashboardStats,
 };
+
+export default commonComponents;

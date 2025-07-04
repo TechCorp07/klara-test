@@ -1,6 +1,6 @@
 // src/hooks/patient/usePatientVitals.ts
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { patientService } from '@/lib/api/services/patient.service';
 import type { VitalSigns } from '@/types/patient.types';
 
@@ -87,7 +87,7 @@ export const usePatientVitals = (
   const [filters, setFilters] = useState(options);
 
   // Normal ranges for vitals (could be moved to constants)
-  const normalRanges = {
+  const normalRanges = useMemo(() => ({
     blood_pressure_systolic: { min: 90, max: 120 },
     blood_pressure_diastolic: { min: 60, max: 80 },
     heart_rate: { min: 60, max: 100 },
@@ -95,9 +95,9 @@ export const usePatientVitals = (
     oxygen_saturation: { min: 95, max: 100 },
     respiratory_rate: { min: 12, max: 20 },
     blood_glucose: { min: 70, max: 140 },
-    weight: { min: 0, max: 1000 }, // Very broad range
-    height: { min: 0, max: 300 }, // Very broad range
-  };
+    weight: { min: 0, max: 1000 },
+    height: { min: 0, max: 300 },
+  }), []);
 
   // Fetch vitals data
   const fetchVitals = useCallback(async (append = false) => {
@@ -105,10 +105,10 @@ export const usePatientVitals = (
       if (!append) setLoading(true);
       setError(null);
 
-      const params: any = {
+      const params: Record<string, string | number | undefined> = {
         limit: options.limit || 30,
         offset: append ? vitals.length : 0,
-        ordering: '-recorded_date', // Most recent first
+        ordering: '-recorded_date',
       };
 
       // Apply date range filter
@@ -266,7 +266,7 @@ export const usePatientVitals = (
     setTrends(newTrends);
     setStatistics(newStatistics);
     setAlerts(newAlerts);
-  }, [vitals, filters.vitalTypes]);
+  }, [vitals, filters.vitalTypes, normalRanges]);
 
   // Initial fetch and when filters change
   useEffect(() => {
@@ -344,7 +344,7 @@ export const usePatientVitals = (
     const range = normalRanges[vitalType as keyof typeof normalRanges];
     if (!range) return true;
     return value >= range.min && value <= range.max;
-  }, []);
+  }, [normalRanges]);
 
   // Filter setters
   const setDateRange = useCallback((start: string, end: string) => {

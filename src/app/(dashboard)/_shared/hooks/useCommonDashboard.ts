@@ -1,7 +1,7 @@
 // src/app/(dashboard)/_shared/hooks/useCommonDashboard.ts
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/use-auth';
 
 interface DashboardError {
@@ -37,7 +37,7 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
   });
 
   // Toast state
-  const [toasts, setToasts] = useState<Array<{
+  const [, setToasts] = useState<Array<{
     id: string;
     message: string;
     type: 'success' | 'error' | 'warning' | 'info';
@@ -68,7 +68,7 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
         isLoading: false,
         hasUnreadNotifications: notificationResponse.unread_count > 0,
         emergencyAlerts: emergencyResponse.active_alerts,
-        systemStatus: systemStatusResponse.status,
+        systemStatus: systemStatusResponse.status as 'online' | 'maintenance' | 'degraded',
         lastUpdated: new Date()
       }));
 
@@ -117,6 +117,7 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
       case 'patient':
         // Check for identity verification deadline
         if (user.profile?.days_until_verification_required !== null && 
+            user.profile?.days_until_verification_required !== undefined && 
             user.profile?.days_until_verification_required <= 3) {
           setState(prev => ({
             ...prev,
@@ -227,27 +228,53 @@ export function ToastContainer() {
     }
   };
 
-  return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`px-4 py-3 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ${getToastStyles(toast.type)}`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{toast.message}</span>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="ml-3 text-white hover:text-gray-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
+  // Using React.createElement instead of JSX syntax
+  return React.createElement(
+    'div',
+    { className: 'fixed top-4 right-4 z-50 space-y-2' },
+    toasts.map((toast) => 
+      React.createElement(
+        'div',
+        { 
+          key: toast.id,
+          className: `px-4 py-3 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ${getToastStyles(toast.type)}`
+        },
+        React.createElement(
+          'div',
+          { className: 'flex items-center justify-between' },
+          React.createElement(
+            'span',
+            { className: 'text-sm font-medium' },
+            toast.message
+          ),
+          React.createElement(
+            'button',
+            { 
+              onClick: () => removeToast(toast.id),
+              className: 'ml-3 text-white hover:text-gray-200'
+            },
+            React.createElement(
+              'svg',
+              { 
+                className: 'w-4 h-4',
+                fill: 'none',
+                stroke: 'currentColor',
+                viewBox: '0 0 24 24'
+              },
+              React.createElement(
+                'path',
+                {
+                  strokeLinecap: 'round',
+                  strokeLinejoin: 'round',
+                  strokeWidth: 2,
+                  d: 'M6 18L18 6M6 6l12 12'
+                }
+              )
+            )
+          )
+        )
+      )
+    )
   );
 }
 

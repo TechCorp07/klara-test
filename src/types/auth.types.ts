@@ -14,12 +14,18 @@ export interface User {
   last_name: string;
   role: UserRole;
   email_verified: boolean;
+  phone_verified: boolean;
   two_factor_enabled?: boolean;
   profile_image?: string;
   is_approved?: boolean;
   date_of_birth?: string;
   phone_number?: string;
   date_joined: string;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  profile?: {
+    days_until_verification_required?: number | null; // Add this property
+  };
   patient_profile?: { id: number };
   provider_profile?: { id: number };
   pharmco_profile?: { id: number };
