@@ -72,7 +72,7 @@ function AdminDashboardInterface() {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await apiClient.get('/api/admin/dashboard-overview/');
+      const response = await apiClient.get('/admin/dashboard-overview/');
       setDashboardData(response.data);
       setError(null);
     } catch (error) {

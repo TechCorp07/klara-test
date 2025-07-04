@@ -31,7 +31,7 @@ export const usePermissions = (): PermissionsContextType => {
       setError(null);
 
       // Fetch user permissions from the API
-      const response = await apiClient.get('/api/users/me/permissions/');
+      const response = await apiClient.get('/users/me/permissions/');
       const permissionsData = response.data;
 
       // Create the permissions object based on user role and specific permissions

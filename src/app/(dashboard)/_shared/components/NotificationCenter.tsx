@@ -23,7 +23,7 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = useCallback(async () => {
-    // In real implementation, this would fetch from /api/notifications/
+    // In real implementation, this would fetch from /notifications/
     const mockNotifications: Notification[] = [
       {
         id: '1',
@@ -89,7 +89,7 @@ export default function NotificationCenter() {
   }, [user, fetchNotifications]);
 
   const markAsRead = async (notificationId: string) => {
-    // In real implementation, this would call /api/notifications/{id}/mark-read/
+    // In real implementation, this would call /notifications/{id}/mark-read/
     setNotifications(prev => 
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
@@ -97,7 +97,7 @@ export default function NotificationCenter() {
   };
 
   const markAllAsRead = async () => {
-    // In real implementation, this would call /api/notifications/mark-all-read/
+    // In real implementation, this would call /notifications/mark-all-read/
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
   };

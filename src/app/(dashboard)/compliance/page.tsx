@@ -45,7 +45,7 @@ export default function ComplianceDashboard() {
   }, [user]);
 
   const fetchComplianceData = async () => {
-    // In real implementation, this would call /api/users/compliance/emergency-summary/
+    // In real implementation, this would call /users/compliance/emergency-summary/
     setTimeout(() => {
       const mockStats: ComplianceStats = {
         total_requests: 15,

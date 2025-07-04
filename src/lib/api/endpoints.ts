@@ -260,8 +260,8 @@ export const ENDPOINTS = {
 
   // JWT Token endpoints
   TOKEN: {
-    REFRESH: '/api/token/refresh/',
-    VERIFY: '/api/token/verify/',
+    REFRESH: '/token/refresh/',
+    VERIFY: '/token/verify/',
   },
 
   // System endpoints

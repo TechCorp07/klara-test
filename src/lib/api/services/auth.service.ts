@@ -680,7 +680,7 @@ export const authService = {
    */
   checkApprovalPermissions: async (): Promise<UserPermissions> => {
     try {
-      const response = await apiClient.get('/api/approvals/permissions/');
+      const response = await apiClient.get('/approvals/permissions/');
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;

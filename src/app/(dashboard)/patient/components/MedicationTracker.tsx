@@ -43,7 +43,7 @@ export const MedicationTracker: React.FC = () => {
         setLoading(true);
         
         // Fetch active medications
-        const medicationsResponse = await fetch('/api/medication/medications/?status=active', {
+        const medicationsResponse = await fetch('/medication/medications/?status=active', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ export const MedicationTracker: React.FC = () => {
 
         // Fetch today's doses
         const today = new Date().toISOString().split('T')[0];
-        const dosesResponse = await fetch(`/api/medication/dose-schedules/?date=${today}`, {
+        const dosesResponse = await fetch(`/medication/dose-schedules/?date=${today}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export const MedicationTracker: React.FC = () => {
   // Mark dose as taken
   const markDoseAsTaken = async (medicationId: number, scheduledTime: string) => {
     try {
-      const response = await fetch('/api/medication/dose-logs/', {
+      const response = await fetch('/medication/dose-logs/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

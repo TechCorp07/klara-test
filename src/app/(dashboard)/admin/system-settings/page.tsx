@@ -69,7 +69,7 @@ function SystemSettingsInterface() {
 
   const fetchSettings = async () => {
     try {
-      const response = await apiClient.get('/api/admin/system-settings/');
+      const response = await apiClient.get('/admin/system-settings/');
       setSettings(response.data);
     } catch (error) {
       console.error('Failed to fetch system settings:', error);
@@ -87,7 +87,7 @@ function SystemSettingsInterface() {
     setSuccess(null);
 
     try {
-      await apiClient.put('/api/admin/system-settings/', settings);
+      await apiClient.put('/admin/system-settings/', settings);
       setSuccess('System settings updated successfully');
     } catch (error: unknown) {
       const axiosError = error as AxiosError<{ detail?: string }>;

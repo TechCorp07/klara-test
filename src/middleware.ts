@@ -1,4 +1,4 @@
-// src/middleware.ts - FIXED: Direct role-based dashboard routing
+// src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
@@ -33,7 +33,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
       '/health-records', '/appointments', '/telemedicine', '/provider/emergency-access', 
       '/medications'],
   admin: ['/admin', '/profile', '/settings', '/settings/password',
-     '/messages', '/users', '/reports', '/admin',
+     '/messages', '/users', '/reports',
     '/approvals', '/users', '/audit-logs', '/system-settings', '/monitoring'],
   pharmco: ['/pharmco', '/profile', '/settings', '/settings/password',
      '/messages', '/medications', '/clinical-trials', '/reports',
@@ -45,7 +45,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   superadmin: ['/admin', '/patient', '/provider', '/pharmco', '/caregiver', '/researcher', '/compliance'],
   compliance: ['/compliance', '/profile', '/settings', '/settings/password',
     '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/compliance/emergency-access',
-    '/reports', '/compliance'],
+    '/reports'],
 };
 
 function hasRedirectLoop(returnUrl: string): boolean {
@@ -143,9 +143,8 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // MAIN FIX: Handle /dashboard root path - redirect to role-specific dashboard
   if (pathname === '/dashboard') {
-    const roleDashboard = `/dashboard/${role}`;
+    const roleDashboard = `/${role}`;
     console.log(`🎯 Redirecting from /dashboard to ${roleDashboard} for role: ${role}`);
     return NextResponse.redirect(new URL(roleDashboard, request.url));
   }

@@ -8,8 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { FormInput, FormButton, FormAlert } from '@/components/ui/common';
-//import { useAuth } from '@/lib/auth/use-auth';
-//import { authService } from '@/lib/api/services/auth.service';
 import { config } from '@/lib/config';
 
 // Validation schema for password change

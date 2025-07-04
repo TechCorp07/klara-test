@@ -37,7 +37,7 @@ export const AppointmentCard: React.FC = () => {
         const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
         
         const response = await fetch(
-          `/api/telemedicine/appointments/?start_date=${today.toISOString().split('T')[0]}&end_date=${thirtyDaysFromNow.toISOString().split('T')[0]}&status=scheduled,confirmed`,
+          `/telemedicine/appointments/?start_date=${today.toISOString().split('T')[0]}&end_date=${thirtyDaysFromNow.toISOString().split('T')[0]}&status=scheduled,confirmed`,
           {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

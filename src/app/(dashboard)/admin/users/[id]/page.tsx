@@ -107,12 +107,12 @@ function UserDetailInterface() {
 
   const fetchUserDetail = useCallback(async () => {
     try {
-      const response = await apiClient.get(`/api/admin/users/${userId}/`);
+      const response = await apiClient.get(`/admin/users/${userId}/`);
       setUser(response.data);
       
       // Fetch action logs if user has permissions
       if (canViewCompliance) {
-        const logsResponse = await apiClient.get(`/api/admin/users/${userId}/action-logs/`);
+        const logsResponse = await apiClient.get(`/admin/users/${userId}/action-logs/`);
         setActionLogs(logsResponse.data.results || []);
       }
     } catch (error: unknown) {
@@ -147,7 +147,7 @@ function UserDetailInterface() {
 
     try {
       const payload = actionNote ? { note: actionNote } : {};
-      await apiClient.post(`/api/admin/users/${userId}/${action}/`, payload);
+      await apiClient.post(`/admin/users/${userId}/${action}/`, payload);
       
       setSuccess(`User ${action}d successfully`);
       setActionNote('');
@@ -170,7 +170,7 @@ function UserDetailInterface() {
     if (!canManageUsers || !user) return;
 
     try {
-      const response = await apiClient.post(`/api/admin/users/${userId}/impersonate/`);
+      const response = await apiClient.post(`/admin/users/${userId}/impersonate/`);
       if (response.data.redirect_url) {
         window.open(response.data.redirect_url, '_blank');
         setSuccess('User impersonation session started');
@@ -189,7 +189,7 @@ function UserDetailInterface() {
 
   const exportUserData = async () => {
     try {
-      const response = await apiClient.get(`/api/admin/users/${userId}/export/`, {
+      const response = await apiClient.get(`/admin/users/${userId}/export/`, {
         responseType: 'blob'
       });
 

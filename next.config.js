@@ -132,8 +132,8 @@ const nextConfig = {
           // These rewrites happen after pages are matched
           // Useful for API proxying
           {
-            source: '/api/health',
-            destination: '/api/system/health-check',
+            source: '/health',
+            destination: '/system/health-check',
           },
         ],
         fallback: [

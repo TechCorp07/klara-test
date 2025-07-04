@@ -55,9 +55,9 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
         systemStatusResponse,
         emergencyResponse
       ] = await Promise.all([
-        // fetch('/api/notifications/unread-count'),
-        // fetch('/api/system/status'),
-        // fetch('/api/emergency/active-count')
+        // fetch('/notifications/unread-count'),
+        // fetch('/system/status'),
+        // fetch('/emergency/active-count')
         Promise.resolve({ unread_count: 3 }),
         Promise.resolve({ status: 'online' }),
         Promise.resolve({ active_alerts: 0 })

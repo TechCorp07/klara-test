@@ -152,8 +152,8 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
 
       // Common data for all users
       promises.push(
-        // fetch('/api/notifications/unread-count'),
-        // fetch('/api/system/status'),
+        // fetch('/notifications/unread-count'),
+        // fetch('/system/status'),
         Promise.resolve({ unread_count: 3, has_unread: true }),
         Promise.resolve({ status: 'online' })
       );
@@ -161,7 +161,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
       // Role-specific data
       if (user.role === 'compliance' || user.role === 'admin') {
         promises.push(
-          // fetch('/api/emergency/active-count')
+          // fetch('/emergency/active-count')
           Promise.resolve({ active_alerts: 1 })
         );
       }

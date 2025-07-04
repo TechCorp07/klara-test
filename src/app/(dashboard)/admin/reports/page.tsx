@@ -84,7 +84,7 @@ function ReportsInterface() {
 
   const fetchReportData = async () => {
     try {
-      const response = await apiClient.get('/api/admin/reports/dashboard-analytics/');
+      const response = await apiClient.get('/admin/reports/dashboard-analytics/');
       setReportData(response.data);
     } catch (error) {
       console.error('Failed to fetch report data:', error);
@@ -102,7 +102,7 @@ function ReportsInterface() {
     setSuccess(null);
 
     try {
-      const response = await apiClient.post('/api/admin/reports/export/', exportRequest, {
+      const response = await apiClient.post('/admin/reports/export/', exportRequest, {
         responseType: 'blob'
       });
 

@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
       
       // Clear authentication cookies
       try {
-        await fetch('/api/auth/logout', {
+        await fetch('/auth/logout', {
           method: 'POST',
           credentials: 'include'
         });

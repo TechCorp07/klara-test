@@ -56,7 +56,7 @@ export default function PatientDashboard() {
       try {
         setLoading(true);
         // TODO: Replace with actual API call
-        const response = await fetch('/api/patient/dashboard/', {
+        const response = await fetch('/patient/dashboard/', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',

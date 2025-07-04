@@ -29,7 +29,7 @@ export default function SystemOverviewCard() {
 
   const fetchSystemMetrics = async () => {
     try {
-      const response = await apiClient.get('/api/admin/system-metrics/');
+      const response = await apiClient.get('/admin/system-metrics/');
       setMetrics(response.data);
     } catch (error) {
       console.error('Failed to fetch system metrics:', error);

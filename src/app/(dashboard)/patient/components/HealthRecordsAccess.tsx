@@ -39,7 +39,7 @@ export const HealthRecordsAccess: React.FC = () => {
         setLoading(true);
         
         // Fetch recent records (last 30 days)
-        const recentResponse = await fetch('/api/healthcare/records/?limit=5&ordering=-date', {
+        const recentResponse = await fetch('/healthcare/records/?limit=5&ordering=-date', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ export const HealthRecordsAccess: React.FC = () => {
         setRecentRecords(recentData.results || []);
 
         // Fetch summary data
-        const summaryResponse = await fetch('/api/healthcare/records/summary/', {
+        const summaryResponse = await fetch('/healthcare/records/summary/', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',

@@ -86,7 +86,7 @@ export default function ContactPage() {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
 
       // TODO: Replace with actual API call
-      // const response = await fetch('/api/contact', {
+      // const response = await fetch('/contact', {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(data),
