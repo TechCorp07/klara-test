@@ -28,7 +28,6 @@ import {
 import { authService } from '../api/services/auth.service';
 import { config } from '@/lib/config';
 import { ConsentUpdateResponse } from '@/types/auth.types';
-import { getCookieValue } from '@/lib/utils/cookies';
 import { DashboardStatsResponse } from '@/types/admin.types';
 
 // Define the specific union types for better type safety
@@ -36,7 +35,7 @@ type IdentityVerificationMethod = "E_SIGNATURE" | "PROVIDER_VERIFICATION" | "DOC
 type CaregiverRequestStatus = "PENDING" | "APPROVED" | "DENIED" | "EXPIRED";
 type EmergencyAccessReason = "LIFE_THREATENING" | "URGENT_CARE" | "PATIENT_UNABLE" | "IMMINENT_DANGER" | "OTHER";
 
-// Enhanced AuthContextType with corrected types - using Omit to avoid conflicts
+// Enhanced AuthContextType with corrected types
 export interface EnhancedAuthContextType extends Omit<AuthContextType, 
   'initiateIdentityVerification' | 
   'completeIdentityVerification' | 
@@ -44,11 +43,10 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
   'initiateEmergencyAccess' |
   'getDashboardStats'
 > {
-  // Identity verification methods with proper types (overriding base interface)
+  // All the interface methods remain the same...
   initiateIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; method: string }>;
   completeIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; verified_at: string }>;
   
-  // Profile completion methods for all roles
   completePatientProfile: (profileData: Partial<PatientProfile>) => Promise<PatientProfile>;
   updatePatientConsent: (consents: {
     medication_adherence_monitoring_consent: boolean;
@@ -62,23 +60,19 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
   completeResearcherProfile: (profileData: Partial<ResearcherProfile>) => Promise<ResearcherProfile>;
   completeComplianceProfile: (profileData: Partial<ComplianceProfile>) => Promise<ComplianceProfile>;
   
-  // Caregiver request management with proper types (overriding base interface)
   getCaregiverRequests: (params?: { status?: CaregiverRequestStatus; ordering?: string }) => Promise<CaregiverRequest[]>;
   approveCaregiverRequest: (requestId: number) => Promise<{ detail: string }>;
   denyCaregiverRequest: (requestId: number, reason?: string) => Promise<{ detail: string }>;
   getCaregiverRequestDetails: (requestId: number) => Promise<CaregiverRequest>;
   
-  // HIPAA document management
   getHipaaDocuments: (filters?: { document_type?: string; active?: boolean }) => Promise<HipaaDocument[]>;
   getHipaaDocumentDetails: (documentId: number) => Promise<HipaaDocument>;
   getLatestHipaaDocuments: () => Promise<HipaaDocument[]>;
   signHipaaDocument: (documentId: number) => Promise<{ detail: string; consent_id: number; signed_at: string }>;
   
-  // Consent record management
   getConsentRecords: (filters?: { consent_type?: string; consented?: boolean }) => Promise<ConsentRecord[]>;
   getConsentAuditTrail: (days?: number) => Promise<ConsentAuditTrailResponse>;
   
-  // Emergency access with proper types (overriding base interface)
   initiateEmergencyAccess: (data: {
     patient_identifier: string;
     reason: EmergencyAccessReason;
@@ -89,8 +83,8 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
   reviewEmergencyAccess: (accessId: number, reviewData: { notes: string; justified: boolean }) => Promise<{ detail: string }>;
   getEmergencyAccessSummary: () => Promise<EmergencyAccessSummary>;
   
-  // Admin dashboard stats
   getDashboardStats: () => Promise<DashboardStatsResponse>;
+  updateConsent: (consentType: string, consented: boolean) => Promise<ConsentUpdateResponse>;
 }
 
 // Create context with null as initial value
@@ -106,41 +100,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
   
-  // Initialize authentication state
+  // 🔒 SECURE: Initialize authentication state using server API call only
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const authToken = getCookieValue(config.authCookieName);
+        setIsLoading(true);
         
-        console.error('🔍 AuthProvider initializing:', {
-          hasToken: !!authToken,
-          cookieName: config.authCookieName
-        });
+        console.log('🔍 AuthProvider initializing with secure API call...');
         
-        if (authToken) {
-          console.error('✅ Token found, checking user data...');
+        // 🔒 SECURE APPROACH: Make API call to check authentication
+        // The HttpOnly cookie will be sent automatically with this request
+        try {
           const userData = await authService.getCurrentUser();
+          
+          // If we get user data, the user is authenticated
           setUser(userData);
-          console.error('✅ User data loaded:', userData);
-        } else {
-          console.error('❌ No token found, user remains unauthenticated');
+          console.log('✅ User authenticated:', {
+            id: userData.id,
+            email: userData.email,
+            role: userData.role,
+            emailVerified: userData.email_verified,
+            isApproved: userData.is_approved
+          });
+          
+        } catch (error: any) {
+          // If API call fails, user is not authenticated
+          console.log('❌ User not authenticated:', error.message);
           setUser(null);
         }
+        
       } catch (error) {
         console.error('Failed to initialize authentication state:', error);
         setUser(null);
-        
-        // Clear potentially invalid cookies
-        if (typeof window !== 'undefined') {
-          document.cookie = `${config.authCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-          document.cookie = `${config.userRoleCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-          document.cookie = `${config.emailVerifiedCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-          document.cookie = `${config.isApprovedCookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        }
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
-        console.error('🏁 AuthProvider initialization complete');
+        console.log('🏁 AuthProvider initialization complete');
       }
     };
 
@@ -182,18 +177,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Helper function to refresh user data
   const refreshUserData = async (): Promise<void> => {
-    if (user) {
-      try {
-        const userData = await authService.getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error('Failed to refresh user data:', error);
-      }
+    try {
+      const userData = await authService.getCurrentUser();
+      setUser(userData);
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      // If refresh fails, user might be logged out
+      setUser(null);
     }
   };
 
   /**
-   * Core Authentication Methods
+   * 🔒 SECURE: Core Authentication Methods
    */
   const login = async (username: string, password: string): Promise<LoginResponse> => {
     setIsLoading(true);
@@ -201,15 +196,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.login({ username, password });
       
       if (!response.requires_2fa) {
-        await fetch('/auth/login', {
+        // 🔒 SECURE: Call server API to set HttpOnly cookies
+        const cookieResponse = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(response),
+          body: JSON.stringify({
+            token: response.token,
+            user: response.user
+          }),
           credentials: 'include'
         });
         
-        setUser(response.user);
-        setLastActivity(Date.now());
+        if (cookieResponse.ok) {
+          setUser(response.user);
+          setLastActivity(Date.now());
+        } else {
+          throw new Error('Failed to set authentication cookies');
+        }
       }
       
       return response;
@@ -230,25 +233,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await authService.logout();
-      
-      await fetch('/auth/logout', {
+      // 🔒 SECURE: Clear HttpOnly cookies via server API
+      const logoutResponse = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
       
+      if (!logoutResponse.ok) {
+        console.warn('Logout API call failed, but continuing with client cleanup');
+      }
+      
+      // Clear client state
       setUser(null);
+      
+      console.log('✅ Logout completed successfully');
+      
     } catch (error) {
       console.error('Error during logout:', error);
       
-      await fetch('/auth/logout', {
-        method: 'POST',
-        credentials: 'include'
-      });
+      // Even if logout fails, clear cookies and user state for security
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+      } catch {
+        // Ignore errors in fallback cleanup
+      }
       
       setUser(null);
     } finally {
       setIsLoading(false);
+      
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
   };
 
@@ -265,15 +284,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const response = await authService.verifyTwoFactor(userId, code);
       
-      await fetch('/auth/login', {
+      // 🔒 SECURE: Set cookies after 2FA verification
+      const cookieResponse = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(response),
+        body: JSON.stringify({
+          token: response.token,
+          user: response.user
+        }),
         credentials: 'include'
       });
       
-      setUser(response.user);
-      setLastActivity(Date.now());
+      if (cookieResponse.ok) {
+        setUser(response.user);
+        setLastActivity(Date.now());
+      } else {
+        throw new Error('Failed to set authentication cookies after 2FA');
+      }
       
       return response;
     } finally {
@@ -358,13 +385,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.verifyEmail(data);
       
-      if (user) {
-        await refreshUserData();
-        
-        if (user.email_verified) {
-          document.cookie = `${config.emailVerifiedCookieName}=true; path=/; max-age=604800; SameSite=Strict${config.secureCookies ? '; Secure' : ''}`;
-        }
-      }
+      // Refresh user data to get updated email verification status
+      await refreshUserData();
       
       return response;
     } finally {
@@ -372,9 +394,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  /**
-   * Identity Verification Methods (for patients) - FIXED TYPES
-   */
+  // 🔒 All other methods remain the same but without cookie manipulation
+  // Just API calls that rely on HttpOnly cookies being sent automatically
+
   const initiateIdentityVerification = async (method: IdentityVerificationMethod): Promise<{ detail: string; method: string }> => {
     setIsLoading(true);
     try {
@@ -382,7 +404,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('User not found');
       }
       
-      // Get patient profile ID from user data
       let profileId: number;
       if (user.role === 'patient' && user.patient_profile) {
         profileId = user.patient_profile.id;
@@ -422,26 +443,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  /**
-   * Profile Completion Methods
-   */
+  // Profile completion methods (abbreviated for space)
   const completePatientProfile = async (profileData: Partial<PatientProfile>): Promise<PatientProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
+      if (!user) throw new Error('User not found');
       
-      let profileId: number;
-      if (user.patient_profile) {
-        profileId = user.patient_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      const profileId = user.patient_profile?.id || user.id;
       const response = await authService.completePatientProfile(profileId, profileData);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
@@ -455,20 +465,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }): Promise<PatientProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
+      if (!user) throw new Error('User not found');
       
-      let profileId: number;
-      if (user.patient_profile) {
-        profileId = user.patient_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      const profileId = user.patient_profile?.id || user.id;
       const response = await authService.updatePatientConsent(profileId, consents);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
@@ -478,20 +479,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const completeProviderProfile = async (profileData: Partial<ProviderProfile>): Promise<ProviderProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.provider_profile) {
-        profileId = user.provider_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      if (!user) throw new Error('User not found');
+      const profileId = user.provider_profile?.id || user.id;
       const response = await authService.completeProviderProfile(profileId, profileData);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
@@ -501,20 +492,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const completePharmcoProfile = async (profileData: Partial<PharmcoProfile>): Promise<PharmcoProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.pharmco_profile) {
-        profileId = user.pharmco_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      if (!user) throw new Error('User not found');
+      const profileId = user.pharmco_profile?.id || user.id;
       const response = await authService.completePharmcoProfile(profileId, profileData);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
@@ -524,20 +505,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const completeCaregiverProfile = async (profileData: Partial<CaregiverProfile>): Promise<CaregiverProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.caregiver_profile) {
-        profileId = user.caregiver_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      if (!user) throw new Error('User not found');
+      const profileId = user.caregiver_profile?.id || user.id;
       const response = await authService.completeCaregiverProfile(profileId, profileData);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
@@ -547,20 +518,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const completeResearcherProfile = async (profileData: Partial<ResearcherProfile>): Promise<ResearcherProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.researcher_profile) {
-        profileId = user.researcher_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      if (!user) throw new Error('User not found');
+      const profileId = user.researcher_profile?.id || user.id;
       const response = await authService.completeResearcherProfile(profileId, profileData);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
@@ -570,104 +531,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const completeComplianceProfile = async (profileData: Partial<ComplianceProfile>): Promise<ComplianceProfile> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.compliance_profile) {
-        profileId = user.compliance_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      if (!user) throw new Error('User not found');
+      const profileId = user.compliance_profile?.id || user.id;
       const response = await authService.completeComplianceProfile(profileId, profileData);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
     }
   };
 
-  /**
-   * Caregiver Request Management Methods - FIXED TYPES
-   */
+  // All other methods follow the same pattern - API calls without cookie manipulation
+  // (abbreviated for space, but they all use the same secure pattern)
+
   const getCaregiverRequests = async (params?: { 
     status?: CaregiverRequestStatus; 
     ordering?: string 
   }): Promise<CaregiverRequest[]> => {
-    setIsLoading(true);
-    try {
-      return await authService.getCaregiverRequests(params);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getCaregiverRequests(params);
   };
 
   const approveCaregiverRequest = async (requestId: number): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.approveCaregiverRequest(requestId);
-      // Refresh user data to update pending requests
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
+    const response = await authService.approveCaregiverRequest(requestId);
+    await refreshUserData();
+    return response;
   };
 
   const denyCaregiverRequest = async (requestId: number, reason?: string): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.denyCaregiverRequest(requestId, reason);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
+    const response = await authService.denyCaregiverRequest(requestId, reason);
+    await refreshUserData();
+    return response;
   };
 
   const getCaregiverRequestDetails = async (requestId: number): Promise<CaregiverRequest> => {
-    setIsLoading(true);
-    try {
-      return await authService.getCaregiverRequestDetails(requestId);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getCaregiverRequestDetails(requestId);
   };
 
-  /**
-   * HIPAA Document Management Methods
-   */
   const getHipaaDocuments = async (filters?: { 
     document_type?: string; 
     active?: boolean 
   }): Promise<HipaaDocument[]> => {
-    setIsLoading(true);
-    try {
-      return await authService.getHipaaDocuments(filters);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getHipaaDocuments(filters);
   };
 
   const getHipaaDocumentDetails = async (documentId: number): Promise<HipaaDocument> => {
-    setIsLoading(true);
-    try {
-      return await authService.getHipaaDocumentDetails(documentId);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getHipaaDocumentDetails(documentId);
   };
 
   const getLatestHipaaDocuments = async (): Promise<HipaaDocument[]> => {
-    setIsLoading(true);
-    try {
-      return await authService.getLatestHipaaDocuments();
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getLatestHipaaDocuments();
   };
 
   const signHipaaDocument = async (documentId: number): Promise<{ 
@@ -675,124 +587,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     consent_id: number; 
     signed_at: string 
   }> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.signHipaaDocument(documentId);
-      await refreshUserData(); // Refresh to update signed documents
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
+    const response = await authService.signHipaaDocument(documentId);
+    await refreshUserData();
+    return response;
   };
 
-  /**
-   * Consent Record Management Methods
-   */
   const getConsentRecords = async (filters?: { 
     consent_type?: string; 
     consented?: boolean 
   }): Promise<ConsentRecord[]> => {
-    setIsLoading(true);
-    try {
-      return await authService.getConsentRecords(filters);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getConsentRecords(filters);
   };
 
   const getConsentAuditTrail = async (days?: number): Promise<ConsentAuditTrailResponse> => {
-    setIsLoading(true);
-    try {
-      return await authService.getConsentAuditTrail(days);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getConsentAuditTrail(days);
   };
 
-  /**
-   * Emergency Access Methods (for providers/compliance) - FIXED TYPES
-   */
   const initiateEmergencyAccess = async (data: {
     patient_identifier: string;
     reason: EmergencyAccessReason;
     detailed_reason: string;
   }): Promise<{ detail: string; access_id: number; expires_in: string }> => {
-    setIsLoading(true);
-    try {
-      return await authService.initiateEmergencyAccess(data);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.initiateEmergencyAccess(data);
   };
 
   const endEmergencyAccess = async (accessId: number, phiSummary: string): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      return await authService.endEmergencyAccess(accessId, phiSummary);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.endEmergencyAccess(accessId, phiSummary);
   };
 
   const getEmergencyAccessRecords = async (filters?: EmergencyAccessFilters): Promise<EmergencyAccessRecord[]> => {
-    setIsLoading(true);
-    try {
-      return await authService.getEmergencyAccessRecords(filters);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getEmergencyAccessRecords(filters);
   };
 
   const reviewEmergencyAccess = async (
     accessId: number, 
     reviewData: { notes: string; justified: boolean }
   ): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      return await authService.reviewEmergencyAccess(accessId, reviewData);
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.reviewEmergencyAccess(accessId, reviewData);
   };
 
   const getEmergencyAccessSummary = async (): Promise<EmergencyAccessSummary> => {
-    setIsLoading(true);
-    try {
-      return await authService.getEmergencyAccessSummary();
-    } finally {
-      setIsLoading(false);
-    }
+    return await authService.getEmergencyAccessSummary();
   };
 
-  /**
-   * Admin Dashboard Methods
-   */
   const getDashboardStats = async (): Promise<DashboardStatsResponse> => {
-    setIsLoading(true);
-    try {
-      const stats = await authService.getDashboardStats();
-      return stats as unknown as DashboardStatsResponse;
-    } finally {
-      setIsLoading(false);
-    }
+    const stats = await authService.getDashboardStats();
+    return stats as unknown as DashboardStatsResponse;
   };
 
-  /**
-   * Legacy Consent Update Method (for backward compatibility)
-   */
   const updateConsent = async (consentType: string, consented: boolean): Promise<ConsentUpdateResponse> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.updateConsent(consentType, consented);
-      
-      if (user) {
-        await refreshUserData();
-      }
-      
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
+    const response = await authService.updateConsent(consentType, consented);
+    await refreshUserData();
+    return response;
   };
 
   // Complete context value with all methods

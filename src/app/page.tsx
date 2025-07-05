@@ -1,4 +1,4 @@
-// src/app/page.tsx - IMPROVED VERSION
+// src/app/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,59 +9,69 @@ import { Spinner } from '@/components/ui/spinner';
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, isInitialized, user } = useAuth();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    // CRITICAL IMPROVEMENT: Only redirect after auth is fully initialized
+    // Don't do anything until auth is fully initialized
     if (!isInitialized) {
-      console.error('⏳ Auth not initialized yet, waiting...');
+      console.log('⏳ Auth not initialized yet, waiting...');
       return;
     }
 
-    // IMPROVEMENT: Prevent multiple redirects
-    if (isRedirecting) {
-      console.error('🔄 Already redirecting, skipping...');
+    // Prevent multiple redirects
+    if (hasRedirected) {
+      console.log('🔄 Already redirected, skipping...');
       return;
     }
 
-    console.error('🏠 Home page deciding redirect:', {
+    console.log('🏠 Home page deciding redirect:', {
       isAuthenticated,
       isInitialized,
-      user: user ? { id: user.id, email: user.email, role: user.role } : null
+      user: user ? { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role,
+        emailVerified: user.email_verified,
+        isApproved: user.is_approved 
+      } : null
     });
 
-    
-    // IMPROVEMENT: Add a small delay to prevent race conditions
+    setHasRedirected(true);
+
+    // Add a small delay to ensure all auth checks are complete
     const redirectTimer = setTimeout(() => {
-      setIsRedirecting(true);
-      
       if (isAuthenticated && user) {
-        console.error('✅ User is authenticated, redirecting to dashboard');
-        router.replace('/dashboard'); // Use replace instead of push
+        console.log('✅ User is authenticated, redirecting to dashboard');
+        router.replace('/dashboard');
       } else {
-        console.error('❌ User not authenticated, redirecting to login');
-        router.replace('/login'); // Use replace instead of push
+        console.log('❌ User not authenticated, redirecting to login');
+        router.replace('/login');
       }
-    }, 100); // Small delay to prevent race conditions
+    }, 100);
 
-    // Cleanup function to prevent redirect if component unmounts
-    return () => {
-      clearTimeout(redirectTimer);
-    };
-  }, [isAuthenticated, isInitialized, router, isRedirecting, user]);
+    return () => clearTimeout(redirectTimer);
+  }, [isAuthenticated, isInitialized, router, user, hasRedirected]);
 
-  // IMPROVEMENT: Better loading state with more specific messaging
+  // Show loading state while determining where to redirect
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
       <div className="text-center">
         <Spinner size="lg" />
         <p className="mt-4 text-gray-600">
           {!isInitialized 
-            ? 'Initializing...' 
-            : isRedirecting 
+            ? 'Initializing authentication...' 
+            : hasRedirected 
               ? 'Redirecting...' 
               : 'Loading...'}
         </p>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 text-xs text-gray-400">
+            <div>Initialized: {isInitialized.toString()}</div>
+            <div>Authenticated: {isAuthenticated.toString()}</div>
+            <div>Has User: {(!!user).toString()}</div>
+            <div>Has Redirected: {hasRedirected.toString()}</div>
+          </div>
+        )}
       </div>
     </div>
   );

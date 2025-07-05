@@ -19,13 +19,14 @@ export const config = {
   
   secureCookies: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true' || process.env.NODE_ENV === 'production',
   
-  // Authentication Cookie Names - SIMPLIFIED: Backend uses single token
+  // 🔒 SECURE: Authentication Cookie - Only HttpOnly token needed
   authCookieName: 'klararety_auth_token',
-  userRoleCookieName: 'klararety_user_role',
-  emailVerifiedCookieName: 'klararety_email_verified',
-  isApprovedCookieName: 'klararety_is_approved',
   
-  // Authentication Settings - SIMPLIFIED: Single token system
+  // 🔒 REMOVED: Non-HttpOnly cookies for security
+  // userRoleCookieName: 'klararety_user_role',
+  // emailVerifiedCookieName: 'klararety_email_verified', 
+  // isApprovedCookieName: 'klararety_is_approved',
+  
   tokenExpiryDays: 1, // Backend uses longer-lived tokens
   
   // Security Settings
@@ -67,7 +68,7 @@ export const validateApiConnection = async (): Promise<boolean> => {
   }
 };
 
-// Validate critical environment variables (moved outside config object)
+// Validate critical environment variables
 export const validateConfig = () => {
   const requiredEnvVars = [
     'NEXT_PUBLIC_API_BASE_URL',
