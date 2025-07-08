@@ -253,7 +253,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Even if logout fails, clear cookies and user state for security
       try {
-        await fetch('/api/auth/logout', {
+        await fetch('/api/logout', {
           method: 'POST',
           credentials: 'include'
         });

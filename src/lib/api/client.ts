@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
       
       // Clear authentication cookies
       try {
-        await fetch('/auth/logout', {
+        await fetch('/logout', {
           method: 'POST',
           credentials: 'include'
         });
@@ -106,7 +106,7 @@ apiClient.interceptors.response.use(
           console.error('Potential HIPAA-related access denial:', {
             timestamp: new Date().toISOString(),
             url: originalRequest?.url?.replace(/\/\d+/g, '/[ID]'),
-            user_role: getCookieValue(appConfig.userRoleCookieName),
+            user_role: getCookieValue(appConfig.authCookieName),
             error_detail: errorDetail,
             method: originalRequest?.method?.toUpperCase(),
             severity: 'MEDIUM'
@@ -151,7 +151,7 @@ apiClient.interceptors.response.use(
           method: originalRequest?.method?.toUpperCase(),
           timestamp: new Date().toISOString(),
           userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown',
-          user_role: getCookieValue(appConfig.userRoleCookieName) || 'unknown',
+          user_role: getCookieValue(appConfig.authCookieName) || 'unknown',
         };
       
         console.error('Server error (sanitized for HIPAA):', sanitizedError);

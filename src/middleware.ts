@@ -4,6 +4,7 @@ import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
 
 const PUBLIC_ROUTES = [
+  '/',
   '/login',
   '/register', 
   '/verify-email',
@@ -18,38 +19,34 @@ const PUBLIC_ROUTES = [
   '/hipaa-notice',
   '/contact',
   '/about',
+  //'/logout',
   '/help',
   '/support',
   '/faq',
-  // Static files and API routes
-  '/_next', '/favicon.ico', '/api', '/assets', '/images', '/fonts',
-  // Add these specific problematic routes
+];
+const EXCLUDED_PATHS = [
+  '/_next',
+  '/favicon.ico',
+  '/api',
+  '/assets',
+  '/images', 
+  '/fonts',
   '/.well-known',
-  '/auth/logout',
+  '/logout',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/manifest.json',
 ];
 
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  patient: ['/patient', '/profile', '/settings', '/messages', 
-    '/health-records', '/appointments', '/settings/password',
-     '/telemedicine', '/research', '/clinical-trials', '/medications'],
-  provider: ['/provider', '/profile', '/settings', '/settings/password',
-     '/messages', '/clinical-trials', '/patients',
-      '/health-records', '/appointments', '/telemedicine', '/provider/emergency-access', 
-      '/medications'],
-  admin: ['/admin', '/profile', '/settings', '/settings/password',
-     '/messages', '/users', '/reports',
-    '/approvals', '/users', '/audit-logs', '/system-settings', '/monitoring'],
-  pharmco: ['/pharmco', '/profile', '/settings', '/settings/password',
-     '/messages', '/medications', '/clinical-trials', '/reports',
-     '/research'],
-  caregiver: ['/caregiver', '/profile', '/settings', '/settings/password',
-    '/messages', '/health-records', '/appointments', '/patients'],
-  researcher: ['/researcher', '/profile', '/settings', '/settings/password',
-    '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
+  patient: ['/patient', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/settings/password', '/telemedicine', '/research', '/clinical-trials', '/medications'],
+  provider: ['/provider', '/profile', '/settings', '/settings/password', '/messages', '/clinical-trials', '/patients', '/health-records', '/appointments', '/telemedicine', '/provider/emergency-access', '/medications'],
+  admin: ['/admin', '/profile', '/settings', '/settings/password', '/messages', '/users', '/reports', '/approvals', '/audit-logs', '/system-settings', '/monitoring'],
+  pharmco: ['/pharmco', '/profile', '/settings', '/settings/password', '/messages', '/medications', '/clinical-trials', '/reports', '/research'],
+  caregiver: ['/caregiver', '/profile', '/settings', '/settings/password', '/messages', '/health-records', '/appointments', '/patients'],
+  researcher: ['/researcher', '/profile', '/settings', '/settings/password', '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
   superadmin: ['/admin', '/patient', '/provider', '/pharmco', '/caregiver', '/researcher', '/compliance'],
-  compliance: ['/compliance', '/profile', '/settings', '/settings/password',
-    '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/compliance/emergency-access',
-    '/reports'],
+  compliance: ['/compliance', '/profile', '/settings', '/settings/password', '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/compliance/emergency-access', '/reports'],
 };
 
 // 🔧 IMPROVED: Better redirect loop detection
@@ -96,9 +93,11 @@ function hasRedirectLoop(returnUrl: string): boolean {
     
     // Check for specific problematic patterns
     const problematicPatterns = [
-      '/auth/logout',
+      '/logout',
       '/.well-known',
-      'com.chrome.devtools'
+      'com.chrome.devtools',
+      '_next/',
+      '/api/',
     ];
     
     if (problematicPatterns.some(pattern => decodedUrl.includes(pattern))) {
@@ -113,7 +112,23 @@ function hasRedirectLoop(returnUrl: string): boolean {
   }
 }
 
-// 🔒 SECURE: Helper function to validate auth token by calling API
+// 🔒 IMPROVED: Add caching and better error handling for token validation
+const tokenValidationCache = new Map<string, {
+  result: {
+    isValid: boolean;
+    user?: {
+      id: number;
+      role: UserRole;
+      email_verified: boolean;
+      is_approved: boolean;
+    };
+  }; 
+  timestamp: number 
+}>
+();
+
+const CACHE_TTL = 30000; // 30 seconds
+
 async function validateAuthToken(token: string): Promise<{
   isValid: boolean;
   user?: {
@@ -123,9 +138,14 @@ async function validateAuthToken(token: string): Promise<{
     is_approved: boolean;
   };
 }> {
+  // Check cache first
+  const cached = tokenValidationCache.get(token);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.result;
+  }
+
   try {
     const apiUrl = `${appConfig.apiBaseUrl}/users/auth/me/`;
-    console.log('🔒 Validating token with:', apiUrl);
     
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -133,11 +153,13 @@ async function validateAuthToken(token: string): Promise<{
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      // Add timeout to prevent hanging
+      signal: AbortSignal.timeout(5000), // 5 second timeout
     });
 
     if (response.ok) {
       const userData = await response.json();
-      return {
+      const result = {
         isValid: true,
         user: {
           id: userData.id,
@@ -146,9 +168,15 @@ async function validateAuthToken(token: string): Promise<{
           is_approved: userData.is_approved !== false,
         }
       };
+      
+      // Cache the result
+      tokenValidationCache.set(token, { result, timestamp: Date.now() });
+      return result;
     } else {
-      console.log('🔒 Token validation failed:', response.status);
-      return { isValid: false };
+      const result = { isValid: false };
+      // Don't cache failed validations for as long
+      tokenValidationCache.set(token, { result, timestamp: Date.now() - CACHE_TTL + 5000 });
+      return result;
     }
   } catch (error) {
     console.error('🔒 Token validation error:', error);
@@ -160,15 +188,26 @@ export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const returnUrl = searchParams.get('returnUrl');
 
-  console.log('🔍 Middleware processing:', { pathname, returnUrl });
+  const isExcludedPath = EXCLUDED_PATHS.some(excluded => 
+    pathname === excluded || pathname.startsWith(excluded + '/')
+  );
   
-  // 🔧 CRITICAL: Check for redirect loops FIRST
-  if (returnUrl && hasRedirectLoop(returnUrl)) {
-    console.log('🔄 Redirect loop detected, breaking the loop');
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (isExcludedPath) {
+    // Don't log for these common excluded paths to reduce noise
+    if (!pathname.includes('/.well-known') && !pathname.includes('/_next')) {
+      console.log('🚫 Excluded path, skipping middleware:', pathname);
+    }
+    return NextResponse.next();
   }
 
-  // Allow public routes
+  console.log('🔍 Middleware processing:', { pathname, returnUrl });
+  
+  if (returnUrl && hasRedirectLoop(returnUrl)) {
+    console.log('🔄 Redirect loop detected, breaking the loop');
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    return response;
+  }
+
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     pathname === route || pathname.startsWith(route + '/')
   );
@@ -189,20 +228,45 @@ export async function middleware(request: NextRequest) {
 
     const loginUrl = new URL('/login', request.url);
     
-  // Only add returnUrl if it's a reasonable path
-  if (pathname.length < 50 && 
-    !pathname.includes('/.well-known') && 
-    !pathname.includes('/auth/logout') &&
-    !pathname.includes('/api/') &&
-    pathname !== '/dashboard') {
-  loginUrl.searchParams.set('returnUrl', pathname);
+    if (pathname !== '/' && 
+      pathname !== '/dashboard' && 
+      pathname.length < 50 && 
+      !pathname.includes('/.well-known') && 
+      !pathname.includes('/logout') &&
+      !pathname.includes('/api/') &&
+      !pathname.includes('/_next')) {
+    loginUrl.searchParams.set('returnUrl', pathname);
   }
 
     return NextResponse.redirect(loginUrl);
   }
 
-  // 🔒 SECURE: Validate token and get user data
-  const authResult = await validateAuthToken(token);
+  // 🔒 IMPROVED: Add retry logic for token validation
+  let authResult: { 
+    isValid: boolean; 
+    user?: { 
+      id: number; 
+      role: UserRole; 
+      email_verified: boolean; 
+      is_approved: boolean; 
+    } 
+  } = { isValid: false };
+  let retryCount = 0;
+  const maxRetries = 2;
+
+  while (retryCount <= maxRetries) {
+    authResult = await validateAuthToken(token);
+    
+    if (authResult.isValid || retryCount >= maxRetries) {
+      break;
+    }
+    
+    retryCount++;
+    console.log(`🔄 Token validation retry ${retryCount}/${maxRetries}`);
+    
+    // Wait a bit before retry
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
   
   if (!authResult.isValid || !authResult.user) {
     console.log('❌ Invalid token, clearing cookie and redirecting to login');
@@ -215,14 +279,20 @@ export async function middleware(request: NextRequest) {
 
   // Handle account approval status
   if (!user.is_approved) {
-    console.log('⏳ Account not approved, redirecting to approval pending');
-    return NextResponse.redirect(new URL('/approval-pending', request.url));
+    if (pathname !== '/approval-pending') {
+      console.log('⏳ Account not approved, redirecting to approval pending');
+      return NextResponse.redirect(new URL('/approval-pending', request.url));
+    }
+    return NextResponse.next();
   }
   
   // Handle email verification
   if (!user.email_verified) {
-    console.log('📧 Email not verified, redirecting to verification');
-    return NextResponse.redirect(new URL('/verify-email', request.url));
+    if (pathname !== '/verify-email') {
+      console.log('📧 Email not verified, redirecting to verification');
+      return NextResponse.redirect(new URL('/verify-email', request.url));
+    }
+    return NextResponse.next();
   }
 
   // Handle /dashboard redirect to role-specific page
@@ -240,7 +310,6 @@ export async function middleware(request: NextRequest) {
     
     if (!allowed) {
       console.log(`❌ Access denied to ${pathname} for role ${user.role}`);
-      console.log(`✅ Allowed routes for ${user.role}:`, ROLE_ROUTES[user.role]);
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
@@ -288,6 +357,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/auth|images|assets).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|images|assets|robots.txt|sitemap.xml|manifest.json|\\.well-known).*)',
   ],
 };

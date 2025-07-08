@@ -1,7 +1,7 @@
-// src/app/page.tsx
+// src/app/page.tsx - FIXED to prevent continuous redirects
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/use-auth';
 import { Spinner } from '@/components/ui/spinner';
@@ -9,22 +9,24 @@ import { Spinner } from '@/components/ui/spinner';
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, isInitialized, user } = useAuth();
-  const [hasRedirected, setHasRedirected] = useState(false);
+  const [redirectStatus, setRedirectStatus] = useState<'waiting' | 'redirecting' | 'completed'>('waiting');
+  const hasRedirectedRef = useRef(false);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
+    // Prevent multiple redirects
+    if (hasRedirectedRef.current || redirectStatus === 'completed') {
+      console.log('🔄 Already processed redirect, skipping...');
+      return;
+    }
+
     // Don't do anything until auth is fully initialized
     if (!isInitialized) {
       console.log('⏳ Auth not initialized yet, waiting...');
       return;
     }
 
-    // Prevent multiple redirects
-    if (hasRedirected) {
-      console.log('🔄 Already redirected, skipping...');
-      return;
-    }
-
-    console.log('🏠 Home page deciding redirect:', {
+    console.log('🏠 Home page evaluating redirect:', {
       isAuthenticated,
       isInitialized,
       user: user ? { 
@@ -33,24 +35,39 @@ export default function HomePage() {
         role: user.role,
         emailVerified: user.email_verified,
         isApproved: user.is_approved 
-      } : null
+      } : null,
+      redirectStatus
     });
 
-    setHasRedirected(true);
+    // Mark that we're processing a redirect
+    hasRedirectedRef.current = true;
+    setRedirectStatus('redirecting');
 
-    // Add a small delay to ensure all auth checks are complete
-    const redirectTimer = setTimeout(() => {
-      if (isAuthenticated && user) {
-        console.log('✅ User is authenticated, redirecting to dashboard');
-        router.replace('/dashboard');
-      } else {
-        console.log('❌ User not authenticated, redirecting to login');
+    // 🔧 CRITICAL: Add a delay to ensure all auth checks are complete
+    redirectTimeoutRef.current = setTimeout(() => {
+      try {
+        if (isAuthenticated && user) {
+          console.log('✅ User is authenticated, redirecting to dashboard');
+          router.replace('/dashboard');
+        } else {
+          console.log('❌ User not authenticated, redirecting to login');
+          router.replace('/login');
+        }
+        setRedirectStatus('completed');
+      } catch (error) {
+        console.error('❌ Redirect error:', error);
+        // Fallback - try again with login
         router.replace('/login');
+        setRedirectStatus('completed');
       }
-    }, 100);
+    }, 300); // Longer delay to ensure stability
 
-    return () => clearTimeout(redirectTimer);
-  }, [isAuthenticated, isInitialized, router, user, hasRedirected]);
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, [isAuthenticated, isInitialized, router, user, redirectStatus]);
 
   // Show loading state while determining where to redirect
   return (
@@ -60,16 +77,17 @@ export default function HomePage() {
         <p className="mt-4 text-gray-600">
           {!isInitialized 
             ? 'Initializing authentication...' 
-            : hasRedirected 
+            : redirectStatus === 'redirecting'
               ? 'Redirecting...' 
               : 'Loading...'}
         </p>
         {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 text-xs text-gray-400">
+          <div className="mt-4 text-xs text-gray-400 space-y-1">
             <div>Initialized: {isInitialized.toString()}</div>
             <div>Authenticated: {isAuthenticated.toString()}</div>
             <div>Has User: {(!!user).toString()}</div>
-            <div>Has Redirected: {hasRedirected.toString()}</div>
+            <div>Redirect Status: {redirectStatus}</div>
+            <div>Has Redirected: {hasRedirectedRef.current.toString()}</div>
           </div>
         )}
       </div>

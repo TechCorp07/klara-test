@@ -33,8 +33,10 @@ const nextConfig = {
         'klararety.com',
         'assets.klararety.com',
         'secure.gravatar.com',
+        'localhost', // ADDED: For local development
+        'api.klararety.com', // ADDED: For API images
       ],
-      formats: ['image/webp'],
+      formats: ['image/webp', 'image/avif'], // ADDED: AVIF format for better compression
       deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
       imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
       minimumCacheTTL: 60, // Cache time in seconds
@@ -98,6 +100,46 @@ const nextConfig = {
             },
           ],
         },
+        // ADDED: Specific cache control headers for auth pages to prevent refresh loops
+        {
+          source: '/login',
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            },
+            {
+              key: 'Pragma',
+              value: 'no-cache',
+            },
+            {
+              key: 'Expires',
+              value: '0',
+            },
+          ],
+        },
+        {
+          source: '/dashboard',
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            },
+            {
+              key: 'Pragma',
+              value: 'no-cache',
+            },
+          ],
+        },
+        {
+          source: '/',
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            },
+          ],
+        },
       ];
     },
     
@@ -115,9 +157,20 @@ const nextConfig = {
           permanent: true,
         },
         {
-          source: '/auth/register',
+          source: '/register',
           destination: '/register',
           permanent: true,
+        },
+        // ADDED: Handle old auth routes that might be causing issues
+        {
+          source: '/login',
+          destination: '/login',
+          permanent: true,
+        },
+        {
+          source: '/logout',
+          destination: '/login',
+          permanent: false,
         },
       ];
     },
@@ -126,7 +179,15 @@ const nextConfig = {
     async rewrites() {
       return {
         beforeFiles: [
-          // These rewrites happen before pages are matched
+          // ADDED: Handle Chrome DevTools requests that cause 404s
+          {
+            source: '/.well-known/appspecific/:path*',
+            destination: '/api/not-found'
+          },
+          {
+            source: '/.well-known/:path*', 
+            destination: '/api/not-found'
+          },
         ],
         afterFiles: [
           // These rewrites happen after pages are matched
@@ -144,6 +205,9 @@ const nextConfig = {
     
     // Enable SWC compiler for faster builds
     swcMinify: true,
+    
+    // ADDED: Disable source maps in production for better performance and security
+    productionBrowserSourceMaps: false,
     
     // Configure internationalization if needed
     i18n: {
@@ -203,6 +267,8 @@ const nextConfig = {
     // Experimental features
     experimental: {
       serverComponentsExternalPackages: [],
+      // ADDED: Package import optimization for better performance
+      optimizePackageImports: ['lucide-react'],
     },
     
   };
