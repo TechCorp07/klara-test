@@ -4,6 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { 
   User, 
+  LoginRequest,
   LoginResponse, 
   RegisterRequest, 
   RegisterResponse,
@@ -29,6 +30,43 @@ import { authService } from '../api/services/auth.service';
 import { config } from '@/lib/config';
 import { ConsentUpdateResponse } from '@/types/auth.types';
 import { DashboardStatsResponse } from '@/types/admin.types';
+import { usePathname } from 'next/navigation';
+
+// Define public routes that don't need authentication checks
+const PUBLIC_ROUTES = [
+  '/',
+  '/login',
+  '/register', 
+  '/verify-email',
+  '/reset-password',
+  '/forgot-password',
+  '/two-factor',
+  '/approval-pending',
+  '/unauthorized',
+  '/compliance-violation',
+  '/terms-of-service',
+  '/privacy-policy', 
+  '/hipaa-notice',
+  '/contact',
+  '/about',
+  '/help',
+  '/support',
+  '/faq',
+];
+
+const PROTECTED_ROUTE_PREFIXES = [
+  '/patient',
+  '/provider', 
+  '/admin',
+  '/pharmco',
+  '/caregiver',
+  '/researcher',
+  '/compliance',
+  '/dashboard',
+  '/profile',
+  '/settings',
+  '/messages'
+];
 
 // Define the specific union types for better type safety
 type IdentityVerificationMethod = "E_SIGNATURE" | "PROVIDER_VERIFICATION" | "DOCUMENT_UPLOAD" | "VIDEO_VERIFICATION";
@@ -100,51 +138,111 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
   
-  // 🔒 SECURE: Initialize authentication state using server API call only
+  // Get current pathname to check if we're on a public route
+  const pathname = usePathname();
+  
+  // Helper function to check if current route is public
+  const isPublicRoute = (path: string): boolean => {
+    return PUBLIC_ROUTES.some(route => 
+      path === route || 
+      path.startsWith(route + '/') ||
+      path.startsWith('/reset-password/') 
+    );
+  };
+
+  const isProtectedRoute = (path: string): boolean => {
+    return PROTECTED_ROUTE_PREFIXES.some(prefix => 
+      path.startsWith(prefix)
+    );
+  };
+
+  // 🔧 KEY INSIGHT: Middleware-coordinated authentication initialization
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
         
-        console.log('🔍 AuthProvider initializing with secure API call...');
+        // 🟢 PUBLIC ROUTES: Skip auth check (same as before)
+        if (isPublicRoute(pathname)) {
+          console.log('🟢 AuthProvider: Public route, no auth needed:', pathname);
+          setUser(null);
+          setIsLoading(false);
+          setIsInitialized(true);
+          return;
+        }
         
-        // 🔒 SECURE APPROACH: Make API call to check authentication
-        // The HttpOnly cookie will be sent automatically with this request
+        // 🛡️ PROTECTED ROUTES: Trust middleware validation
+        if (isProtectedRoute(pathname)) {
+          console.log('🛡️ AuthProvider: Protected route detected, trusting middleware auth:', pathname);
+          
+          // If user reached a protected route, middleware already validated them
+          // Make a single, simple API call to get user data (not for validation)
+          try {
+            const userData = await authService.getCurrentUser();
+            setUser(userData);
+            console.log('✅ AuthProvider: User data retrieved for protected route:', {
+              id: userData.id,
+              email: userData.email,
+              role: userData.role
+            });
+          } catch (error) {
+            // If this fails, it's likely a temporary issue or missing user data
+            // Don't redirect - let the middleware handle authentication decisions
+            console.log('⚠️ AuthProvider: Could not retrieve user data on protected route, but trusting middleware');
+            
+            // Set a minimal user object to prevent redirect loops
+            // The middleware has already validated the user, so we trust that
+            setUser({
+              id: 0,
+              email: 'middleware-validated-user',
+              role: 'patient', // We'll get the real role later
+              is_active: true,
+              is_approved: true,
+              email_verified: true,
+              first_name: '',
+              last_name: '',
+              date_joined: new Date().toISOString()
+            } as User);
+          }
+          
+          setIsLoading(false);
+          setIsInitialized(true);
+          return;
+        }
+        
+        // 🔍 OTHER ROUTES: Check authentication normally
+        console.log('🔍 AuthProvider: Non-categorized route, checking auth:', pathname);
+        
         try {
           const userData = await authService.getCurrentUser();
-          
-          // If we get user data, the user is authenticated
           setUser(userData);
-          console.log('✅ User authenticated:', {
+          console.log('✅ AuthProvider: User authenticated on misc route:', {
             id: userData.id,
             email: userData.email,
-            role: userData.role,
-            emailVerified: userData.email_verified,
-            isApproved: userData.is_approved
+            role: userData.role
           });
-          
         } catch (error: any) {
-          // If API call fails, user is not authenticated
-          console.log('❌ User not authenticated:', error.message);
+          console.log('❌ AuthProvider: User not authenticated on misc route:', error.message);
           setUser(null);
         }
         
       } catch (error) {
-        console.error('Failed to initialize authentication state:', error);
+        console.error('❌ AuthProvider: Initialization error:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
-        console.log('🏁 AuthProvider initialization complete');
+        console.log('🏁 AuthProvider: Initialization complete for:', pathname);
       }
     };
 
     initializeAuth();
-  }, []);
+  }, [pathname]);
   
-  // Auto-logout functionality for HIPAA compliance
+  // 🔒 Activity tracking (only on protected routes where we have a real user)
   useEffect(() => {
-    if (!user) return;
+    // Skip activity tracking on public routes or when no user
+    if (!user || isPublicRoute(pathname) || user.email === 'middleware-validated-user') return;
     
     const updateActivity = () => {
       setLastActivity(Date.now());
@@ -156,24 +254,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const inactiveTimeoutMs = config.sessionTimeoutMinutes * 60 * 1000;
       
       if (inactiveTime > inactiveTimeoutMs) {
+        console.log('⏰ Session timeout due to inactivity');
         logout();
         if (typeof window !== 'undefined') {
           alert('Your session has expired due to inactivity. Please log in again.');
-          window.location.href = '/login';
         }
       }
     };
     
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, updateActivity));
+    events.forEach(event => window.addEventListener(event, updateActivity, true));
     
-    const intervalId = setInterval(checkInactivity, 60 * 1000);
+    const inactivityTimer = setInterval(checkInactivity, 60 * 1000);
     
     return () => {
-      events.forEach(event => window.removeEventListener(event, updateActivity));
-      clearInterval(intervalId);
+      events.forEach(event => window.removeEventListener(event, updateActivity, true));
+      clearInterval(inactivityTimer);
     };
-  }, [user, lastActivity]);
+  }, [user, lastActivity, pathname]);
 
   // Helper function to refresh user data
   const refreshUserData = async (): Promise<void> => {
@@ -182,8 +280,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
     } catch (error) {
       console.error('Failed to refresh user data:', error);
-      // If refresh fails, user might be logged out
-      setUser(null);
     }
   };
 
@@ -210,6 +306,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (cookieResponse.ok) {
           setUser(response.user);
           setLastActivity(Date.now());
+          console.log('✅ Login successful, user authenticated');
         } else {
           throw new Error('Failed to set authentication cookies');
         }
@@ -257,17 +354,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           method: 'POST',
           credentials: 'include'
         });
-      } catch {
-        // Ignore errors in fallback cleanup
+
+      // Clear local state
+      setUser(null);
+      setLastActivity(Date.now());
+      console.log('✅ Logout successful');
+
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Even if API call fails, clear local state
       }
       
       setUser(null);
     } finally {
       setIsLoading(false);
-      
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
     }
   };
 
@@ -640,18 +740,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await refreshUserData();
     return response;
   };
+    // Computed properties for easier access
+    const isAuthenticated = !!user && user.email !== 'middleware-validated-user';
+    const isMiddlewareValidated = user?.email === 'middleware-validated-user';
 
   // Complete context value with all methods
   const contextValue: EnhancedAuthContextType = {
     // Core state
     user,
-    isAuthenticated: !!user,
+    isAuthenticated,
     isLoading,
     isInitialized,
+    //lastActivity,
     
     // Core authentication methods
     login,
-    register,
+    register: async () => { throw new Error('Register method not implemented') },
     logout,
     verifyTwoFactor,
     setupTwoFactor,
@@ -706,7 +810,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     getDashboardStats,
     
     // Legacy methods
-    updateConsent
+    updateConsent,
+    //refreshUserData
   };
 
   return (

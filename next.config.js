@@ -161,12 +161,6 @@ const nextConfig = {
           destination: '/register',
           permanent: true,
         },
-        // ADDED: Handle old auth routes that might be causing issues
-        {
-          source: '/login',
-          destination: '/login',
-          permanent: true,
-        },
         {
           source: '/logout',
           destination: '/login',

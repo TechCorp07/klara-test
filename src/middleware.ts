@@ -1,4 +1,4 @@
-// src/middleware.ts 
+// src/middleware.ts - OPTIMIZED FOR DJANGO REST FRAMEWORK TOKEN AUTH
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
@@ -19,11 +19,11 @@ const PUBLIC_ROUTES = [
   '/hipaa-notice',
   '/contact',
   '/about',
-  //'/logout',
   '/help',
   '/support',
   '/faq',
 ];
+
 const EXCLUDED_PATHS = [
   '/_next',
   '/favicon.ico',
@@ -49,71 +49,8 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   compliance: ['/compliance', '/profile', '/settings', '/settings/password', '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/compliance/emergency-access', '/reports'],
 };
 
-// 🔧 IMPROVED: Better redirect loop detection
-function hasRedirectLoop(returnUrl: string): boolean {
-  try {
-    // Decode the URL to check for loops
-    let decodedUrl = returnUrl;
-    try {
-      // Try to decode multiple times to catch nested encoding
-      for (let i = 0; i < 10; i++) {
-        const newDecoded = decodeURIComponent(decodedUrl);
-        if (newDecoded === decodedUrl) break; // No more decoding possible
-        decodedUrl = newDecoded;
-      }
-    } catch {
-      // If decoding fails, assume it's a problematic URL
-      return true;
-    }
-
-    // Check for obvious login loops
-    if (decodedUrl.includes('/login') && decodedUrl.includes('returnUrl')) {
-      return true;
-    }
-    
-    // Count returnUrl occurrences in the decoded string
-    const returnUrlMatches = (decodedUrl.match(/returnUrl/g) || []).length;
-    if (returnUrlMatches > 1) {
-      console.log('🔄 Multiple returnUrl detected:', returnUrlMatches);
-      return true;
-    }
-    
-    // Check URL length (very long URLs indicate problems)
-    if (returnUrl.length > 200) {
-      console.log('🔄 URL too long:', returnUrl.length);
-      return true;
-    }
-    
-    // Check for excessive encoding levels
-    const encodingLevels = (returnUrl.match(/%25/g) || []).length;
-    if (encodingLevels > 3) {
-      console.log('🔄 Too many encoding levels:', encodingLevels);
-      return true;
-    }
-    
-    // Check for specific problematic patterns
-    const problematicPatterns = [
-      '/logout',
-      '/.well-known',
-      'com.chrome.devtools',
-      '_next/',
-      '/api/',
-    ];
-    
-    if (problematicPatterns.some(pattern => decodedUrl.includes(pattern))) {
-      console.log('🔄 Problematic pattern detected in returnUrl');
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.log('🔄 Error checking redirect loop, assuming loop exists');
-    return true;
-  }
-}
-
-// 🔒 IMPROVED: Add caching and better error handling for token validation
-const tokenValidationCache = new Map<string, {
+// Optimized cache for token validation
+const tokenValidationCache = new Map<string, { 
   result: {
     isValid: boolean;
     user?: {
@@ -124,11 +61,14 @@ const tokenValidationCache = new Map<string, {
     };
   }; 
   timestamp: number 
-}>
-();
+}>();
 
 const CACHE_TTL = 30000; // 30 seconds
 
+/**
+ * Validates authentication token using Django REST Framework Token format
+ * Based on debugging results, we know Django expects: Authorization: Token <token>
+ */
 async function validateAuthToken(token: string): Promise<{
   isValid: boolean;
   user?: {
@@ -138,7 +78,7 @@ async function validateAuthToken(token: string): Promise<{
     is_approved: boolean;
   };
 }> {
-  // Check cache first
+  // Check cache first for performance
   const cached = tokenValidationCache.get(token);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.result;
@@ -147,13 +87,13 @@ async function validateAuthToken(token: string): Promise<{
   try {
     const apiUrl = `${appConfig.apiBaseUrl}/users/auth/me/`;
     
+    // Use the Django REST Framework Token format that we confirmed works
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Token ${token}`,  // ✅ Confirmed working format
         'Content-Type': 'application/json',
       },
-      // Add timeout to prevent hanging
       signal: AbortSignal.timeout(5000), // 5 second timeout
     });
 
@@ -169,65 +109,106 @@ async function validateAuthToken(token: string): Promise<{
         }
       };
       
-      // Cache the result
+      // Cache successful validation for performance
       tokenValidationCache.set(token, { result, timestamp: Date.now() });
       return result;
     } else {
+      // Log authentication failures for monitoring (without exposing tokens)
+      console.log('🔒 Token validation failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        tokenLength: token.length
+      });
+      
       const result = { isValid: false };
-      // Don't cache failed validations for as long
+      // Cache failures for shorter time to allow retry on temporary issues
       tokenValidationCache.set(token, { result, timestamp: Date.now() - CACHE_TTL + 5000 });
       return result;
     }
   } catch (error) {
-    console.error('🔒 Token validation error:', error);
+    console.error('🔒 Token validation error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      tokenExists: !!token
+    });
     return { isValid: false };
   }
 }
 
+/**
+ * Detects redirect loops in returnUrl parameters
+ */
+function hasRedirectLoop(returnUrl: string): boolean {
+  try {
+    // Decode URL to check for nested redirects
+    let decodedUrl = returnUrl;
+    try {
+      for (let i = 0; i < 10; i++) {
+        const newDecoded = decodeURIComponent(decodedUrl);
+        if (newDecoded === decodedUrl) break;
+        decodedUrl = newDecoded;
+      }
+    } catch {
+      return true; // If decoding fails, assume problematic URL
+    }
+
+    // Check for obvious login loops
+    if (decodedUrl.includes('/login') && decodedUrl.includes('returnUrl')) {
+      return true;
+    }
+
+    // Check for specific problematic patterns
+    const suspiciousPatterns = [
+      'returnUrl=%2Flogin',
+      'returnUrl=/login', 
+      'returnUrl%3D%2Flogin',
+      '/login?returnUrl=/login'
+    ];
+
+    return suspiciousPatterns.some(pattern => decodedUrl.includes(pattern));
+  } catch {
+    return true; // If any error in processing, assume loop
+  }
+}
+
+/**
+ * Main middleware function for authentication and authorization
+ */
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const returnUrl = searchParams.get('returnUrl');
 
+  // Skip middleware for excluded paths (static assets, etc.)
   const isExcludedPath = EXCLUDED_PATHS.some(excluded => 
     pathname === excluded || pathname.startsWith(excluded + '/')
   );
   
   if (isExcludedPath) {
-    // Don't log for these common excluded paths to reduce noise
-    if (!pathname.includes('/.well-known') && !pathname.includes('/_next')) {
-      console.log('🚫 Excluded path, skipping middleware:', pathname);
-    }
     return NextResponse.next();
   }
 
-  console.log('🔍 Middleware processing:', { pathname, returnUrl });
-  
+  // Prevent redirect loops
   if (returnUrl && hasRedirectLoop(returnUrl)) {
     console.log('🔄 Redirect loop detected, breaking the loop');
-    const response = NextResponse.redirect(new URL('/login', request.url));
-    return response;
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  // Allow access to public routes without authentication
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     pathname === route || pathname.startsWith(route + '/')
   );
   
   if (isPublicRoute) {
-    console.log('✅ Public route, allowing access');
     return NextResponse.next();
   }
 
-  // 🔒 SECURE: Get HttpOnly authentication token (server-side can read it)
+  // Extract authentication token from HttpOnly cookie
   const token = request.cookies.get(appConfig.authCookieName)?.value;
 
-  console.log('🍪 Auth token present:', !!token);
-
-  // Handle unauthenticated users
   if (!token) {
-    console.log('❌ No token found, redirecting to login');
-
+    console.log('❌ No authentication token found, redirecting to login');
     const loginUrl = new URL('/login', request.url);
     
+    // Add return URL for non-root paths
     if (pathname !== '/' && 
       pathname !== '/dashboard' && 
       pathname.length < 50 && 
@@ -235,38 +216,14 @@ export async function middleware(request: NextRequest) {
       !pathname.includes('/logout') &&
       !pathname.includes('/api/') &&
       !pathname.includes('/_next')) {
-    loginUrl.searchParams.set('returnUrl', pathname);
-  }
+      loginUrl.searchParams.set('returnUrl', pathname);
+    }
 
     return NextResponse.redirect(loginUrl);
   }
 
-  // 🔒 IMPROVED: Add retry logic for token validation
-  let authResult: { 
-    isValid: boolean; 
-    user?: { 
-      id: number; 
-      role: UserRole; 
-      email_verified: boolean; 
-      is_approved: boolean; 
-    } 
-  } = { isValid: false };
-  let retryCount = 0;
-  const maxRetries = 2;
-
-  while (retryCount <= maxRetries) {
-    authResult = await validateAuthToken(token);
-    
-    if (authResult.isValid || retryCount >= maxRetries) {
-      break;
-    }
-    
-    retryCount++;
-    console.log(`🔄 Token validation retry ${retryCount}/${maxRetries}`);
-    
-    // Wait a bit before retry
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
+  // Validate the authentication token
+  const authResult = await validateAuthToken(token);
   
   if (!authResult.isValid || !authResult.user) {
     console.log('❌ Invalid token, clearing cookie and redirecting to login');
@@ -277,7 +234,7 @@ export async function middleware(request: NextRequest) {
 
   const { user } = authResult;
 
-  // Handle account approval status
+  // Check account approval status
   if (!user.is_approved) {
     if (pathname !== '/approval-pending') {
       console.log('⏳ Account not approved, redirecting to approval pending');
@@ -286,7 +243,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Handle email verification
+  // Check email verification status
   if (!user.email_verified) {
     if (pathname !== '/verify-email') {
       console.log('📧 Email not verified, redirecting to verification');
@@ -314,14 +271,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  console.log('✅ Access granted, proceeding to route');
-
-  // Set security headers
-  const res = NextResponse.next();
+  // Set security headers for HIPAA compliance
+  const response = NextResponse.next();
   
   if (process.env.NODE_ENV === 'production') {
-    // Production CSP
-    res.headers.set('Content-Security-Policy', 
+    response.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
@@ -330,8 +284,7 @@ export async function middleware(request: NextRequest) {
       "frame-ancestors 'none';"
     );
   } else {
-    // Development CSP
-    res.headers.set('Content-Security-Policy', 
+    response.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
@@ -341,18 +294,16 @@ export async function middleware(request: NextRequest) {
     );
   }
   
-  // Other security headers
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('X-XSS-Protection', '1; mode=block');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  // HIPAA-specific headers
-  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.headers.set('Pragma', 'no-cache');
-  res.headers.set('Expires', '0');
+  // Additional security headers for HIPAA compliance
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
 
-  return res;
+  return response;
 }
 
 export const config = {
