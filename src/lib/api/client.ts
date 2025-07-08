@@ -1,26 +1,24 @@
 // src/lib/api/client.ts
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { getCookieValue } from '@/lib/utils/cookies';
+import { config } from '../config';
+import { config as appConfig } from '@/lib/config';
 
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
 }
 
-// Import config directly - circular dependency should be resolved now
-import { config as appConfig } from '@/lib/config';
-
 /**
- * Create Axios client configured for your deployed backend
- * The client automatically handles cookies and provides HIPAA-compliant headers
+ * Create the main API client instance
+ * This is the central axios instance that all your API services will use
  */
-export const apiClient: AxiosInstance = axios.create({
-  baseURL: appConfig.apiBaseUrl,
+export const apiClient = axios.create({
+  baseURL: config.apiBaseUrl,
+  timeout: 30000, // 30 second timeout
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
   },
-  withCredentials: true, 
-  timeout: 30000, // 30 second timeout for HIPAA compliance
+  withCredentials: true, // Include cookies for authentication
 });
 
 /**
@@ -40,10 +38,16 @@ apiClient.interceptors.request.use(
       requestConfig.headers = requestConfig.headers || {};
       requestConfig.headers['X-Request-Timestamp'] = new Date().toISOString();
     }
+
+     // Log outgoing requests in development for debugging
+     if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 API Request: ${requestConfig.method?.toUpperCase()} ${requestConfig.url}`);
+    }
     
     return requestConfig;
   },
   (error) => {
+    console.error('❌ Request interceptor error:', error);
     return Promise.reject(error);
   }
 );

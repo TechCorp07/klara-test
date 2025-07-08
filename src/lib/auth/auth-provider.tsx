@@ -171,44 +171,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
         
-        // 🛡️ PROTECTED ROUTES: Trust middleware validation
-        if (isProtectedRoute(pathname)) {
-          console.log('🛡️ AuthProvider: Protected route detected, trusting middleware auth:', pathname);
+      // 🛡️ PROTECTED ROUTES: Trust middleware validation with better error handling
+      if (isProtectedRoute(pathname)) {
+        console.log('🛡️ AuthProvider: Protected route detected, trusting middleware auth:', pathname);
+        
+        try {
+          // Primary attempt: Get user data from the main endpoint
+          const userData = await authService.getCurrentUser();
+          setUser(userData);
+          console.log('✅ AuthProvider: User data retrieved successfully:', {
+            id: userData.id,
+            email: userData.email,
+            role: userData.role
+          });
+        } catch (error) {
+          console.log('⚠️ AuthProvider: Primary user data fetch failed, investigating...', error);
           
-          // If user reached a protected route, middleware already validated them
-          // Make a single, simple API call to get user data (not for validation)
-          try {
-            const userData = await authService.getCurrentUser();
-            setUser(userData);
-            console.log('✅ AuthProvider: User data retrieved for protected route:', {
-              id: userData.id,
-              email: userData.email,
-              role: userData.role
-            });
-          } catch (error) {
-            // If this fails, it's likely a temporary issue or missing user data
-            // Don't redirect - let the middleware handle authentication decisions
-            console.log('⚠️ AuthProvider: Could not retrieve user data on protected route, but trusting middleware');
+          // Check if this is a temporary network issue vs authentication issue
+          if (error instanceof Error) {
+            // If it's a 401, the token might be invalid - let middleware handle it
+            if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+              console.log('🔓 AuthProvider: Authentication appears invalid, letting middleware redirect');
+              // Don't set any user state - let the middleware handle the redirect
+              setIsLoading(false);
+              setIsInitialized(true);
+              return;
+            }
             
-            // Set a minimal user object to prevent redirect loops
-            // The middleware has already validated the user, so we trust that
-            setUser({
-              id: 0,
-              email: 'middleware-validated-user',
-              role: 'patient', // We'll get the real role later
-              is_active: true,
-              is_approved: true,
-              email_verified: true,
-              first_name: '',
-              last_name: '',
-              date_joined: new Date().toISOString()
-            } as User);
+            // For other errors (network, server errors), we'll trust the middleware
+            // and set a minimal user object to prevent infinite redirects
+            console.log('🔄 AuthProvider: Non-auth error, trusting middleware validation');
           }
           
-          setIsLoading(false);
-          setIsInitialized(true);
-          return;
+          // Create a minimal user object based on the route pattern
+          // Since middleware validated them, we know they're authenticated
+          const roleFromPath = pathname.split('/')[1]; // Extract role from /patient, /provider, etc.
+          const validRoles = ['patient', 'provider', 'admin', 'pharmco', 'caregiver', 'researcher', 'compliance'];
+          const detectedRole = validRoles.includes(roleFromPath) ? roleFromPath : 'patient';
+          
+          setUser({
+            id: 0, // Temporary ID
+            email: 'middleware-validated-user',
+            role: detectedRole,
+            is_active: true,
+            is_approved: true,
+            email_verified: true,
+            first_name: '',
+            last_name: '',
+            date_joined: new Date().toISOString()
+          } as User);
+          
+          console.log(`🛡️ AuthProvider: Set fallback user with role: ${detectedRole}`);
         }
+        
+        setIsLoading(false);
+        setIsInitialized(true);
+        return;
+      }
         
         // 🔍 OTHER ROUTES: Check authentication normally
         console.log('🔍 AuthProvider: Non-categorized route, checking auth:', pathname);

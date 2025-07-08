@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/use-auth';
 import { apiClient } from '@/lib/api/client';
+import { ENDPOINTS } from '@/lib/api/endpoints';
 import { AdminPermissions } from '@/types/admin.types';
 
 interface PermissionsContextType {
@@ -11,6 +12,16 @@ interface PermissionsContextType {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+}
+
+// Enhanced error type that includes interceptor flags
+interface EnhancedPermissionsError extends Error {
+  isPermissionsError?: boolean;
+  shouldUseFallback?: boolean;
+  response?: {
+    status: number;
+    data: unknown;
+  };
 }
 
 export const usePermissions = (): PermissionsContextType => {
@@ -30,11 +41,11 @@ export const usePermissions = (): PermissionsContextType => {
       setLoading(true);
       setError(null);
 
-      // Fetch user permissions from the API
-      const response = await apiClient.get('/users/me/permissions/');
+      // Use the correct endpoint from your ENDPOINTS configuration
+      const response = await apiClient.get(ENDPOINTS.USERS.PERMISSIONS);
       const permissionsData = response.data;
 
-      // Create the permissions object based on user role and specific permissions
+      // Create the permissions object based on user role and API response
       const userPermissions: AdminPermissions = {
         has_admin_access: permissionsData.has_admin_access || user.role === 'admin' || user.role === 'superadmin' || user.is_staff,
         has_user_management_access: permissionsData.has_user_management_access || user.role === 'admin' || user.role === 'superadmin',
@@ -42,48 +53,77 @@ export const usePermissions = (): PermissionsContextType => {
         has_audit_access: permissionsData.has_audit_access || user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
         has_compliance_access: permissionsData.has_compliance_access || user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
         has_export_access: permissionsData.has_export_access || user.role === 'admin' || user.role === 'superadmin',
-        has_dashboard_access: permissionsData.has_dashboard_access || user.role === 'admin' || user.role === 'superadmin',
+        has_dashboard_access: permissionsData.has_dashboard_access || true, // All authenticated users can access dashboard
         has_compliance_reports_access: permissionsData.has_compliance_reports_access || user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
         user_role: user.role,
         is_superadmin: user.role === 'superadmin' || !!user.is_superuser,
       };
 
       setPermissions(userPermissions);
-    } catch (err: unknown) {
-      console.error('Failed to fetch permissions:', err);
+      console.log('✅ Permissions loaded successfully for user:', user.role);
 
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-            setError('An unknown error occurred');
-          }
-          // Fallback to basic role-based permissions if API fails
-      if (user) {
-        const fallbackPermissions: AdminPermissions = {
-          has_admin_access: user.role === 'admin' || user.role === 'superadmin' || !!user.is_staff,
-          has_user_management_access: user.role === 'admin' || user.role === 'superadmin',
-          has_system_settings_access: user.role === 'superadmin',
-          has_audit_access: user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
-          has_compliance_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
-          has_export_access: user.role === 'admin' || user.role === 'superadmin',
-          has_dashboard_access: user.role === 'admin' || user.role === 'superadmin',
-          has_compliance_reports_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
-          user_role: user.role,
-          is_superadmin: user.role === 'superadmin' || !!user.is_superuser,
-        };
+    } catch (err: unknown) {
+      console.warn('⚠️ Permissions API call failed, analyzing error...', err);
+
+      // Check if this is the enhanced error from our interceptor
+      const enhancedError = err as EnhancedPermissionsError;
+      
+      if (enhancedError.isPermissionsError && enhancedError.shouldUseFallback) {
+        console.log('🛡️ Using fallback permissions due to interceptor recommendation');
+        
+        // The interceptor has identified this as a permissions-specific error
+        // Use role-based fallback permissions as intended
+        const fallbackPermissions = createFallbackPermissions(user);
         setPermissions(fallbackPermissions);
+        
+        // Don't set this as an error since we handled it gracefully
+        setError(null);
+        
+      } else if (enhancedError.response?.status === 404) {
+        console.warn('🔍 Permissions endpoint not found, using role-based permissions');
+        
+        // Backend endpoint doesn't exist yet, use role-based permissions
+        const fallbackPermissions = createFallbackPermissions(user);
+        setPermissions(fallbackPermissions);
+        setError(null);
+        
+      } else if (enhancedError.response?.status === 401) {
+        console.error('🔓 Authentication failed for permissions - this might indicate a serious auth issue');
+        
+        // This could indicate a broader authentication problem
+        // Still provide fallback but also set an error
+        const fallbackPermissions = createFallbackPermissions(user);
+        setPermissions(fallbackPermissions);
+        setError('Authentication issue detected while fetching permissions');
+        
       } else {
-        if (typeof err === 'object' && err !== null && 'response' in err) {
-          const errorWithResponse = err as { response: { data?: { detail?: string } } };
-          setError(errorWithResponse.response?.data?.detail || 'Failed to load permissions');
-        } else {
-          setError('Failed to load permissions');
-        }
+        // Unknown error type, provide fallback and log for investigation
+        console.error('❌ Unknown permissions error:', err);
+        
+        const fallbackPermissions = createFallbackPermissions(user);
+        setPermissions(fallbackPermissions);
+        setError('Permissions service temporarily unavailable');
       }
     } finally {
       setLoading(false);
     }
   }, [user, isAuthenticated]);
+
+  // Helper function to create role-based fallback permissions
+  const createFallbackPermissions = (user: any): AdminPermissions => {
+    return {
+      has_admin_access: user.role === 'admin' || user.role === 'superadmin' || !!user.is_staff,
+      has_user_management_access: user.role === 'admin' || user.role === 'superadmin',
+      has_system_settings_access: user.role === 'superadmin',
+      has_audit_access: user.role === 'admin' || user.role === 'superadmin' || user.role === 'compliance',
+      has_compliance_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
+      has_export_access: user.role === 'admin' || user.role === 'superadmin',
+      has_dashboard_access: true, // All authenticated users can access their dashboard
+      has_compliance_reports_access: user.role === 'compliance' || user.role === 'admin' || user.role === 'superadmin',
+      user_role: user.role,
+      is_superadmin: user.role === 'superadmin' || !!user.is_superuser,
+    };
+  };
 
   useEffect(() => {
     fetchPermissions();
