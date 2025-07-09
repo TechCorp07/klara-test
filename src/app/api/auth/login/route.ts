@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
       value: token,
       httpOnly: true,  // 🔒 SECURE: Cannot be accessed by JavaScript
       secure: config.secureCookies,  // 🔒 SECURE: HTTPS only in production
-      sameSite: 'strict',  // 🔒 SECURE: CSRF protection
+      sameSite: 'lax',  // 🔒 SECURE: CSRF protection
       path: '/',
       maxAge: 60 * 60 * 24 * config.tokenExpiryDays, // Set proper expiry
-      ...(config.cookieDomain && { domain: config.cookieDomain })
+      ...(config.cookieDomain && config.isProduction && { domain: config.cookieDomain })
     });
     
     console.log('✅ Secure HttpOnly authentication cookie set');

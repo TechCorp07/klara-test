@@ -29,6 +29,7 @@ import type {
   PaginatedUsersResponse, 
   AdminUserCreateData 
 } from '@/types/admin.types';
+import { authenticatedClient } from '../authenticated-client';
 
 
 // Backend response interfaces matching your deployed API exactly
@@ -131,6 +132,24 @@ interface BackendRegistrationPayload {
   regulatory_experience?: string;
 }
 
+const makeResilientRequest = async (requestFn: () => Promise<any>, maxRetries = 2) => {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error: any) {
+      // Check if this is an authentication error that might be a timing issue
+      if (error.response?.status === 401 && attempt < maxRetries) {
+        console.log(`🔄 Auth request failed (attempt ${attempt + 1}), retrying in ${200 * (attempt + 1)}ms...`);
+        // Wait briefly and retry - might be a timing issue
+        await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+        continue;
+      }
+      // If it's not a retryable error, or we've exhausted retries, throw the error
+      throw error;
+    }
+  }
+};
+
 export const authService = {
   // Helper method to get stored token
   getToken: (): string | null => {
@@ -139,13 +158,10 @@ export const authService = {
   },
 
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
-    
-    if (!validateLoginResponse(response.data)) {
-      throw new Error('Invalid login response format from server');
-    }
-    
-    return response.data;
+    return makeResilientRequest(async () => {
+      const response = await authenticatedClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
+      return response.data || response;
+    });
   },
 
   register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
@@ -688,6 +704,13 @@ export const authService = {
     }
   },
 
+  getUserPermissions: async (): Promise<UserPermissions> => {
+    return makeResilientRequest(async () => {
+      const response = await authenticatedClient.get(ENDPOINTS.USERS.PERMISSIONS);
+      return response.data || response;
+    });
+  },
+
   /**
    * Logout - backend uses single token system
    */
@@ -795,17 +818,14 @@ export const authService = {
 
   /**
    * Get current user information
-   */
+   */  
   getCurrentUser: async (): Promise<User> => {
-    const response = await apiClient.get(ENDPOINTS.USERS.ME);
-    
-    if (!validateUserResponse(response.data)) {
-      throw new Error('Invalid user data format from server');
-    }
-    
-    return response.data;
+    return makeResilientRequest(async () => {
+      const response = await authenticatedClient.get(ENDPOINTS.USERS.ME);
+      return response.data || response;
+    });
   },
-  
+
   /**
    * MODIFIED: Admin functions - get pending approvals with permission handling
    */

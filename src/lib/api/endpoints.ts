@@ -56,7 +56,7 @@ export const ENDPOINTS = {
     
     // Current user permissions
     PERMISSIONS: '/users/auth/me/permissions/',
-    
+
     // Profile completion endpoints
     COMPLETE_PATIENT_PROFILE: (id: number) => `/users/patient-profiles/${id}/complete/`,
     UPDATE_PATIENT_CONSENT: (id: number) => `/users/patient-profiles/${id}/update-consent/`,

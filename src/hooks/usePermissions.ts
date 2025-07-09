@@ -232,6 +232,36 @@ export const hasRoleAccess = (
   return allowedRoles.includes(userRole);
 };
 
+// Create a custom hook for authenticated API calls
+export const useAuthenticatedAPI = () => {
+  const { user, isInitialized, isLoading } = useAuth();
+  
+  const makeAuthenticatedRequest = useCallback(async (requestFn: () => Promise<any>) => {
+    // Wait for auth initialization
+    if (!isInitialized || isLoading) {
+      await new Promise((resolve) => {
+        const checkAuth = () => {
+          if (isInitialized && !isLoading) {
+            resolve(void 0);
+          } else {
+            setTimeout(checkAuth, 50);
+          }
+        };
+        checkAuth();
+      });
+    }
+    
+    // Only proceed if user is authenticated
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    return requestFn();
+  }, [user, isInitialized, isLoading]);
+  
+  return { makeAuthenticatedRequest };
+};
+
 export const isAdminUser = (permissions: AdminPermissions | null): boolean => {
   return checkPermission(permissions, 'has_admin_access');
 };

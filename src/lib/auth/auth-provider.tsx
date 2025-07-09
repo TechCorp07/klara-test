@@ -79,9 +79,11 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
   'completeIdentityVerification' | 
   'getCaregiverRequests' | 
   'initiateEmergencyAccess' |
-  'getDashboardStats'
+  'getDashboardStats' |
+  'login'
 > {
-  // All the interface methods remain the same...
+  // Override login method with correct signature
+  login: (credentials: LoginRequest) => Promise<LoginResponse>;
   initiateIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; method: string }>;
   completeIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; verified_at: string }>;
   
@@ -135,7 +137,8 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
   
   // Get current pathname to check if we're on a public route
@@ -305,31 +308,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * 🔒 SECURE: Core Authentication Methods
    */
-  const login = async (username: string, password: string): Promise<LoginResponse> => {
+  const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ username, password });
+      // Step 1: Authenticate with backend
+      const response = await authService.login(credentials);
       
-      if (!response.requires_2fa) {
-        // 🔒 SECURE: Call server API to set HttpOnly cookies
-        const cookieResponse = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token: response.token,
-            user: response.user
-          }),
-          credentials: 'include'
-        });
-        
-        if (cookieResponse.ok) {
-          setUser(response.user);
-          setLastActivity(Date.now());
-          console.log('✅ Login successful, user authenticated');
-        } else {
-          throw new Error('Failed to set authentication cookies');
-        }
+      // Step 2: Set HttpOnly cookie
+      const cookieResponse = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: response.token,
+          user: response.user
+        }),
+        credentials: 'include'
+      });
+      
+      if (!cookieResponse.ok) {
+        throw new Error('Failed to set authentication cookies');
       }
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      setUser(response.user);
+      setLastActivity(Date.now());
       
       return response;
     } finally {
