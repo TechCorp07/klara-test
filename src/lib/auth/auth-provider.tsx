@@ -164,77 +164,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        console.log('🔐 Initializing auth...');
         setIsLoading(true);
         
-        // 🟢 PUBLIC ROUTES: Skip auth check (same as before)
+        // Skip auth check for public routes
         if (isPublicRoute(pathname)) {
+          console.log('📍 Public route, skipping auth');
           setUser(null);
           setIsLoading(false);
           setIsInitialized(true);
           return;
         }
-        
-      // 🛡️ PROTECTED ROUTES: Trust middleware validation with better error handling
-      if (isProtectedRoute(pathname)) {
-        
-        try {
-          // Primary attempt: Get user data from the main endpoint
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          // Check if this is a temporary network issue vs authentication issue
-          if (error instanceof Error) {
-            // If it's a 401, the token might be invalid - let middleware handle it
-            if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-              // Don't set any user state - let the middleware handle the redirect
-              setIsLoading(false);
-              setIsInitialized(true);
-              return;
-            }
+  
+        // For protected routes, get user data
+        if (isProtectedRoute(pathname)) {
+          console.log('🔒 Protected route, fetching user data...');
+          
+          try {
+            // SIMPLE: Just get the user data, no complex logic
+            const userData = await authService.getCurrentUser();
+            console.log('✅ User data fetched:', userData.email, userData.role);
+            setUser(userData);
             
+          } catch (error: any) {
+            console.log('❌ Failed to get user data:', error.message);
+            
+            // If 401, clear everything and let middleware redirect
+            if (error.response?.status === 401) {
+              console.log('🔒 401 error - invalid token');
+              setUser(null);
+            } else {
+              // For other errors, still clear user (don't create fake users)
+              console.log('🚨 Other error, clearing user');
+              setUser(null);
+            }
           }
-          
-          // Create a minimal user object based on the route pattern
-          // Since middleware validated them, we know they're authenticated
-          const roleFromPath = pathname.split('/')[1]; // Extract role from /patient, /provider, etc.
-          const validRoles = ['patient', 'provider', 'admin', 'pharmco', 'caregiver', 'researcher', 'compliance'];
-          const detectedRole = validRoles.includes(roleFromPath) ? roleFromPath : 'patient';
-          
-          setUser({
-            id: 0, // Temporary ID
-            email: 'middleware-validated-user',
-            role: detectedRole,
-            is_active: true,
-            is_approved: true,
-            email_verified: true,
-            first_name: '',
-            last_name: '',
-            date_joined: new Date().toISOString()
-          } as User);
-          
-        }
-        
-        setIsLoading(false);
-        setIsInitialized(true);
-        return;
-      }
-        
-        try {
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
-
-        } catch (error: any) {
-          setUser(null);
         }
         
       } catch (error) {
+        console.error('🚨 Auth initialization error:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
+        console.log('✅ Auth initialization complete');
       }
     };
-
+  
     initializeAuth();
   }, [pathname]);
   

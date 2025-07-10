@@ -62,23 +62,27 @@ export default function PatientDashboard() {
             'Content-Type': 'application/json',
           },
         });
-
+  
         if (!response.ok) {
           throw new Error('Failed to fetch dashboard data');
         }
-
+  
         const data = await response.json();
         setDashboardData(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Dashboard fetch error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
       } finally {
         setLoading(false);
       }
     };
-
-    if (user) {
+  
+    // CRITICAL: Only fetch when we have a real user
+    if (user?.role === 'patient' && user.email !== 'middleware-validated-user') {
+      console.log('👤 Fetching patient dashboard data');
       fetchDashboardData();
+    } else {
+      console.log('⏳ Waiting for real patient user');
+      setLoading(false); // Don't show loading if waiting for user
     }
   }, [user]);
 

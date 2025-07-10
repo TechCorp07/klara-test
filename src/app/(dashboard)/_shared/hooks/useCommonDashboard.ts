@@ -151,8 +151,14 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
 
   // Initial data fetch
   useEffect(() => {
-    fetchCommonData();
-  }, [fetchCommonData]);
+    // CRITICAL: Only fetch data when we have a real authenticated user
+    if (user && user.email !== 'middleware-validated-user') {
+      console.log('📊 Fetching dashboard data for:', user.email);
+      fetchCommonData();
+    } else {
+      console.log('⏳ Waiting for real user before fetching dashboard data');
+    }
+  }, [user, fetchCommonData]);
 
   // Auto-refresh data every 5 minutes
   useEffect(() => {

@@ -25,7 +25,7 @@ interface EnhancedPermissionsError extends Error {
 }
 
 export const usePermissions = (): PermissionsContextType => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isInitialized } = useAuth();
   const [permissions, setPermissions] = useState<AdminPermissions | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,8 +126,30 @@ export const usePermissions = (): PermissionsContextType => {
   };
 
   useEffect(() => {
-    fetchPermissions();
-  }, [fetchPermissions]);
+    const loadPermissions = async () => {
+      // CRITICAL: Wait for auth to be fully initialized AND have a real user
+      if (!isAuthenticated || !user || !isInitialized) {
+        console.log('⏳ Waiting for auth initialization...', { isAuthenticated, hasUser: !!user, isInitialized });
+        setPermissions(null);
+        setLoading(false); // Don't show loading if no user
+        return;
+      }
+  
+      // CRITICAL: Don't load permissions for fake middleware users
+      if (user.email === 'middleware-validated-user') {
+        console.log('🎭 Skipping permissions for middleware user');
+        const fallback = createFallbackPermissions(user);
+        setPermissions(fallback);
+        setLoading(false);
+        return;
+      }
+  
+      console.log('📊 Loading permissions for real user:', user.email);
+      await fetchPermissions();
+    };
+  
+    loadPermissions();
+  }, [user, isAuthenticated, isInitialized, fetchPermissions]); // Wait for all three
 
   const refetch = useCallback(async () => {
     await fetchPermissions();
