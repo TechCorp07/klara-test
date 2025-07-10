@@ -2,10 +2,9 @@
 import apiClient, { extractDataFromResponse } from '../client';
 import { AxiosError } from 'axios';
 import { ENDPOINTS } from '../endpoints';
-import { validateLoginResponse, validateUserResponse } from '@/lib/api/validation';
 import type { 
-  LoginRequest, 
   LoginResponse, 
+  LoginCredentials,
   RegisterRequest, 
   RegisterResponse, 
   ResetPasswordRequest, 
@@ -30,6 +29,7 @@ import type {
   AdminUserCreateData 
 } from '@/types/admin.types';
 import { authenticatedClient } from '../authenticated-client';
+import { validateLoginResponse, validateUserResponse } from '../validation';
 
 
 // Backend response interfaces matching your deployed API exactly
@@ -132,6 +132,9 @@ interface BackendRegistrationPayload {
   regulatory_experience?: string;
 }
 
+/**
+ * Makes resilient API requests with automatic retry logic for authentication timing issues
+ */
 const makeResilientRequest = async (requestFn: () => Promise<any>, maxRetries = 2) => {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -139,7 +142,6 @@ const makeResilientRequest = async (requestFn: () => Promise<any>, maxRetries = 
     } catch (error: any) {
       // Check if this is an authentication error that might be a timing issue
       if (error.response?.status === 401 && attempt < maxRetries) {
-        console.log(`🔄 Auth request failed (attempt ${attempt + 1}), retrying in ${200 * (attempt + 1)}ms...`);
         // Wait briefly and retry - might be a timing issue
         await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
         continue;
@@ -157,10 +159,15 @@ export const authService = {
     return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
   },
 
-  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+  login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     return makeResilientRequest(async () => {
-      const response = await authenticatedClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
-      return response.data || response;
+      const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
+      
+      if (!validateLoginResponse(response.data)) {
+        throw new Error('Invalid login response format');
+      }
+      
+      return response.data as LoginResponse;
     });
   },
 
@@ -706,7 +713,7 @@ export const authService = {
 
   getUserPermissions: async (): Promise<UserPermissions> => {
     return makeResilientRequest(async () => {
-      const response = await authenticatedClient.get(ENDPOINTS.USERS.PERMISSIONS);
+      const response = await authenticatedClient.get('/users/auth/me/permissions/');
       return response.data || response;
     });
   },
@@ -821,8 +828,8 @@ export const authService = {
    */  
   getCurrentUser: async (): Promise<User> => {
     return makeResilientRequest(async () => {
-      const response = await authenticatedClient.get(ENDPOINTS.USERS.ME);
-      return response.data || response;
+      const response = await authenticatedClient.get('/users/auth/me/');
+      return validateUserResponse(response) ? response : response.data || response;
     });
   },
 

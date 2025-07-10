@@ -19,43 +19,62 @@ class AuthenticatedAPIClient {
     // Create full URL if relative path is provided
     const fullUrl = url.startsWith('http') ? url : `${this.baseUrl}${url}`;
     
-    // Check if same request is already pending
+    // Create a unique key for this request (method + URL)
     const requestKey = `${options.method || 'GET'}:${fullUrl}`;
     
+    // If same request is already pending, return the existing promise
     if (this.pendingRequests.has(requestKey)) {
-      console.log(`🔄 Request already pending, returning existing promise: ${requestKey}`);
       return this.pendingRequests.get(requestKey);
     }
     
-    // Make the request with proper configuration
-    const requestPromise = fetch(fullUrl, {
+    // Configure request with proper headers and credentials
+    const requestOptions: RequestInit = {
       ...options,
       credentials: 'include', // Ensure cookies are sent
       headers: {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest', // CSRF protection
+        'Cache-Control': 'no-cache, no-store, must-revalidate', // HIPAA compliance
+        'Pragma': 'no-cache',
         ...options.headers,
       }
-    }).then(async (response) => {
-      // Handle the response
-      if (!response.ok) {
-        const error = new Error(`HTTP ${response.status}`);
-        (error as any).response = response;
-        throw error;
-      }
-      
-      // Return JSON if response has content
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return response.json();
-      }
-      
-      return response;
-    }).finally(() => {
-      // Clean up when request completes
-      this.pendingRequests.delete(requestKey);
-    });
+    };
     
+    // Create the request promise
+    const requestPromise = fetch(fullUrl, requestOptions)
+      .then(async (response) => {
+        // Handle non-200 responses
+        if (!response.ok) {
+          const error = new Error(`HTTP ${response.status}`);
+          (error as any).response = response;
+          
+          // Try to get error details from response
+          try {
+            const errorData = await response.json();
+            (error as any).data = errorData;
+          } catch {
+            // If response is not JSON, ignore
+          }
+          
+          throw error;
+        }
+        
+        // Return JSON if response has content
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json();
+        }
+        
+        return response;
+      })
+      .finally(() => {
+        // Clean up when request completes (success or failure)
+        this.pendingRequests.delete(requestKey);
+      });
+    
+    // Store the promise to prevent duplicates
     this.pendingRequests.set(requestKey, requestPromise);
+    
     return requestPromise;
   }
 
@@ -82,6 +101,11 @@ class AuthenticatedAPIClient {
 
   async delete(url: string, options: RequestInit = {}) {
     return this.request(url, { ...options, method: 'DELETE' });
+  }
+
+  // Clear all pending requests (useful for logout)
+  clearPendingRequests() {
+    this.pendingRequests.clear();
   }
 }
 

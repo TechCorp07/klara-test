@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { 
   User, 
-  LoginRequest,
+  LoginCredentials,
   LoginResponse, 
   RegisterRequest, 
   RegisterResponse,
@@ -31,6 +31,7 @@ import { config } from '@/lib/config';
 import { ConsentUpdateResponse } from '@/types/auth.types';
 import { DashboardStatsResponse } from '@/types/admin.types';
 import { usePathname } from 'next/navigation';
+import { authenticatedClient } from '../api/authenticated-client';
 
 // Define public routes that don't need authentication checks
 const PUBLIC_ROUTES = [
@@ -83,7 +84,7 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
   'login'
 > {
   // Override login method with correct signature
-  login: (credentials: LoginRequest) => Promise<LoginResponse>;
+  login: (credentials: LoginCredentials) => Promise<LoginResponse>;
   initiateIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; method: string }>;
   completeIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; verified_at: string }>;
   
@@ -167,7 +168,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // 🟢 PUBLIC ROUTES: Skip auth check (same as before)
         if (isPublicRoute(pathname)) {
-          console.log('🟢 AuthProvider: Public route, no auth needed:', pathname);
           setUser(null);
           setIsLoading(false);
           setIsInitialized(true);
@@ -176,34 +176,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
       // 🛡️ PROTECTED ROUTES: Trust middleware validation with better error handling
       if (isProtectedRoute(pathname)) {
-        console.log('🛡️ AuthProvider: Protected route detected, trusting middleware auth:', pathname);
         
         try {
           // Primary attempt: Get user data from the main endpoint
           const userData = await authService.getCurrentUser();
           setUser(userData);
-          console.log('✅ AuthProvider: User data retrieved successfully:', {
-            id: userData.id,
-            email: userData.email,
-            role: userData.role
-          });
         } catch (error) {
-          console.log('⚠️ AuthProvider: Primary user data fetch failed, investigating...', error);
-          
           // Check if this is a temporary network issue vs authentication issue
           if (error instanceof Error) {
             // If it's a 401, the token might be invalid - let middleware handle it
             if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-              console.log('🔓 AuthProvider: Authentication appears invalid, letting middleware redirect');
               // Don't set any user state - let the middleware handle the redirect
               setIsLoading(false);
               setIsInitialized(true);
               return;
             }
             
-            // For other errors (network, server errors), we'll trust the middleware
-            // and set a minimal user object to prevent infinite redirects
-            console.log('🔄 AuthProvider: Non-auth error, trusting middleware validation');
           }
           
           // Create a minimal user object based on the route pattern
@@ -224,7 +212,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             date_joined: new Date().toISOString()
           } as User);
           
-          console.log(`🛡️ AuthProvider: Set fallback user with role: ${detectedRole}`);
         }
         
         setIsLoading(false);
@@ -232,29 +219,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
         
-        // 🔍 OTHER ROUTES: Check authentication normally
-        console.log('🔍 AuthProvider: Non-categorized route, checking auth:', pathname);
-        
         try {
           const userData = await authService.getCurrentUser();
           setUser(userData);
-          console.log('✅ AuthProvider: User authenticated on misc route:', {
-            id: userData.id,
-            email: userData.email,
-            role: userData.role
-          });
+
         } catch (error: any) {
-          console.log('❌ AuthProvider: User not authenticated on misc route:', error.message);
           setUser(null);
         }
         
       } catch (error) {
-        console.error('❌ AuthProvider: Initialization error:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
-        console.log('🏁 AuthProvider: Initialization complete for:', pathname);
       }
     };
 
@@ -276,7 +253,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const inactiveTimeoutMs = config.sessionTimeoutMinutes * 60 * 1000;
       
       if (inactiveTime > inactiveTimeoutMs) {
-        console.log('⏰ Session timeout due to inactivity');
         logout();
         if (typeof window !== 'undefined') {
           alert('Your session has expired due to inactivity. Please log in again.');
@@ -301,14 +277,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userData = await authService.getCurrentUser();
       setUser(userData);
     } catch (error) {
-      console.error('Failed to refresh user data:', error);
     }
   };
 
   /**
    * 🔒 SECURE: Core Authentication Methods
    */
-  const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
+  const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
       // Step 1: Authenticate with backend
@@ -329,10 +304,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Failed to set authentication cookies');
       }
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
       
       setUser(response.user);
       setLastActivity(Date.now());
+      
+      // Step 5: Additional delay to ensure all components see the updated state
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       return response;
     } finally {
@@ -352,7 +330,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // 🔒 SECURE: Clear HttpOnly cookies via server API
+      // Clear any pending authenticated requests
+      authenticatedClient.clearPendingRequests();
+      
+      // Clear HttpOnly cookies via server API
       const logoutResponse = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
@@ -364,29 +345,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Clear client state
       setUser(null);
-      
-      console.log('✅ Logout completed successfully');
+      setLastActivity(Date.now());
       
     } catch (error) {
       console.error('Error during logout:', error);
-      
-      // Even if logout fails, clear cookies and user state for security
-      try {
-        await fetch('/api/logout', {
-          method: 'POST',
-          credentials: 'include'
-        });
-
-      // Clear local state
-      setUser(null);
-      setLastActivity(Date.now());
-      console.log('✅ Logout successful');
-
-      } catch (error) {
-        console.error('Logout error:', error);
-        // Even if API call fails, clear local state
-      }
-      
+      // Even if logout fails, clear local state for security
       setUser(null);
     } finally {
       setIsLoading(false);

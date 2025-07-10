@@ -65,13 +65,14 @@ const LoginForm = () => {
       // Clear any previous error/success messages
       setErrorMessage(null);
       setSuccessMessage(null);
-
-      // Submit login request
-      const response = await login(data.username, data.password);
-
-      
+  
+      // Submit login request - FIXED: Pass credentials as single object
+      const response = await login({
+        username: data.username,
+        password: data.password
+      });
+  
       if (response.requires_2fa) {
-        
         setTemporaryUserId(response.user.id);
         setRequiresTwoFactor(true);
         setSuccessMessage('Please enter the verification code from your authenticator app.');
@@ -85,44 +86,36 @@ const LoginForm = () => {
         }, 500);
       }
     } catch (error: unknown) {
-
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
             data?: {
               detail?: string;
               field_errors?: Record<string, string[]>;
-              error?: { message?: string };
+              non_field_errors?: string[];
             };
           };
           message?: string;
         };
-
-        // Handle field-specific errors from backend
-        if (err.response?.data?.field_errors) {
-          const fieldErrors = err.response.data.field_errors;
-          const firstFieldWithError = Object.keys(fieldErrors)[0];
-          const firstError = fieldErrors[firstFieldWithError]?.[0];
-          setErrorMessage(firstError || 'Login failed. Please check your credentials.');
-        } else if (err.response?.data?.detail) {
-          // Server returned a specific error message
+  
+        // Handle specific error messages from the backend
+        if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.error) {
-          // Server returned an error object
-          setErrorMessage(
-            err.response.data.error.message || 'Login failed. Please try again.'
-          );
+        } else if (err.response?.data?.non_field_errors) {
+          setErrorMessage(err.response.data.non_field_errors.join(', '));
+        } else if (err.response?.data?.field_errors) {
+          // Handle field-specific errors
+          const fieldErrors = Object.values(err.response.data.field_errors).flat();
+          setErrorMessage(fieldErrors.join(', '));
         } else if (err.message) {
-          // Generic error with a message
           setErrorMessage(err.message);
         } else {
-          // Fallback error message
-          setErrorMessage('An unexpected error occurred. Please try again later.');
+          setErrorMessage('An error occurred during login. Please try again.');
         }
       } else {
-        setErrorMessage('An unknown error occurred. Please try again later.');
+        setErrorMessage('An unexpected error occurred. Please try again.');
       }
-    }    
+    }
   };
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {

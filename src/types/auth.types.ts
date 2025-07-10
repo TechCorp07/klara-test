@@ -34,14 +34,13 @@ export interface User {
   compliance_profile?: { id: number };
   is_active?: boolean;
   last_login?: string;
-  
 }
 
 /**
  * Login request - matches backend expectations
  */
-export interface LoginRequest {
-  username: string; // Backend expects 'username' field for email
+export interface LoginCredentials {
+  username: string;
   password: string;
 }
 
