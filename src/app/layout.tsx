@@ -31,10 +31,6 @@ export const metadata: Metadata = {
 /**
  * Root layout component for the entire application.
  * 
- * This component:
- * - Wraps the entire app in the AuthProvider for authentication state
- * - Sets up global font and styling
- * - Provides metadata for SEO
  */
 export default function RootLayout({
   children,

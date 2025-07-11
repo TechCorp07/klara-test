@@ -68,49 +68,27 @@ export default function LoginContent() {
   
   const sanitizedReturnUrl = getCleanReturnUrl();
   
-  // 🔧 CRITICAL: Much more careful redirect logic
   useEffect(() => {
-    // Don't do anything if already redirected
-    if (hasRedirectedRef.current) {
-      console.log('⏭️ Already redirected, skipping');
-      return;
-    }
+    console.log('🔄 User authentication state:', { isAuthenticated, isInitialized });
     
-    // Don't redirect until auth is fully initialized
-    if (!isInitialized) {
-      console.log('⏳ Auth not initialized, waiting...');
-      return;
-    }
-    
-    // Only redirect if authenticated
-    if (isAuthenticated) {
+    if (isAuthenticated && isInitialized) {
       console.log('🔄 User authenticated, preparing redirect to:', sanitizedReturnUrl);
       
-      hasRedirectedRef.current = true;
-      
-      // 🔧 CRITICAL: Use a longer delay and replace() to prevent back button issues
-      redirectTimeoutRef.current = setTimeout(() => {
+      // Add a small delay to ensure all auth state is properly set
+      const redirectTimer = setTimeout(() => {
         console.log('🚀 Executing redirect to:', sanitizedReturnUrl);
-        try {
-          router.replace(sanitizedReturnUrl);
-        } catch (error) {
-          console.error('❌ Redirect failed:', error);
-          // Fallback to dashboard if redirect fails
-          router.replace('/dashboard');
-        }
-      }, 200); // Increased delay
+        
+        // Use router.push instead of router.replace to avoid SSL issues
+        // and ensure proper navigation
+        router.push(sanitizedReturnUrl);
+      }, 500); // Increased delay to ensure cookies are properly set
       
-      return () => {
-        if (redirectTimeoutRef.current) {
-          clearTimeout(redirectTimeoutRef.current);
-        }
-      };
+      return () => clearTimeout(redirectTimer);
     } else {
       console.log('🔑 User not authenticated, showing login form');
     }
-  }, [isAuthenticated, isInitialized, router, sanitizedReturnUrl]);
+  }, [isAuthenticated, isInitialized, sanitizedReturnUrl, router]);
   
-  // 🔧 CRITICAL: Don't render anything while redirecting
   if (isInitialized && isAuthenticated) {
     return (
       <div className="text-center">

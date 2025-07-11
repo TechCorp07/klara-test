@@ -164,7 +164,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // 🔧 KEY INSIGHT: Middleware-coordinated authentication initialization
     const initializeAuth = useCallback(async () => {
-      // CRITICAL: Prevent multiple auth requests at the same time
       if (globalAuthLock || globalAuthPromise) {
         console.log('🔒 Auth already in progress, waiting for completion...');
         if (globalAuthPromise) {
@@ -179,6 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
       globalAuthLock = true;
       console.log('🔐 Initializing auth...');
+      console.log('📍 Current pathname:', pathname);
       
       globalAuthPromise = (async () => {
         try {
@@ -195,10 +195,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Add a small delay to ensure cookies are properly set
           await new Promise(resolve => setTimeout(resolve, 150));
           
+          console.log('📡 Calling authService.getCurrentUser()...');
           const userData = await authService.getCurrentUser();
+          console.log('📡 Response received:', userData ? 'User data found' : 'No user data');    
           
           if (userData) {
             console.log('✅ User data retrieved successfully');
+            console.log(`👤 User: ${userData.email}, Role: ${userData.role}`);
             setUser(userData);
             setLastActivity(Date.now());
           } else {
@@ -207,32 +210,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } catch (error: any) {
           console.log('❌ Failed to get user data:', error.message);
+          console.log('📊 Error details:', {
+            status: error.response?.status,
+            data: error.data,
+            message: error.message
+          });
           
           if (error.message?.includes('HTTP 401')) {
             console.log('🔒 401 error - clearing auth state');
             setUser(null);
             
-            // Try to clear cookies if we get 401
+            // Clear cookies via logout endpoint
             try {
+              console.log('🧹 Clearing authentication cookies...');
               await fetch('/api/auth/logout', {
                 method: 'POST',
                 credentials: 'include'
               });
               console.log('🧹 Cleared authentication cookies');
             } catch (logoutError) {
-              console.warn('Failed to clear cookies:', logoutError);
+              console.error('Failed to clear cookies:', logoutError);
             }
+          } else {
+            console.log('⚠️ Non-401 error, keeping current auth state');
           }
         } finally {
           setIsLoading(false);
           setIsInitialized(true);
+          setAuthCheckComplete(true);
           globalAuthLock = false;
           globalAuthPromise = null;
           console.log('✅ Auth initialization complete');
         }
       })();
-    
-      return globalAuthPromise;
+      
+      await globalAuthPromise;
     }, [pathname]);
   
   useEffect(() => {
