@@ -193,7 +193,7 @@ export const authService = {
     }
 
     if (userData.role === 'provider') {
-      backendPayload.medical_license_number = userData.license_number; 
+      backendPayload.medical_license_number = userData.medical_license_number; 
       backendPayload.npi_number = userData.npi_number;
       backendPayload.specialty = userData.specialty;
       backendPayload.practice_name = userData.practice_name;
@@ -203,8 +203,8 @@ export const authService = {
     
     if (userData.role === 'researcher') {
       backendPayload.institution = userData.institution;
-      backendPayload.primary_research_area = userData.research_area; 
-      backendPayload.qualifications_background = userData.qualifications;
+      backendPayload.primary_research_area = userData.primary_research_area; 
+      backendPayload.qualifications_background = userData.qualifications_background;
       backendPayload.irb_approval_confirmed = true;
       backendPayload.phi_handling_acknowledged = true;
     }
@@ -213,7 +213,7 @@ export const authService = {
       backendPayload.company_name = userData.company_name;
       backendPayload.role_at_company = userData.company_role; 
       backendPayload.regulatory_id = userData.regulatory_id;
-      backendPayload.primary_research_focus = userData.research_focus;
+      backendPayload.primary_research_focus = userData.primary_research_focus;
       backendPayload.phi_handling_acknowledged = true;
     }
     
@@ -711,13 +711,6 @@ export const authService = {
     }
   },
 
-  getUserPermissions: async (): Promise<UserPermissions> => {
-    return makeResilientRequest(async () => {
-      const response = await authenticatedClient.get('/users/auth/me/permissions/');
-      return response.data || response;
-    });
-  },
-
   /**
    * Logout - backend uses single token system
    */
@@ -1013,7 +1006,7 @@ export const authService = {
    * Update user profile
    */
   updateProfile: async (userData: Partial<User>): Promise<User> => {
-    const response = await apiClient.patch(ENDPOINTS.USERS.ME, userData);
+    const response = await apiClient.patch(ENDPOINTS.AUTH.ME, userData);
     return response.data;
   },
   

@@ -43,7 +43,7 @@ export interface DashboardStatsResponse {
   daily_active_users: Array<{ date: string; count: number }>;
 }
 
-export interface AdminUserDetail extends User {
+export interface AdminUserDetail extends Omit<User, 'profile'> {
   // Extended user information for admin view
   profile: {
     first_name: string;

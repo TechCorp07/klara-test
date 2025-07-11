@@ -1,7 +1,7 @@
 // src/lib/auth/auth-provider.tsx
 'use client';
 
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { 
   User, 
   LoginCredentials,
@@ -73,6 +73,8 @@ const PROTECTED_ROUTE_PREFIXES = [
 type IdentityVerificationMethod = "E_SIGNATURE" | "PROVIDER_VERIFICATION" | "DOCUMENT_UPLOAD" | "VIDEO_VERIFICATION";
 type CaregiverRequestStatus = "PENDING" | "APPROVED" | "DENIED" | "EXPIRED";
 type EmergencyAccessReason = "LIFE_THREATENING" | "URGENT_CARE" | "PATIENT_UNABLE" | "IMMINENT_DANGER" | "OTHER";
+let globalAuthLock = false;
+let globalAuthPromise: Promise<any> | null = null;
 
 // Enhanced AuthContextType with corrected types
 export interface EnhancedAuthContextType extends Omit<AuthContextType, 
@@ -161,59 +163,92 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // 🔧 KEY INSIGHT: Middleware-coordinated authentication initialization
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        console.log('🔐 Initializing auth...');
-        setIsLoading(true);
-        
-        // Skip auth check for public routes
-        if (isPublicRoute(pathname)) {
-          console.log('📍 Public route, skipping auth');
-          setUser(null);
-          setIsLoading(false);
-          setIsInitialized(true);
-          return;
-        }
-  
-        // For protected routes, get user data
-        if (isProtectedRoute(pathname)) {
-          console.log('🔒 Protected route, fetching user data...');
-          
+    const initializeAuth = useCallback(async () => {
+      // CRITICAL: Prevent multiple auth requests at the same time
+      if (globalAuthLock || globalAuthPromise) {
+        console.log('🔒 Auth already in progress, waiting for completion...');
+        if (globalAuthPromise) {
           try {
-            // SIMPLE: Just get the user data, no complex logic
-            const userData = await authService.getCurrentUser();
-            console.log('✅ User data fetched:', userData.email, userData.role);
-            setUser(userData);
-            
-          } catch (error: any) {
-            console.log('❌ Failed to get user data:', error.message);
-            
-            // If 401, clear everything and let middleware redirect
-            if (error.response?.status === 401) {
-              console.log('🔒 401 error - invalid token');
-              setUser(null);
-            } else {
-              // For other errors, still clear user (don't create fake users)
-              console.log('🚨 Other error, clearing user');
-              setUser(null);
-            }
+            await globalAuthPromise;
+          } catch (error) {
+            console.log('Previous auth attempt failed, continuing...');
           }
         }
-        
-      } catch (error) {
-        console.error('🚨 Auth initialization error:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-        setIsInitialized(true);
-        console.log('✅ Auth initialization complete');
+        return;
       }
+    
+      globalAuthLock = true;
+      console.log('🔐 Initializing auth...');
+      
+      globalAuthPromise = (async () => {
+        try {
+          // Check if we're on a public route first
+          if (pathname && PUBLIC_ROUTES.includes(pathname)) {
+            console.log('📍 On public route, skipping auth check');
+            setIsLoading(false);
+            setIsInitialized(true);
+            return;
+          }
+    
+          console.log('🔒 Protected route, fetching user data...');
+          
+          // Add a small delay to ensure cookies are properly set
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          const userData = await authService.getCurrentUser();
+          
+          if (userData) {
+            console.log('✅ User data retrieved successfully');
+            setUser(userData);
+            setLastActivity(Date.now());
+          } else {
+            console.log('❌ No user data received');
+            setUser(null);
+          }
+        } catch (error: any) {
+          console.log('❌ Failed to get user data:', error.message);
+          
+          if (error.message?.includes('HTTP 401')) {
+            console.log('🔒 401 error - clearing auth state');
+            setUser(null);
+            
+            // Try to clear cookies if we get 401
+            try {
+              await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+              });
+              console.log('🧹 Cleared authentication cookies');
+            } catch (logoutError) {
+              console.warn('Failed to clear cookies:', logoutError);
+            }
+          }
+        } finally {
+          setIsLoading(false);
+          setIsInitialized(true);
+          globalAuthLock = false;
+          globalAuthPromise = null;
+          console.log('✅ Auth initialization complete');
+        }
+      })();
+    
+      return globalAuthPromise;
+    }, [pathname]);
+  
+  useEffect(() => {
+    if (!isInitialized && !globalAuthLock) {
+      initializeAuth();
+    }
+  }, [isInitialized]); 
+  
+  // Add this cleanup effect:
+  useEffect(() => {
+    return () => {
+      globalAuthLock = false;
+      globalAuthPromise = null;
     };
-  
-    initializeAuth();
-  }, [pathname]);
-  
+  }, []);
+
   // 🔒 Activity tracking (only on protected routes where we have a real user)
   useEffect(() => {
     // Skip activity tracking on public routes or when no user
@@ -261,11 +296,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
+    
+    // Clear any existing auth state first
+    globalAuthLock = false;
+    globalAuthPromise = null;
+    
     try {
+      console.log('🔐 Starting login process...');
+      
       // Step 1: Authenticate with backend
       const response = await authService.login(credentials);
+      console.log('✅ Backend authentication successful');
       
       // Step 2: Set HttpOnly cookie
+      console.log('🍪 Setting authentication cookies...');
       const cookieResponse = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -279,16 +323,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!cookieResponse.ok) {
         throw new Error('Failed to set authentication cookies');
       }
+      console.log('✅ Cookies set successfully');
       
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Step 3: Wait for cookie to be available
+      await new Promise(resolve => setTimeout(resolve, 300));
       
+      // Step 4: Set user state
       setUser(response.user);
       setLastActivity(Date.now());
       
-      // Step 5: Additional delay to ensure all components see the updated state
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
+      console.log('✅ Login completed successfully');
       return response;
+    } catch (error) {
+      console.error('❌ Login failed:', error);
+      setUser(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }

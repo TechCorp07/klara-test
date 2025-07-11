@@ -6,6 +6,40 @@ export type EmergencyAccessReason = 'LIFE_THREATENING' | 'URGENT_CARE' | 'PATIEN
 
 export type CaregiverRelationship = 'PARENT' | 'SPOUSE' | 'CHILD' | 'SIBLING' | 'GRANDPARENT' | 'GRANDCHILD' | 'FRIEND' | 'PROFESSIONAL_CAREGIVER' | 'LEGAL_GUARDIAN' | 'HEALTHCARE_PROXY' | 'OTHER_FAMILY' | 'OTHER';
 
+export interface AdminPermissions {
+  // Core admin permissions
+  has_admin_access: boolean;
+  has_user_management_access: boolean;
+  has_system_settings_access: boolean;
+  has_audit_access: boolean;
+  has_compliance_access: boolean;
+  has_export_access: boolean;
+  has_dashboard_access: boolean;
+  has_compliance_reports_access: boolean;
+  has_approval_permissions: boolean;
+  
+  // Healthcare permissions
+  has_patient_data_access: boolean;
+  has_medical_records_access: boolean;
+  can_manage_appointments: boolean;
+  can_access_telemedicine: boolean;
+  can_manage_medications: boolean;
+  can_view_research_data: boolean;
+  can_access_clinical_trials: boolean;
+  
+  // User permissions
+  can_view_own_data: boolean;
+  can_edit_own_profile: boolean;
+  
+  // Role info
+  user_role: string;
+  is_superadmin: boolean;
+  
+  // Optional profile-specific fields
+  identity_verified?: boolean;
+  days_until_verification_required?: number;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -13,27 +47,33 @@ export interface User {
   first_name: string;
   last_name: string;
   role: UserRole;
+  is_active: boolean;
+  is_approved: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
   email_verified: boolean;
-  phone_verified: boolean;
-  two_factor_enabled?: boolean;
-  profile_image?: string;
-  is_approved?: boolean;
-  date_of_birth?: string;
-  phone_number?: string;
+  two_factor_enabled: boolean;
   date_joined: string;
-  is_staff?: boolean;
-  is_superuser?: boolean;
-  profile?: {
-    days_until_verification_required?: number | null; // Add this property
-  };
-  patient_profile?: { id: number };
-  provider_profile?: { id: number };
-  pharmco_profile?: { id: number };
-  caregiver_profile?: { id: number };
-  researcher_profile?: { id: number };
-  compliance_profile?: { id: number };
-  is_active?: boolean;
   last_login?: string;
+  phone_number?: string;
+  date_of_birth?: string;
+  profile_image?: string;
+  phone_verified: boolean;
+
+  // ADD PERMISSIONS TO USER TYPE
+  permissions?: AdminPermissions;
+
+  // Role-specific profiles
+  patient_profile?: PatientProfile;
+  provider_profile?: ProviderProfile;
+  pharmco_profile?: PharmcoProfile;
+  caregiver_profile?: CaregiverProfile;
+  researcher_profile?: ResearcherProfile;
+  compliance_profile?: ComplianceProfile;
+
+  // Additional fields
+  pending_caregiver_requests?: CaregiverRequest[];
+  profile?: string | null; 
 }
 
 /**
@@ -45,16 +85,18 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  token: string;  
+  token: string;
   user: User;
-  requires_2fa?: boolean;  
+  requires_2fa?: boolean;
+  user_id?: number;
   verification_warning?: {
+    days_remaining: number;
     message: string;
-    type: string;
   };
 }
 
 export interface RegisterRequest {
+  username: string;
   email: string;
   password: string;
   password_confirm: string;
@@ -63,26 +105,26 @@ export interface RegisterRequest {
   role: UserRole;
   phone_number?: string;
   date_of_birth?: string;
-  terms_accepted: boolean;
-  hipaa_privacy_acknowledged: boolean;
   
   // Provider-specific fields
-  license_number?: string;      // Maps to medical_license_number in backend
+  medical_license_number?: string;      // Maps to medical_license_number in backend
   specialty?: string;
   npi_number?: string;
   practice_name?: string;
   practice_address?: string;
+  accepting_new_patients?: boolean;
   
   // Researcher-specific fields
   institution?: string;
-  research_area?: string;       // Maps to primary_research_area in backend
-  qualifications?: string;      // Maps to qualifications_background in backend
-  
+  primary_research_area?: string;
+  qualifications_background?: string;
+  irb_approval_confirmed?: boolean;
+
   // Pharmaceutical company fields
   company_name?: string;
   company_role?: string;
   regulatory_id?: string;
-  research_focus?: string;      
+  primary_research_focus?: string;      
   
   // Caregiver-specific fields
   relationship_to_patient?: string;
@@ -95,29 +137,25 @@ export interface RegisterRequest {
   organization?: string;
   job_title?: string;
   specialization_areas?: string;
+
+    // Consent fields
+    terms_accepted: boolean;
+    hipaa_privacy_acknowledged: boolean;
+    data_sharing_consent?: boolean;
+    caregiver_authorization_acknowledged?: boolean;
+    phi_handling_acknowledged?: boolean;
 }
 
 export interface RegisterResponse {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: UserRole;
-  is_active: boolean;
-  is_approved: boolean;
-  email_verified: boolean;
-  date_joined: string;
-  message?: string; // Backend may include success message
+  user: User;
+  message: string;
+  requires_approval: boolean;
 }
 
-/**
- * FIXED: Password reset request matching backend expectations
- */
 export interface ResetPasswordRequest {
   token: string;
   password: string;
-  password_confirm: string; // FIXED: Backend expects this exact field name
+  password_confirm: string; 
 }
 
 /**
@@ -128,13 +166,9 @@ export interface VerifyEmailRequest {
   email?: string;
 }
 
-/**
- * MAJOR FIX: Two-factor authentication setup response
- * Backend returns "qr_code" and "secret_key", not "qr_code_url" and "secret"
- */
 export interface SetupTwoFactorResponse {
-  qr_code: string;    // FIXED: Backend returns "qr_code" (base64 image data)
-  secret_key: string; // FIXED: Backend returns "secret_key" (manual entry code)
+  qr_code: string;    
+  secret_key: string; 
 }
 
 /**

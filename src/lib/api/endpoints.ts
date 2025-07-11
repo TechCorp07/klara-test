@@ -50,12 +50,7 @@ export const ENDPOINTS = {
     USERS: '/users/users/', // Alias for LIST
     
     // Profile management
-    ME: '/users/auth/me/',
-    UPDATE_PROFILE: '/users/auth/me/',
     CHANGE_PASSWORD: '/users/auth/me/change-password/',
-    
-    // Current user permissions
-    PERMISSIONS: '/users/auth/me/permissions/',
 
     // Profile completion endpoints
     COMPLETE_PATIENT_PROFILE: (id: number) => `/users/patient-profiles/${id}/complete/`,
