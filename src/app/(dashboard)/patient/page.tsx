@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { apiClient } from '@/lib/api/client';
 import { Spinner } from '@/components/ui/spinner';
 import { HealthSummaryCard } from './components/HealthSummaryCard';

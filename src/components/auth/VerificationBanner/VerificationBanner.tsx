@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 //import Link from 'next/link';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 
 /**
  * Email verification banner component.

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { UserRole } from '@/types/auth.types';
 import { 
   RoleSelection, 

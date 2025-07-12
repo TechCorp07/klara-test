@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { apiClient } from '@/lib/api/client';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';

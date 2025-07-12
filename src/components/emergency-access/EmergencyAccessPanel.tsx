@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import FormButton from '@/components/ui/common/FormButton';
 import { Spinner } from '@/components/ui/spinner';
 import { EmergencyAccessReason } from '@/types/auth.types';

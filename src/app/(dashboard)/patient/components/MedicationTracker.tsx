@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import apiClient from '@/lib/api/client';
 
 interface Medication {
   id: number;
@@ -84,21 +85,21 @@ export const MedicationTracker: React.FC = () => {
   // Mark dose as taken
   const markDoseAsTaken = async (medicationId: number, scheduledTime: string) => {
     try {
-      const response = await fetch('/medication/dose-logs/', {
+      const response = await apiClient('/medication/dose-logs/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+        data: {
           medication: medicationId,
           scheduled_time: scheduledTime,
           taken_time: new Date().toISOString(),
           taken: true,
-        }),
+        },
       });
 
-      if (response.ok) {
+      if (response.status >= 200 && response.status < 300) {
         // Update local state
         setTodayDoses(prev => 
           prev.map(dose => 

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormInput, FormButton, FormAlert } from '../../ui/common';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { config } from '@/lib/config';
 
 // UPDATED validation schema to match backend exactly

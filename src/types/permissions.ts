@@ -8,6 +8,8 @@ export interface UserPermissions {
   has_approval_permissions: boolean;    // Can approve/reject users
   has_user_management_access: boolean;  // Can manage users
   has_system_settings_access: boolean;  // Can modify system settings
+  has_compliance_access: boolean;
+  has_export_access: boolean;
   
   // Compliance & Security
   has_audit_access: boolean;            // Can view audit logs
@@ -26,7 +28,8 @@ export interface UserPermissions {
   can_manage_medications: boolean;      // Can prescribe/manage medications
   
   // User role for reference
-  user_role: string;
+    user_role: string;
+    is_superadmin: boolean;
 }
 
 export interface UsePermissionsResult {

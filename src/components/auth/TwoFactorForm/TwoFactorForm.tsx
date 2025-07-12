@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { FormInput, FormButton, FormAlert } from '../../ui/common';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { config } from '@/lib/config';
 import Image from 'next/image';
 

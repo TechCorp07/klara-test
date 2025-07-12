@@ -2,7 +2,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import AuthProvider from '@/lib/auth/auth-provider';
+import { AuthProvider } from '@/lib/auth';
 import { config } from '@/lib/config';
 
 // Use the Inter font

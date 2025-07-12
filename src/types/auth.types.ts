@@ -37,7 +37,6 @@ export interface AdminPermissions {
   
   // Optional profile-specific fields
   identity_verified?: boolean;
-  days_until_verification_required?: number;
 }
 
 export interface User {
@@ -72,6 +71,7 @@ export interface User {
   compliance_profile?: ComplianceProfile;
 
   // Additional fields
+  days_until_verification_required?: number;
   pending_caregiver_requests?: CaregiverRequest[];
   profile?: string | null; 
 }

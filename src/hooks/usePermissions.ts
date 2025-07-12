@@ -1,11 +1,11 @@
 // src/hooks/usePermissions.ts
 'use client';
 
-import { useAuth } from '@/lib/auth/use-auth';
-import { AdminPermissions } from '@/types/admin.types';
+import { useAuth } from '@/lib/auth';
+import { UserPermissions } from '@/types/permissions';
 
 interface PermissionsContextType {
-  permissions: AdminPermissions | null;
+  permissions: UserPermissions | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -93,24 +93,24 @@ export const useSuperAdminAccess = () => {
 
 // Permission checker utility functions
 export const checkPermission = (
-  permissions: AdminPermissions | null,
-  requiredPermission: keyof AdminPermissions
+  permissions: UserPermissions | null,
+  requiredPermission: keyof UserPermissions
 ): boolean => {
   if (!permissions) return false;
   return permissions[requiredPermission] as boolean;
 };
 
 export const checkAnyPermission = (
-  permissions: AdminPermissions | null,
-  requiredPermissions: (keyof AdminPermissions)[]
+  permissions: UserPermissions | null,
+  requiredPermissions: (keyof UserPermissions)[]
 ): boolean => {
   if (!permissions) return false;
   return requiredPermissions.some(permission => permissions[permission] as boolean);
 };
 
 export const checkAllPermissions = (
-  permissions: AdminPermissions | null,
-  requiredPermissions: (keyof AdminPermissions)[]
+  permissions: UserPermissions | null,
+  requiredPermissions: (keyof UserPermissions)[]
 ): boolean => {
   if (!permissions) return false;
   return requiredPermissions.every(permission => permissions[permission] as boolean);
@@ -125,36 +125,36 @@ export const hasRoleAccess = (
   return allowedRoles.includes(userRole);
 };
 
-export const isAdminUser = (permissions: AdminPermissions | null): boolean => {
+export const isAdminUser = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'has_admin_access');
 };
 
-export const isSuperAdminUser = (permissions: AdminPermissions | null): boolean => {
+export const isSuperAdminUser = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'is_superadmin');
 };
 
-export const canManageUsers = (permissions: AdminPermissions | null): boolean => {
+export const canManageUsers = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'has_user_management_access');
 };
 
-export const canAccessAuditLogs = (permissions: AdminPermissions | null): boolean => {
+export const canAccessAuditLogs = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'has_audit_access');
 };
 
-export const canManageSystemSettings = (permissions: AdminPermissions | null): boolean => {
+export const canManageSystemSettings = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'has_system_settings_access');
 };
 
-export const canAccessCompliance = (permissions: AdminPermissions | null): boolean => {
+export const canAccessCompliance = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'has_compliance_access');
 };
 
-export const canExportData = (permissions: AdminPermissions | null): boolean => {
+export const canExportData = (permissions: UserPermissions | null): boolean => {
   return checkPermission(permissions, 'has_export_access');
 };
 
 // Permission-based navigation guards
-export const getAccessibleAdminRoutes = (permissions: AdminPermissions | null): string[] => {
+export const getAccessibleAdminRoutes = (permissions: UserPermissions | null): string[] => {
   const routes: string[] = [];
 
   if (checkPermission(permissions, 'has_admin_access')) {

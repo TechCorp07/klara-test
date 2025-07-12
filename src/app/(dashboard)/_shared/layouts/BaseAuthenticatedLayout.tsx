@@ -4,8 +4,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth/use-auth';
-import { AuthGuard } from '@/lib/auth/guards/auth-guard';
+import { useAuth } from '@/lib/auth';
+import { AuthGuard } from '@/lib/auth';
 import { Spinner } from '@/components/ui/spinner';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { useNavigationPermissions } from '@/hooks/useNavigationPermissions';
@@ -272,9 +272,7 @@ function BaseAuthenticatedLayoutInner({
   // Check for identity verification warning (patients only)
   const shouldShowVerificationWarning = 
     showVerificationWarning && 
-    user?.role === 'patient' && 
-    user?.profile?.days_until_verification_required !== null &&
-    user?.profile?.days_until_verification_required !== undefined &&
+    user?.role === 'patient' &&
     user?.profile?.days_until_verification_required <= 7;
   
   // If loading, show spinner

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { EmergencyAccessPanel } from '@/components/emergency-access/EmergencyAccessPanel';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 
 export default function EmergencyAccessPage() {
   const { user } = useAuth();

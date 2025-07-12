@@ -2,7 +2,7 @@
 'use client';
 
 import { EmergencyAccessPanel } from '@/components/emergency-access/EmergencyAccessPanel';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
 export default function ProviderEmergencyAccessPage() {

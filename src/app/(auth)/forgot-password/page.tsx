@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useAuth } from '@/lib/auth';
 import { AppLogo } from '@/components/ui/AppLogo';
 
 /**
