@@ -28,7 +28,6 @@ import type {
   PaginatedUsersResponse, 
   AdminUserCreateData 
 } from '@/types/admin.types';
-import { authenticatedClient } from '../authenticated-client';
 import { validateLoginResponse, validateUserResponse } from '../validation';
 
 
@@ -821,8 +820,25 @@ export const authService = {
    */  
   getCurrentUser: async (): Promise<User> => {
     return makeResilientRequest(async () => {
-      const response = await authenticatedClient.get('/users/auth/me/');
-      return validateUserResponse(response) ? response : response.data || response;
+      console.log('🔍 Getting current user...');
+      const response = await apiClient.get('/users/auth/me/');
+      
+      console.log('📊 getCurrentUser response:', {
+        status: response.status,
+        data: response.data,
+        hasUser: !!response.data,
+        userRole: response.data?.role,
+        userId: response.data?.id,
+        userEmail: response.data?.email
+      });
+      
+      if (!validateUserResponse(response.data)) {
+        console.error('❌ Invalid user response:', response.data);
+        throw new Error('Invalid user response format');
+      }
+      
+      console.log('✅ User data validated successfully');
+      return response.data;
     });
   },
 

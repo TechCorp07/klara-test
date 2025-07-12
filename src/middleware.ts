@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
-import { apiClient } from './lib/api/client';
+import axios from 'axios';
 
 const PUBLIC_ROUTES = [
   '/',
@@ -89,13 +89,12 @@ async function validateAuthToken(token: string): Promise<{
     const apiUrl = `${appConfig.apiBaseUrl}/users/auth/me/`;
     
     // Use the Django REST Framework Token format that we confirmed works
-    const response = await apiClient(apiUrl, {
-      method: 'GET',
+    const response = await axios.get(apiUrl, {
       headers: {
-        'Authorization': `Token ${token}`,  // ✅ Confirmed working format
+        'Authorization': `Token ${token}`,
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(5000), // 5 second timeout
+      timeout: 5000,
     });
 
     if (response.status >= 200 && response.status < 300) {

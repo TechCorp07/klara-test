@@ -27,11 +27,11 @@ import {
   EmergencyAccessSummary,
 } from '@/types/auth.types';
 import { authService } from '../api/services/auth.service';
+import { clearPendingRequests } from '../api/client';
 import { config } from '@/lib/config';
 import { ConsentUpdateResponse } from '@/types/auth.types';
 import { DashboardStatsResponse } from '@/types/admin.types';
 import { usePathname } from 'next/navigation';
-import { authenticatedClient } from '../api/authenticated-client';
 
 // Define public routes that don't need authentication checks
 const PUBLIC_ROUTES = [
@@ -367,8 +367,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // Clear any pending authenticated requests
-      authenticatedClient.clearPendingRequests();
+      // Clear any pending requests (NEW: using axios client)
+      clearPendingRequests();
       
       // Clear HttpOnly cookies via server API
       const logoutResponse = await fetch('/api/auth/logout', {
