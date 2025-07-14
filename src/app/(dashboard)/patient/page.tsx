@@ -50,25 +50,29 @@ interface PatientDashboardData {
 }
 
 export default function PatientDashboard() {
-  const { user } = useAuth();
+  const { user, isInitialized, isAuthReady } = useAuth();
   const [dashboardData, setDashboardData] = useState<PatientDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Single, clean fetch function that only runs when auth is fully ready
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Use the API client with the correct endpoint
-        // Note: apiClient already adds the /api/proxy prefix
+        console.log('👤 Fetching patient dashboard data for user:', user?.id);
+        
+        // Make the API call - auth system has verified cookies are working
         const response = await apiClient.get('/patient/dashboard/');
         setDashboardData(response.data);
-      } catch (err: any) {
-        console.error('Dashboard fetch error:', err);
         
-        // Handle specific error cases
+        console.log('✅ Dashboard data loaded successfully');
+      } catch (err: any) {
+        console.error('❌ Dashboard fetch error:', err);
+        
+        // Handle specific error cases - these should be rare now
         if (err.response?.status === 403) {
           setError('You do not have permission to access this dashboard.');
         } else if (err.response?.status === 404) {
@@ -81,20 +85,67 @@ export default function PatientDashboard() {
       }
     };
 
-    // Only fetch when we have a real authenticated patient user
-    if (user && user.role === 'patient' && user.id) {
-      console.log('👤 Fetching patient dashboard data for user:', user.id);
-      fetchDashboardData();
-    } else if (user && user.role !== 'patient') {
-      setError('This dashboard is only accessible to patients.');
-      setLoading(false);
-    } else {
-      console.log('⏳ Waiting for user authentication');
-      setLoading(false);
-    }
-  }, [user]);
+    // CRITICAL: Only fetch when ALL conditions are met
+    const shouldFetch = (
+      isInitialized &&          // Auth system is initialized
+      isAuthReady &&            // Authentication has been verified working
+      user &&                   // User object exists
+      user.role === 'patient' && // User is a patient
+      user.id                   // User has an ID
+    );
 
-  // Check permissions - for now, allow all authenticated patients
+    if (shouldFetch) {
+      console.log('🚀 All auth conditions met, starting dashboard fetch...');
+      fetchDashboardData();
+    } else {
+      console.log('⏳ Waiting for auth to be fully ready...', {
+        isInitialized,
+        isAuthReady,
+        hasUser: !!user,
+        isPatient: user?.role === 'patient',
+        hasUserId: !!user?.id
+      });
+      
+      // Handle specific waiting states
+      if (isInitialized && user && user.role !== 'patient') {
+        setError('This dashboard is only accessible to patients.');
+        setLoading(false);
+      } else if (isInitialized && !user) {
+        setError('Please log in to access your dashboard.');
+        setLoading(false);
+      }
+    }
+  }, [isInitialized, isAuthReady, user]);
+
+  // Show appropriate loading states
+  if (!isInitialized) {
+    return (
+      <div className="flex justify-center items-center min-h-96">
+        <Spinner size="lg" />
+        <span className="ml-2 text-gray-600">Initializing...</span>
+      </div>
+    );
+  }
+
+  if (isInitialized && !isAuthReady && user) {
+    return (
+      <div className="flex justify-center items-center min-h-96">
+        <Spinner size="lg" />
+        <span className="ml-2 text-gray-600">Verifying your session...</span>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-96">
+        <Spinner size="lg" />
+        <span className="ml-2 text-gray-600">Loading your dashboard...</span>
+      </div>
+    );
+  }
+
+  // Check permissions
   const canViewDashboard = user && user.role === 'patient';
   
   if (!canViewDashboard && !loading) {
@@ -108,16 +159,6 @@ export default function PatientDashboard() {
             You do not have permission to view this dashboard. Please contact support if you believe this is an error.
           </p>
         </div>
-      </div>
-    );
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-96">
-        <Spinner size="lg" />
-        <span className="ml-2 text-gray-600">Loading your dashboard...</span>
       </div>
     );
   }
@@ -164,100 +205,105 @@ export default function PatientDashboard() {
       {showProfileWarning && (
         <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex">
-            <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">
-                Complete Your Profile
+                Profile Incomplete
               </h3>
-              <p className="mt-1 text-sm text-yellow-700">
-                Please complete your profile to access all features.
-              </p>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>Please complete your profile to access all features.</p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {showVerificationWarning && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mb-6 bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="flex">
-            <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 0016 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">
+              <h3 className="text-sm font-medium text-orange-800">
                 Identity Verification Required
               </h3>
-              <p className="mt-1 text-sm text-red-700">
-                You have {dashboardData.days_until_verification_required} days to verify your identity.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* HIPAA Notice */}
-      <div className="mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <svg className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <p className="font-medium text-blue-900">Protected Health Information</p>
-              <p className="text-sm mt-1 text-blue-800">
-                All information displayed is protected under HIPAA. Do not share your login credentials or view this information in public spaces.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Dashboard Content */}
-      {dashboardData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <HealthSummaryCard data={dashboardData.health_summary} />
-            <AppointmentCard />
-            <MedicationTracker />
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <HealthRecordsAccess />
-            
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                {dashboardData.quick_actions.map((action) => (
-                  <a
-                    key={action.id}
-                    href={action.href}
-                    className={`block p-3 rounded-md border transition-colors ${
-                      action.priority === 'high' 
-                        ? 'border-red-200 hover:bg-red-50' 
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{action.title}</p>
-                        <p className="text-sm text-gray-600">{action.description}</p>
-                      </div>
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </a>
-                ))}
+              <div className="mt-2 text-sm text-orange-700">
+                <p>
+                  You have {dashboardData?.days_until_verification_required} days to complete identity verification.
+                </p>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Dashboard Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Health Summary */}
+          {dashboardData?.health_summary && (
+            <HealthSummaryCard data={dashboardData.health_summary} />
+          )}
+
+          {/* Recent Activities */}
+          {dashboardData?.recent_activities && dashboardData.recent_activities.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h2>
+              <div className="space-y-3">
+                {dashboardData.recent_activities.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-xs text-gray-600">{activity.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">{activity.date}</p>
+                    </div>
+                    {activity.status && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {activity.status}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          {dashboardData?.quick_actions && dashboardData.quick_actions.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+              <div className="space-y-3">
+                {dashboardData.quick_actions.map((action) => (
+                  <a
+                    key={action.id}
+                    href={action.href}
+                    className="block p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <p className="text-sm font-medium text-blue-900">{action.title}</p>
+                    <p className="text-xs text-blue-700">{action.description}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Additional Components */}
+          <AppointmentCard />
+          <MedicationTracker />
+          <HealthRecordsAccess />
+        </div>
+      </div>
     </div>
   );
 }

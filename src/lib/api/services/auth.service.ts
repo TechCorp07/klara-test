@@ -729,7 +729,7 @@ export const authService = {
     const payload = {
       token: data.token,
       password: data.password,
-      password_confirm: data.password_confirm, // CRITICAL FIX: Backend expects this exact field name
+      password_confirm: data.password_confirm, 
     };
     const response = await apiClient.post(ENDPOINTS.AUTH.RESET_PASSWORD, payload);
     return response.data;

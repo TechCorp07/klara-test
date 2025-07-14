@@ -1,4 +1,4 @@
-// Example: src/app/(dashboard)/caregiver/layout.tsx
+// src/app/(dashboard)/caregiver/layout.tsx
  import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
  
  interface CaregiverLayoutProps {

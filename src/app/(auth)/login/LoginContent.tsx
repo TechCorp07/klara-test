@@ -1,4 +1,4 @@
-// src/app/(auth)/login/LoginContent.tsx - FIXED to prevent refresh loops
+// src/app/(auth)/login/LoginContent.tsx
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -7,14 +7,13 @@ import LoginForm from '@/components/auth/LoginForm';
 import { useAuth } from '@/lib/auth';
 
 /**
- * MAJOR FIXES: Improved redirect handling to prevent infinite loops
+ * Sequential login flow that waits for auth to be fully ready before redirecting
  */
 export default function LoginContent() {
-  const { isAuthenticated, isInitialized } = useAuth();
+  const { isAuthenticated, isInitialized, isAuthReady } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasRedirectedRef = useRef(false);
-  const redirectTimeoutRef = useRef<NodeJS.Timeout>();
   
   // 🔧 IMPROVED: Much more conservative returnUrl handling
   const getCleanReturnUrl = () => {
@@ -69,38 +68,35 @@ export default function LoginContent() {
   const sanitizedReturnUrl = getCleanReturnUrl();
   
   useEffect(() => {
-    console.log('🔄 User authentication state:', { isAuthenticated, isInitialized });
+    console.log('🔄 Auth state check:', { 
+      isAuthenticated, 
+      isInitialized, 
+      isAuthReady,
+      hasRedirected: hasRedirectedRef.current 
+    });
     
-    if (isAuthenticated && isInitialized) {
-      console.log('🔄 User authenticated, preparing redirect to:', sanitizedReturnUrl);
+    // CRITICAL: Only redirect when ALL conditions are met and we haven't redirected yet
+    const shouldRedirect = (
+      isInitialized &&        // Auth system initialized
+      isAuthenticated &&      // User is authenticated  
+      isAuthReady &&          // Auth cookies are ready for API calls
+      !hasRedirectedRef.current // Haven't redirected yet
+    );
+    
+    if (shouldRedirect) {
+      console.log('✅ All auth conditions met, executing redirect to:', sanitizedReturnUrl);
+      hasRedirectedRef.current = true;
       
-      // Add a small delay to ensure all auth state is properly set
-      const redirectTimer = setTimeout(() => {
-        console.log('🚀 Executing redirect to:', sanitizedReturnUrl);
-        
-        // Use router.push instead of router.replace to avoid SSL issues
-        // and ensure proper navigation
-        router.push(sanitizedReturnUrl);
-      }, 500); // Increased delay to ensure cookies are properly set
-      
-      return () => clearTimeout(redirectTimer);
-    } else {
+      // Use push instead of replace to avoid potential navigation issues
+      router.push(sanitizedReturnUrl);
+    } else if (isInitialized && isAuthenticated && !isAuthReady) {
+      console.log('⏳ User authenticated but auth system not ready yet, waiting...');
+    } else if (isInitialized && !isAuthenticated) {
       console.log('🔑 User not authenticated, showing login form');
     }
-  }, [isAuthenticated, isInitialized, sanitizedReturnUrl, router]);
+  }, [isInitialized, isAuthenticated, isAuthReady, sanitizedReturnUrl, router]);
   
-  if (isInitialized && isAuthenticated) {
-    return (
-      <div className="text-center">
-        <div className="animate-pulse">
-          <div className="h-4 w-4 bg-blue-500 rounded-full mx-auto mb-4"></div>
-        </div>
-        <p className="text-gray-600">Redirecting...</p>
-      </div>
-    );
-  }
-  
-  // Don't render login form until auth is initialized
+  // Show different loading states based on auth progress
   if (!isInitialized) {
     return (
       <div className="text-center">
@@ -112,5 +108,30 @@ export default function LoginContent() {
     );
   }
   
+  if (isInitialized && isAuthenticated && !isAuthReady) {
+    return (
+      <div className="text-center">
+        <div className="animate-pulse">
+          <div className="h-4 w-4 bg-blue-400 rounded-full mx-auto mb-4"></div>
+        </div>
+        <p className="text-gray-600">Verifying your session...</p>
+        <p className="text-sm text-gray-500 mt-2">Please wait while we confirm your authentication.</p>
+      </div>
+    );
+  }
+  
+  if (isInitialized && isAuthenticated && isAuthReady) {
+    return (
+      <div className="text-center">
+        <div className="animate-pulse">
+          <div className="h-4 w-4 bg-green-500 rounded-full mx-auto mb-4"></div>
+        </div>
+        <p className="text-gray-600">Redirecting...</p>
+        <p className="text-sm text-gray-500 mt-2">Taking you to your dashboard.</p>
+      </div>
+    );
+  }
+  
+  // Only show login form when fully initialized and not authenticated
   return <LoginForm />;
 }

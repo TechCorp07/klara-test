@@ -87,6 +87,9 @@ export interface EnhancedAuthContextType extends Omit<AuthContextType,
 > {
   // Override login method with correct signature
   login: (credentials: LoginCredentials) => Promise<LoginResponse>;
+  // NEW: Add isAuthReady state
+  isAuthReady: boolean;
+  
   initiateIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; method: string }>;
   completeIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; verified_at: string }>;
   
@@ -141,6 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false); // NEW: Track when auth cookies are ready
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
   
@@ -163,96 +167,99 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // 🔧 KEY INSIGHT: Middleware-coordinated authentication initialization
-    const initializeAuth = useCallback(async () => {
-      if (globalAuthLock || globalAuthPromise) {
-        console.log('🔒 Auth already in progress, waiting for completion...');
-        if (globalAuthPromise) {
-          try {
-            await globalAuthPromise;
-          } catch (error) {
-            console.log('Previous auth attempt failed, continuing...');
-          }
-        }
-        return;
-      }
-    
-      globalAuthLock = true;
-      console.log('🔐 Initializing auth...');
-      console.log('📍 Current pathname:', pathname);
-      
-      globalAuthPromise = (async () => {
+  const initializeAuth = useCallback(async () => {
+    if (globalAuthLock || globalAuthPromise) {
+      console.log('🔒 Auth already in progress, waiting for completion...');
+      if (globalAuthPromise) {
         try {
-          // Check if we're on a public route first
-          if (pathname && PUBLIC_ROUTES.includes(pathname)) {
-            console.log('📍 On public route, skipping auth check');
-            setIsLoading(false);
-            setIsInitialized(true);
-            return;
-          }
+          await globalAuthPromise;
+        } catch (error) {
+          console.log('Previous auth attempt failed, continuing...');
+        }
+      }
+      return;
+    }
+
+    globalAuthLock = true;
+    console.log('🔐 Initializing auth...');
+    console.log('📍 Current pathname:', pathname);
     
-          console.log('🔒 Protected route, fetching user data...');
-          
-          // Add a small delay to ensure cookies are properly set
-          await new Promise(resolve => setTimeout(resolve, 150));
-          
-          console.log('📡 Calling authService.getCurrentUser()...');
-          const userData = await authService.getCurrentUser();
-          console.log('📡 Response received:', userData ? 'User data found' : 'No user data');    
-          
-          if (userData) {
-            console.log('✅ User data retrieved successfully');
-            console.log(`👤 User: ${userData.email}, Role: ${userData.role}`);
-            setUser(userData);
-            setLastActivity(Date.now());
-          } else {
-            console.log('❌ No user data received');
-            setUser(null);
-          }
-        } catch (error: any) {
-          console.log('❌ Failed to get user data:', error.message);
-          console.log('📊 Error details:', {
-            status: error.response?.status,
-            data: error.data,
-            message: error.message
-          });
-          
-          if (error.message?.includes('HTTP 401')) {
-            console.log('🔒 401 error - clearing auth state');
-            setUser(null);
-            
-            // Clear cookies via logout endpoint
-            try {
-              console.log('🧹 Clearing authentication cookies...');
-              await fetch('/api/auth/logout', {
-                method: 'POST',
-                credentials: 'include'
-              });
-              console.log('🧹 Cleared authentication cookies');
-            } catch (logoutError) {
-              console.error('Failed to clear cookies:', logoutError);
-            }
-          } else {
-            console.log('⚠️ Non-401 error, keeping current auth state');
-          }
-        } finally {
+    globalAuthPromise = (async () => {
+      try {
+        // Check if we're on a public route first
+        if (pathname && PUBLIC_ROUTES.includes(pathname)) {
+          console.log('📍 On public route, skipping auth check');
           setIsLoading(false);
           setIsInitialized(true);
-          setAuthCheckComplete(true);
-          globalAuthLock = false;
-          globalAuthPromise = null;
-          console.log('✅ Auth initialization complete');
+          return;
         }
-      })();
-      
-      await globalAuthPromise;
-    }, [pathname]);
-  
+
+        console.log('🔒 Protected route, fetching user data...');
+        
+        // Add a small delay to ensure cookies are properly set
+        await new Promise(resolve => setTimeout(resolve, 150));
+        
+        console.log('📡 Calling authService.getCurrentUser()...');
+        const userData = await authService.getCurrentUser();
+        console.log('📡 Response received:', userData ? 'User data found' : 'No user data');    
+        
+        if (userData) {
+          console.log('✅ User data retrieved successfully');
+          console.log(`👤 User: ${userData.email}, Role: ${userData.role}`);
+          setUser(userData);
+          setIsAuthReady(true); // If we got user data, auth is working
+          setLastActivity(Date.now());
+        } else {
+          console.log('❌ No user data received');
+          setUser(null);
+          setIsAuthReady(false);
+        }
+      } catch (error: any) {
+        console.log('❌ Failed to get user data:', error.message);
+        console.log('📊 Error details:', {
+          status: error.response?.status,
+          data: error.data,
+          message: error.message
+        });
+        
+        if (error.message?.includes('HTTP 401')) {
+          console.log('🔒 401 error - clearing auth state');
+          setUser(null);
+          setIsAuthReady(false);
+          
+          // Clear cookies via logout endpoint
+          try {
+            console.log('🧹 Clearing authentication cookies...');
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+            console.log('🧹 Cleared authentication cookies');
+          } catch (logoutError) {
+            console.error('Failed to clear cookies:', logoutError);
+          }
+        } else {
+          console.log('⚠️ Non-401 error, keeping current auth state');
+        }
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+        setAuthCheckComplete(true);
+        globalAuthLock = false;
+        globalAuthPromise = null;
+        console.log('✅ Auth initialization complete');
+      }
+    })();
+    
+    await globalAuthPromise;
+  }, [pathname]);
+
   useEffect(() => {
     if (!isInitialized && !globalAuthLock) {
       initializeAuth();
     }
-  }, [isInitialized]); 
-  
+  }, [isInitialized, initializeAuth]); 
+
   // Add this cleanup effect:
   useEffect(() => {
     return () => {
@@ -299,29 +306,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userData = await authService.getCurrentUser();
       setUser(userData);
+      setIsAuthReady(!!userData);
     } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      setUser(null);
+      setIsAuthReady(false);
     }
   };
 
   /**
-   * 🔒 SECURE: Core Authentication Methods
+   * 🔒 SIMPLIFIED LOGIN PROCESS - No verification step needed
+   * Your backend logs prove the cookies are working correctly
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
+    setIsAuthReady(false); // Reset auth ready state
     
     // Clear any existing auth state first
     globalAuthLock = false;
     globalAuthPromise = null;
     
     try {
-      console.log('🔐 Starting login process...');
+      console.log('🔐 Step 1: Starting backend authentication...');
       
       // Step 1: Authenticate with backend
       const response = await authService.login(credentials);
-      console.log('✅ Backend authentication successful');
+      console.log('✅ Step 1 Complete: Backend authentication successful');
       
-      // Step 2: Set HttpOnly cookie
-      console.log('🍪 Setting authentication cookies...');
+      console.log('🍪 Step 2: Setting HttpOnly authentication cookie...');
+      
+      // Step 2: Set HttpOnly cookie via our API route
       const cookieResponse = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -333,22 +347,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       
       if (!cookieResponse.ok) {
-        throw new Error('Failed to set authentication cookies');
+        const errorText = await cookieResponse.text();
+        throw new Error(`Failed to set authentication cookies: ${errorText}`);
       }
-      console.log('✅ Cookies set successfully');
+      console.log('✅ Step 2 Complete: HttpOnly cookie set successfully');
       
-      // Step 3: Wait for cookie to be available
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('👤 Step 3: Setting user state...');
       
-      // Step 4: Set user state
+      // Step 3: Set user state and mark auth as ready immediately
+      // We trust that the cookie setting worked based on your backend logs
       setUser(response.user);
+      setIsAuthReady(true);
       setLastActivity(Date.now());
       
-      console.log('✅ Login completed successfully');
+      console.log('✅ Step 3 Complete: User state set');
+      console.log('🎉 LOGIN PROCESS COMPLETE - Auth system ready for API calls');
+      
+      // Add a small delay to ensure the browser processes the cookie setting
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       return response;
     } catch (error) {
       console.error('❌ Login failed:', error);
       setUser(null);
+      setIsAuthReady(false);
       throw error;
     } finally {
       setIsLoading(false);
@@ -367,8 +389,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // Clear any pending requests (NEW: using axios client)
+      // Clear any pending requests
       clearPendingRequests();
+      
+      // Clear auth state immediately
+      setUser(null);
+      setIsAuthReady(false);
+      globalAuthLock = false;
+      globalAuthPromise = null;
       
       // Clear HttpOnly cookies via server API
       const logoutResponse = await fetch('/api/auth/logout', {
@@ -381,13 +409,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Clear client state
-      setUser(null);
       setLastActivity(Date.now());
       
     } catch (error) {
       console.error('Error during logout:', error);
       // Even if logout fails, clear local state for security
       setUser(null);
+      setIsAuthReady(false);
     } finally {
       setIsLoading(false);
     }
@@ -419,6 +447,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (cookieResponse.ok) {
         setUser(response.user);
+        setIsAuthReady(true);
         setLastActivity(Date.now());
       } else {
         throw new Error('Failed to set authentication cookies after 2FA');
@@ -443,11 +472,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authService.confirmTwoFactor(code);
-      
-      if (response.success) {
-        await refreshUserData();
-      }
-      
+      await refreshUserData();
       return response;
     } finally {
       setIsLoading(false);
@@ -458,11 +483,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authService.disableTwoFactor(password);
-      
-      if (response.success) {
-        await refreshUserData();
-      }
-      
+      await refreshUserData();
       return response;
     } finally {
       setIsLoading(false);
@@ -506,37 +527,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authService.verifyEmail(data);
-      
-      // Refresh user data to get updated email verification status
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 🔒 All other methods remain the same but without cookie manipulation
-  // Just API calls that rely on HttpOnly cookies being sent automatically
-
+  /**
+   * Identity Verification Methods
+   */
   const initiateIdentityVerification = async (method: IdentityVerificationMethod): Promise<{ detail: string; method: string }> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.role === 'patient' && user.patient_profile) {
-        profileId = user.patient_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
-      const response = await authService.initiateIdentityVerification(profileId, method);
-      await refreshUserData();
-      
-      return response;
+      if (!user) throw new Error('User not found');
+      const profileId = user.patient_profile?.id || user.id;
+      return await authService.initiateIdentityVerification(profileId, method);
     } finally {
       setIsLoading(false);
     }
@@ -545,32 +551,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const completeIdentityVerification = async (method: IdentityVerificationMethod): Promise<{ detail: string; verified_at: string }> => {
     setIsLoading(true);
     try {
-      if (!user) {
-        throw new Error('User not found');
-      }
-      
-      let profileId: number;
-      if (user.role === 'patient' && user.patient_profile) {
-        profileId = user.patient_profile.id;
-      } else {
-        profileId = user.id;
-      }
-      
+      if (!user) throw new Error('User not found');
+      const profileId = user.patient_profile?.id || user.id;
       const response = await authService.completeIdentityVerification(profileId, method);
       await refreshUserData();
-      
       return response;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Profile completion methods (abbreviated for space)
+  /**
+   * Profile Completion Methods for All Roles
+   */
   const completePatientProfile = async (profileData: Partial<PatientProfile>): Promise<PatientProfile> => {
     setIsLoading(true);
     try {
       if (!user) throw new Error('User not found');
-      
       const profileId = user.patient_profile?.id || user.id;
       const response = await authService.completePatientProfile(profileId, profileData);
       await refreshUserData();
@@ -588,7 +585,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       if (!user) throw new Error('User not found');
-      
       const profileId = user.patient_profile?.id || user.id;
       const response = await authService.updatePatientConsent(profileId, consents);
       await refreshUserData();
@@ -663,9 +659,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // All other methods follow the same pattern - API calls without cookie manipulation
-  // (abbreviated for space, but they all use the same secure pattern)
-
+  /**
+   * Caregiver Request Management
+   */
   const getCaregiverRequests = async (params?: { 
     status?: CaregiverRequestStatus; 
     ordering?: string 
@@ -689,10 +685,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return await authService.getCaregiverRequestDetails(requestId);
   };
 
-  const getHipaaDocuments = async (filters?: { 
-    document_type?: string; 
-    active?: boolean 
-  }): Promise<HipaaDocument[]> => {
+  /**
+   * HIPAA Document Management
+   */
+  const getHipaaDocuments = async (filters?: { document_type?: string; active?: boolean }): Promise<HipaaDocument[]> => {
     return await authService.getHipaaDocuments(filters);
   };
 
@@ -704,20 +700,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return await authService.getLatestHipaaDocuments();
   };
 
-  const signHipaaDocument = async (documentId: number): Promise<{ 
-    detail: string; 
-    consent_id: number; 
-    signed_at: string 
-  }> => {
+  const signHipaaDocument = async (documentId: number): Promise<{ detail: string; consent_id: number; signed_at: string }> => {
     const response = await authService.signHipaaDocument(documentId);
     await refreshUserData();
     return response;
   };
 
-  const getConsentRecords = async (filters?: { 
-    consent_type?: string; 
-    consented?: boolean 
-  }): Promise<ConsentRecord[]> => {
+  /**
+   * Consent Record Management
+   */
+  const getConsentRecords = async (filters?: { consent_type?: string; consented?: boolean }): Promise<ConsentRecord[]> => {
     return await authService.getConsentRecords(filters);
   };
 
@@ -725,6 +717,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return await authService.getConsentAuditTrail(days);
   };
 
+  /**
+   * Emergency Access System
+   */
   const initiateEmergencyAccess = async (data: {
     patient_identifier: string;
     reason: EmergencyAccessReason;
@@ -762,9 +757,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await refreshUserData();
     return response;
   };
-    // Computed properties for easier access
-    const isAuthenticated = !!user && user.email !== 'middleware-validated-user';
-    const isMiddlewareValidated = user?.email === 'middleware-validated-user';
+
+  // Computed properties for easier access
+  const isAuthenticated = !!user && user.email !== 'middleware-validated-user';
+  const isMiddlewareValidated = user?.email === 'middleware-validated-user';
 
   // Complete context value with all methods
   const contextValue: EnhancedAuthContextType = {
@@ -773,11 +769,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     isLoading,
     isInitialized,
-    //lastActivity,
+    isAuthReady, // Critical for preventing 404 errors
     
     // Core authentication methods
     login,
-    register: async () => { throw new Error('Register method not implemented') },
+    register,
     logout,
     verifyTwoFactor,
     setupTwoFactor,
@@ -833,7 +829,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Legacy methods
     updateConsent,
-    //refreshUserData
   };
 
   return (

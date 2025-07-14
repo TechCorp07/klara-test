@@ -1,4 +1,4 @@
-// Example: src/app/(dashboard)/researcher/layout.tsx
+// src/app/(dashboard)/researcher/layout.tsx
  import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
  
  interface ResearcherLayoutProps {

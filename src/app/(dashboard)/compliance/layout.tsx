@@ -1,4 +1,4 @@
-// Example: src/app/(dashboard)/compliance/layout.tsx
+// src/app/(dashboard)/compliance/layout.tsx
  import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
  
  interface ComplianceLayoutProps {

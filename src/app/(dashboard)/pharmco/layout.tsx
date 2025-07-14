@@ -1,4 +1,4 @@
-// Example: src/app/(dashboard)/pharmco/layout.tsx
+// src/app/(dashboard)/pharmco/layout.tsx
  import BaseAuthenticatedLayout from '../_shared/layouts/BaseAuthenticatedLayout';
  
  interface PharmcoLayoutProps {
