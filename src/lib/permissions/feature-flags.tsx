@@ -1,8 +1,7 @@
-// src/lib/permissions/feature-flags.ts
+// src/lib/permissions/feature-flags.tsx
 'use client';
 
 import React from 'react';
-
 import { useAuth } from '@/lib/auth';
 import { UserRole } from '@/types/auth.types';
 
@@ -37,171 +36,10 @@ export class FeatureFlagManager {
   private listeners: ((flagId: string, enabled: boolean) => void)[] = [];
 
   constructor(config?: FeatureFlagConfig) {
-    this.config = config || {};
+    if (config) {
+      this.config = config;
+    }
     this.initializeDefaultFlags();
-  }
-
-  /**
-   * Initialize default feature flags
-   */
-  private initializeDefaultFlags(): void {
-    const defaultFlags: FeatureFlag[] = [
-      // Admin Features
-      {
-        id: 'user_management',
-        name: 'User Management',
-        description: 'Access to user management features',
-        enabled: true,
-        requiredPermissions: ['can_manage_users'],
-        requiredRoles: ['admin', 'superadmin']
-      },
-      {
-        id: 'bulk_user_actions',
-        name: 'Bulk User Actions',
-        description: 'Perform bulk operations on users',
-        enabled: true,
-        requiredPermissions: ['can_manage_users'],
-        dependencies: ['user_management']
-      },
-      {
-        id: 'permission_management',
-        name: 'Permission Management',
-        description: 'Manage user permissions and roles',
-        enabled: true,
-        requiredPermissions: ['can_manage_users'],
-        requiredRoles: ['admin', 'superadmin']
-      },
-      {
-        id: 'system_monitoring',
-        name: 'System Monitoring',
-        description: 'Access to system monitoring and health checks',
-        enabled: true,
-        requiredPermissions: ['can_access_admin']
-      },
-      {
-        id: 'audit_logs',
-        name: 'Audit Logs',
-        description: 'Access to system audit logs',
-        enabled: true,
-        requiredPermissions: ['can_access_admin']
-      },
-
-      // Emergency Features
-      {
-        id: 'emergency_access',
-        name: 'Emergency Access',
-        description: 'Emergency access to restricted data',
-        enabled: true,
-        requiredPermissions: ['can_emergency_access']
-      },
-      {
-        id: 'emergency_override',
-        name: 'Emergency Override',
-        description: 'Override normal access restrictions in emergencies',
-        enabled: true,
-        requiredPermissions: ['can_emergency_access'],
-        environment: 'production'
-      },
-
-      // Patient Data Features
-      {
-        id: 'patient_data_access',
-        name: 'Patient Data Access',
-        description: 'Access to patient health data',
-        enabled: true,
-        requiredPermissions: ['can_access_patient_data']
-      },
-      {
-        id: 'patient_export',
-        name: 'Patient Data Export',
-        description: 'Export patient data',
-        enabled: true,
-        requiredPermissions: ['can_access_patient_data', 'can_export_data'],
-        requiredRoles: ['provider', 'admin']
-      },
-
-      // Research Features
-      {
-        id: 'research_data_access',
-        name: 'Research Data Access',
-        description: 'Access to research and clinical trial data',
-        enabled: true,
-        requiredPermissions: ['can_access_research_data']
-      },
-      {
-        id: 'research_analytics',
-        name: 'Research Analytics',
-        description: 'Advanced analytics for research data',
-        enabled: true,
-        requiredPermissions: ['can_access_research_data'],
-        requiredRoles: ['researcher', 'admin']
-      },
-
-      // Beta Features
-      {
-        id: 'new_dashboard_layout',
-        name: 'New Dashboard Layout',
-        description: 'Beta version of the redesigned dashboard',
-        enabled: false,
-        rolloutPercentage: 25,
-        environment: 'development'
-      },
-      {
-        id: 'advanced_search',
-        name: 'Advanced Search',
-        description: 'Enhanced search capabilities with filters',
-        enabled: true,
-        rolloutPercentage: 50,
-        environment: 'staging'
-      },
-      {
-        id: 'real_time_notifications',
-        name: 'Real-time Notifications',
-        description: 'Live notification system',
-        enabled: false,
-        rolloutPercentage: 10,
-        environment: 'production'
-      },
-
-      // Telemedicine Features
-      {
-        id: 'telemedicine_access',
-        name: 'Telemedicine Access',
-        description: 'Access to telemedicine features',
-        enabled: true,
-        requiredRoles: ['patient', 'provider']
-      },
-      {
-        id: 'video_consultations',
-        name: 'Video Consultations',
-        description: 'Video consultation capabilities',
-        enabled: true,
-        dependencies: ['telemedicine_access'],
-        requiredRoles: ['provider']
-      },
-
-      // Reporting Features
-      {
-        id: 'custom_reports',
-        name: 'Custom Reports',
-        description: 'Create and customize reports',
-        enabled: true,
-        requiredPermissions: ['can_access_admin'],
-        requiredRoles: ['admin', 'superadmin']
-      },
-      {
-        id: 'scheduled_reports',
-        name: 'Scheduled Reports',
-        description: 'Schedule automatic report generation',
-        enabled: true,
-        dependencies: ['custom_reports'],
-        rolloutPercentage: 75
-      }
-    ];
-
-    defaultFlags.forEach(flag => {
-      this.flags.set(flag.id, flag);
-    });
   }
 
   /**
@@ -210,7 +48,6 @@ export class FeatureFlagManager {
   public isEnabled(flagId: string): boolean {
     const flag = this.flags.get(flagId);
     if (!flag) {
-      console.warn(`Feature flag '${flagId}' not found`);
       return false;
     }
 
@@ -219,8 +56,8 @@ export class FeatureFlagManager {
       return false;
     }
 
-    // Check expiration
-    if (flag.expiresAt && flag.expiresAt < new Date()) {
+    // Check if flag has expired
+    if (flag.expiresAt && new Date() > flag.expiresAt) {
       return false;
     }
 
@@ -232,27 +69,27 @@ export class FeatureFlagManager {
       }
     }
 
-    // Check dependencies
-    if (flag.dependencies) {
-      const dependenciesMet = flag.dependencies.every(depId => this.isEnabled(depId));
-      if (!dependenciesMet) {
-        return false;
-      }
-    }
-
-    // Check required roles
+    // Check role requirements
     if (flag.requiredRoles && this.config.userRole) {
       if (!flag.requiredRoles.includes(this.config.userRole)) {
         return false;
       }
     }
 
-    // Check required permissions
+    // Check permission requirements
     if (flag.requiredPermissions && this.config.permissions) {
       const hasAllPermissions = flag.requiredPermissions.every(permission =>
-        this.config.permissions!.includes(permission)
+        this.config.permissions?.includes(permission)
       );
       if (!hasAllPermissions) {
+        return false;
+      }
+    }
+
+    // Check dependencies
+    if (flag.dependencies) {
+      const dependenciesMet = flag.dependencies.every(depId => this.isEnabled(depId));
+      if (!dependenciesMet) {
         return false;
       }
     }
@@ -270,7 +107,7 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Get feature flag details
+   * Get a specific feature flag
    */
   public getFlag(flagId: string): FeatureFlag | undefined {
     return this.flags.get(flagId);
@@ -284,14 +121,14 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Get enabled features for current user
+   * Get all enabled feature flags for current user
    */
   public getEnabledFeatures(): string[] {
     return Array.from(this.flags.keys()).filter(flagId => this.isEnabled(flagId));
   }
 
   /**
-   * Update feature flag
+   * Update a feature flag
    */
   public updateFlag(flagId: string, updates: Partial<FeatureFlag>): void {
     const existingFlag = this.flags.get(flagId);
@@ -303,7 +140,7 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Add new feature flag
+   * Add a new feature flag
    */
   public addFlag(flag: FeatureFlag): void {
     this.flags.set(flag.id, flag);
@@ -311,7 +148,7 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Remove feature flag
+   * Remove a feature flag
    */
   public removeFlag(flagId: string): void {
     this.flags.delete(flagId);
@@ -323,6 +160,10 @@ export class FeatureFlagManager {
    */
   public updateConfig(config: Partial<FeatureFlagConfig>): void {
     this.config = { ...this.config, ...config };
+    // Notify listeners for all flags as configuration change might affect enablement
+    Array.from(this.flags.keys()).forEach(flagId => {
+      this.notifyListeners(flagId, this.isEnabled(flagId));
+    });
   }
 
   /**
@@ -343,10 +184,79 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Hash user ID for consistent rollout
+   * Initialize default feature flags
+   */
+  private initializeDefaultFlags(): void {
+    const defaultFlags: FeatureFlag[] = [
+      {
+        id: 'advanced_dashboard',
+        name: 'Advanced Dashboard',
+        description: 'Enhanced dashboard with real-time analytics',
+        enabled: true,
+        requiredPermissions: ['can_access_admin'],
+        environment: 'all',
+        rolloutPercentage: 100
+      },
+      {
+        id: 'beta_user_management',
+        name: 'Beta User Management',
+        description: 'New user management interface (beta)',
+        enabled: true,
+        requiredPermissions: ['can_manage_users'],
+        requiredRoles: ['admin', 'superadmin'],
+        environment: 'all',
+        rolloutPercentage: 75
+      },
+      {
+        id: 'emergency_access_module',
+        name: 'Emergency Access Module',
+        description: 'Advanced emergency access controls',
+        enabled: true,
+        requiredPermissions: ['can_emergency_access'],
+        environment: 'all',
+        rolloutPercentage: 100
+      },
+      {
+        id: 'research_data_export',
+        name: 'Research Data Export',
+        description: 'Enhanced data export capabilities for researchers',
+        enabled: true,
+        requiredPermissions: ['can_access_research_data'],
+        requiredRoles: ['researcher', 'admin'],
+        environment: 'all',
+        rolloutPercentage: 50
+      },
+      {
+        id: 'patient_portal_v2',
+        name: 'Patient Portal V2',
+        description: 'Next generation patient portal with enhanced features',
+        enabled: false,
+        requiredRoles: ['patient'],
+        environment: 'development',
+        rolloutPercentage: 25
+      },
+      {
+        id: 'ai_diagnostic_assistant',
+        name: 'AI Diagnostic Assistant',
+        description: 'AI-powered diagnostic recommendations',
+        enabled: false,
+        requiredPermissions: ['can_access_patient_data'],
+        requiredRoles: ['provider', 'admin'],
+        environment: 'development',
+        rolloutPercentage: 10
+      }
+    ];
+
+    defaultFlags.forEach(flag => {
+      this.flags.set(flag.id, flag);
+    });
+  }
+
+  /**
+   * Hash user ID for consistent rollout percentages
    */
   private hashUserId(userId: number, flagId: string): number {
-    const str = `${userId}_${flagId}`;
+    const str = `${userId}-${flagId}`;
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
@@ -357,7 +267,7 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Notify listeners of flag changes
+   * Notify all listeners of flag changes
    */
   private notifyListeners(flagId: string, enabled: boolean): void {
     this.listeners.forEach(listener => {
@@ -608,6 +518,90 @@ export function FeatureFlagAdmin() {
           No feature flags found matching your search.
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Feature flag toggle component for settings
+ */
+interface FeatureFlagToggleProps {
+  flagId: string;
+  label?: string;
+  description?: string;
+  disabled?: boolean;
+}
+
+export function FeatureFlagToggle({ 
+  flagId, 
+  label, 
+  description, 
+  disabled = false 
+}: FeatureFlagToggleProps) {
+  const { isEnabled, updateFlag, getFlag } = useFeatureFlags();
+  const flag = getFlag(flagId);
+  const enabled = isEnabled(flagId);
+
+  const toggle = () => {
+    if (!disabled && flag) {
+      updateFlag(flagId, { enabled: !flag.enabled });
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between py-3">
+      <div className="flex-1">
+        <div className="text-sm font-medium text-gray-900">
+          {label || flag?.name || flagId}
+        </div>
+        {(description || flag?.description) && (
+          <div className="text-sm text-gray-500">
+            {description || flag?.description}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={toggle}
+        disabled={disabled}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          enabled 
+            ? 'bg-blue-600' 
+            : 'bg-gray-200'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Feature flag debug component (development only)
+ */
+export function FeatureFlagDebug() {
+  const { enabledFeatures, getAllFlags } = useFeatureFlags();
+  
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
+  return (
+    <div className="fixed bottom-4 left-4 bg-black text-white p-4 rounded text-xs max-w-xs">
+      <h4 className="font-bold mb-2">🚩 Feature Flags</h4>
+      <div className="space-y-1 max-h-40 overflow-y-auto">
+        {getAllFlags().map(flag => (
+          <div key={flag.id} className="flex justify-between">
+            <span className="truncate">{flag.name}</span>
+            <span className={enabledFeatures.includes(flag.id) ? 'text-green-400' : 'text-red-400'}>
+              {enabledFeatures.includes(flag.id) ? '✅' : '❌'}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
