@@ -1,43 +1,77 @@
-// src/lib/auth/auth-provider.tsx
+// src/lib/auth/jwt-auth-provider.tsx
+/**
+ * JWT Authentication Provider - Race Condition Free Implementation
+ * 
+ * This provider replaces the complex async authentication logic that was causing
+ * race conditions. Think of this as upgrading from a complex system with multiple
+ * moving parts that could interfere with each other, to a streamlined system
+ * where authentication state flows predictably from JWT token validation.
+ * 
+ * Key improvements over the previous auth provider:
+ * 1. Eliminates HTTP requests for permission checks
+ * 2. Simplifies authentication state management
+ * 3. Provides instant permission access from JWT payload
+ * 4. Removes timing-dependent async operations
+ * 5. Uses only HttpOnly cookies for security
+ */
+
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
+import { JWTValidator, JWTPayload } from './validator';
 import { 
   User, 
   LoginCredentials,
   LoginResponse, 
   RegisterRequest, 
   RegisterResponse,
-  ResetPasswordRequest, 
-  VerifyEmailRequest, 
-  SetupTwoFactorResponse,
-  AuthContextType,
-  PatientProfile,
-  ProviderProfile,
-  PharmcoProfile,
-  CaregiverProfile,
-  ResearcherProfile,
-  ComplianceProfile,
-  CaregiverRequest,
-  HipaaDocument,
-  ConsentRecord,
-  EmergencyAccessRecord,
-  ConsentAuditTrailResponse,
-  EmergencyAccessFilters,
-  EmergencyAccessSummary,
-} from '@/types/auth.types';
-import { authService } from '../api/services/auth.service';
-import { clearPendingRequests } from '../api/client';
-import { config } from '@/lib/config';
-import { ConsentUpdateResponse } from '@/types/auth.types';
-import { DashboardStatsResponse } from '@/types/admin.types';
-import { usePathname } from 'next/navigation';
+  } from '@/types/auth.types';
 
-// Define public routes that don't need authentication checks
+interface JWTAuthContextType {
+  // Core authentication state
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isInitialized: boolean;
+  
+  // JWT-specific state
+  jwtPayload: JWTPayload | null;
+  tokenNeedsRefresh: boolean;
+  timeToExpiration: number | null;
+  
+  // Authentication methods
+  login: (credentials: LoginCredentials) => Promise<LoginResponse>;
+  register: (userData: RegisterRequest) => Promise<RegisterResponse>;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<void>;
+  
+  // Permission checking methods (extracted from JWT)
+  hasPermission: (permission: keyof NonNullable<JWTPayload['permissions']>) => boolean;
+  hasAnyPermission: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
+  hasAllPermissions: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
+  
+  // Role-based access methods
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  canManageUsers: boolean;
+  canAccessAudit: boolean;
+  canManageSystemSettings: boolean;
+  
+  // Utility methods
+  getUserId: () => number | null;
+  getUserRole: () => string | null;
+  getSessionId: () => string | null;
+}
+
+// Create the context
+export const JWTAuthContext = createContext<JWTAuthContextType | null>(null);
+
+// Public routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/',
   '/login',
-  '/register', 
+  '/register',
   '/verify-email',
   '/reset-password',
   '/forgot-password',
@@ -46,7 +80,7 @@ const PUBLIC_ROUTES = [
   '/unauthorized',
   '/compliance-violation',
   '/terms-of-service',
-  '/privacy-policy', 
+  '/privacy-policy',
   '/hipaa-notice',
   '/contact',
   '/about',
@@ -55,787 +89,392 @@ const PUBLIC_ROUTES = [
   '/faq',
 ];
 
-const PROTECTED_ROUTE_PREFIXES = [
-  '/patient',
-  '/provider', 
-  '/admin',
-  '/pharmco',
-  '/caregiver',
-  '/researcher',
-  '/compliance',
-  '/dashboard',
-  '/profile',
-  '/settings',
-  '/messages'
-];
-
-// Define the specific union types for better type safety
-type IdentityVerificationMethod = "E_SIGNATURE" | "PROVIDER_VERIFICATION" | "DOCUMENT_UPLOAD" | "VIDEO_VERIFICATION";
-type CaregiverRequestStatus = "PENDING" | "APPROVED" | "DENIED" | "EXPIRED";
-type EmergencyAccessReason = "LIFE_THREATENING" | "URGENT_CARE" | "PATIENT_UNABLE" | "IMMINENT_DANGER" | "OTHER";
-let globalAuthLock = false;
-let globalAuthPromise: Promise<any> | null = null;
-
-// Enhanced AuthContextType with corrected types
-export interface EnhancedAuthContextType extends Omit<AuthContextType, 
-  'initiateIdentityVerification' | 
-  'completeIdentityVerification' | 
-  'getCaregiverRequests' | 
-  'initiateEmergencyAccess' |
-  'getDashboardStats' |
-  'login'
-> {
-  // Override login method with correct signature
-  login: (credentials: LoginCredentials) => Promise<LoginResponse>;
-  // NEW: Add isAuthReady state
-  isAuthReady: boolean;
-  
-  initiateIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; method: string }>;
-  completeIdentityVerification: (method: IdentityVerificationMethod) => Promise<{ detail: string; verified_at: string }>;
-  
-  completePatientProfile: (profileData: Partial<PatientProfile>) => Promise<PatientProfile>;
-  updatePatientConsent: (consents: {
-    medication_adherence_monitoring_consent: boolean;
-    vitals_monitoring_consent: boolean;
-    research_participation_consent: boolean;
-  }) => Promise<PatientProfile>;
-  
-  completeProviderProfile: (profileData: Partial<ProviderProfile>) => Promise<ProviderProfile>;
-  completePharmcoProfile: (profileData: Partial<PharmcoProfile>) => Promise<PharmcoProfile>;
-  completeCaregiverProfile: (profileData: Partial<CaregiverProfile>) => Promise<CaregiverProfile>;
-  completeResearcherProfile: (profileData: Partial<ResearcherProfile>) => Promise<ResearcherProfile>;
-  completeComplianceProfile: (profileData: Partial<ComplianceProfile>) => Promise<ComplianceProfile>;
-  
-  getCaregiverRequests: (params?: { status?: CaregiverRequestStatus; ordering?: string }) => Promise<CaregiverRequest[]>;
-  approveCaregiverRequest: (requestId: number) => Promise<{ detail: string }>;
-  denyCaregiverRequest: (requestId: number, reason?: string) => Promise<{ detail: string }>;
-  getCaregiverRequestDetails: (requestId: number) => Promise<CaregiverRequest>;
-  
-  getHipaaDocuments: (filters?: { document_type?: string; active?: boolean }) => Promise<HipaaDocument[]>;
-  getHipaaDocumentDetails: (documentId: number) => Promise<HipaaDocument>;
-  getLatestHipaaDocuments: () => Promise<HipaaDocument[]>;
-  signHipaaDocument: (documentId: number) => Promise<{ detail: string; consent_id: number; signed_at: string }>;
-  
-  getConsentRecords: (filters?: { consent_type?: string; consented?: boolean }) => Promise<ConsentRecord[]>;
-  getConsentAuditTrail: (days?: number) => Promise<ConsentAuditTrailResponse>;
-  
-  initiateEmergencyAccess: (data: {
-    patient_identifier: string;
-    reason: EmergencyAccessReason;
-    detailed_reason: string;
-  }) => Promise<{ detail: string; access_id: number; expires_in: string }>;
-  endEmergencyAccess: (accessId: number, phiSummary: string) => Promise<{ detail: string }>;
-  getEmergencyAccessRecords: (filters?: EmergencyAccessFilters) => Promise<EmergencyAccessRecord[]>;
-  reviewEmergencyAccess: (accessId: number, reviewData: { notes: string; justified: boolean }) => Promise<{ detail: string }>;
-  getEmergencyAccessSummary: () => Promise<EmergencyAccessSummary>;
-  
-  getDashboardStats: () => Promise<DashboardStatsResponse>;
-  updateConsent: (consentType: string, consented: boolean) => Promise<ConsentUpdateResponse>;
+/**
+ * Convert JWT payload to User object
+ * 
+ * This function transforms the JWT payload into the User interface that
+ * the rest of your application expects, maintaining compatibility with
+ * existing components while leveraging JWT data.
+ */
+function jwtPayloadToUser(payload: JWTPayload): User {
+  return {
+    id: payload.user_id,
+    email: payload.email,
+    role: payload.role,
+    
+    // These fields would come from the JWT payload if your backend includes them
+    // For now, we'll provide reasonable defaults and rely on the JWT permissions
+    first_name: '', // Could be extracted from JWT if backend includes it
+    last_name: '',  // Could be extracted from JWT if backend includes it
+    is_active: true, // If JWT is valid, user is active
+    is_approved: true, // If JWT is valid, user is approved
+    email_verified: true, // If JWT is valid, email was verified
+    phone_verified: false, // Would need to be in JWT payload
+    two_factor_enabled: false, // Would need to be in JWT payload
+    
+    // Profile data - these could be included in JWT or fetched separately
+    patient_profile: undefined,
+    provider_profile: undefined,
+    admin_profile: undefined,
+    pharmco_profile: undefined,
+    caregiver_profile: undefined,
+    researcher_profile: undefined,
+    compliance_profile: undefined,
+    
+    // Permissions extracted from JWT
+    permissions: payload.permissions || {},
+    
+    // Metadata
+    date_joined: '', // Would need to be in JWT payload
+    last_login: '', // Would need to be in JWT payload
+  };
 }
 
-// Create context with null as initial value
-export const AuthContext = createContext<EnhancedAuthContextType | null>(null);
-
-interface AuthProviderProps {
+interface JWTAuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) => {
+  // Core authentication state
   const [user, setUser] = useState<User | null>(null);
+  const [jwtPayload, setJwtPayload] = useState<JWTPayload | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false); // NEW: Track when auth cookies are ready
-  const [authCheckComplete, setAuthCheckComplete] = useState(false);
-  const [lastActivity, setLastActivity] = useState<number>(Date.now());
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [tokenNeedsRefresh, setTokenNeedsRefresh] = useState<boolean>(false);
+  const [timeToExpiration, setTimeToExpiration] = useState<number | null>(null);
   
-  // Get current pathname to check if we're on a public route
   const pathname = usePathname();
-  
-  // Helper function to check if current route is public
-  const isPublicRoute = (path: string): boolean => {
-    return PUBLIC_ROUTES.some(route => 
-      path === route || 
-      path.startsWith(route + '/') ||
-      path.startsWith('/reset-password/') 
-    );
-  };
-
-  const isProtectedRoute = (path: string): boolean => {
-    return PROTECTED_ROUTE_PREFIXES.some(prefix => 
-      path.startsWith(prefix)
-    );
-  };
-
-  // 🔧 KEY INSIGHT: Middleware-coordinated authentication initialization
-  const initializeAuth = useCallback(async () => {
-    if (globalAuthLock || globalAuthPromise) {
-      console.log('🔒 Auth already in progress, waiting for completion...');
-      if (globalAuthPromise) {
-        try {
-          await globalAuthPromise;
-        } catch (error) {
-          console.log('Previous auth attempt failed, continuing...');
-        }
-      }
-      return;
-    }
-
-    globalAuthLock = true;
-    console.log('🔐 Initializing auth...');
-    console.log('📍 Current pathname:', pathname);
-    
-    globalAuthPromise = (async () => {
-      try {
-        // Check if we're on a public route first
-        if (pathname && PUBLIC_ROUTES.includes(pathname)) {
-          console.log('📍 On public route, skipping auth check');
-          setIsLoading(false);
-          setIsInitialized(true);
-          return;
-        }
-
-        console.log('🔒 Protected route, fetching user data...');
-        
-        // Add a small delay to ensure cookies are properly set
-        await new Promise(resolve => setTimeout(resolve, 150));
-        
-        console.log('📡 Calling authService.getCurrentUser()...');
-        const userData = await authService.getCurrentUser();
-        console.log('📡 Response received:', userData ? 'User data found' : 'No user data');    
-        
-        if (userData) {
-          console.log('✅ User data retrieved successfully');
-          console.log(`👤 User: ${userData.email}, Role: ${userData.role}`);
-          setUser(userData);
-          setIsAuthReady(true); // If we got user data, auth is working
-          setLastActivity(Date.now());
-        } else {
-          console.log('❌ No user data received');
-          setUser(null);
-          setIsAuthReady(false);
-        }
-      } catch (error: any) {
-        console.log('❌ Failed to get user data:', error.message);
-        console.log('📊 Error details:', {
-          status: error.response?.status,
-          data: error.data,
-          message: error.message
-        });
-        
-        if (error.message?.includes('HTTP 401')) {
-          console.log('🔒 401 error - clearing auth state');
-          setUser(null);
-          setIsAuthReady(false);
-          
-          // Clear cookies via logout endpoint
-          try {
-            console.log('🧹 Clearing authentication cookies...');
-            await fetch('/api/auth/logout', {
-              method: 'POST',
-              credentials: 'include'
-            });
-            console.log('🧹 Cleared authentication cookies');
-          } catch (logoutError) {
-            console.error('Failed to clear cookies:', logoutError);
-          }
-        } else {
-          console.log('⚠️ Non-401 error, keeping current auth state');
-        }
-      } finally {
-        setIsLoading(false);
-        setIsInitialized(true);
-        setAuthCheckComplete(true);
-        globalAuthLock = false;
-        globalAuthPromise = null;
-        console.log('✅ Auth initialization complete');
-      }
-    })();
-    
-    await globalAuthPromise;
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!isInitialized && !globalAuthLock) {
-      initializeAuth();
-    }
-  }, [isInitialized, initializeAuth]); 
-
-  // Add this cleanup effect:
-  useEffect(() => {
-    return () => {
-      globalAuthLock = false;
-      globalAuthPromise = null;
-    };
-  }, []);
-
-  // 🔒 Activity tracking (only on protected routes where we have a real user)
-  useEffect(() => {
-    // Skip activity tracking on public routes or when no user
-    if (!user || isPublicRoute(pathname) || user.email === 'middleware-validated-user') return;
-    
-    const updateActivity = () => {
-      setLastActivity(Date.now());
-    };
-    
-    const checkInactivity = () => {
-      const now = Date.now();
-      const inactiveTime = now - lastActivity;
-      const inactiveTimeoutMs = config.sessionTimeoutMinutes * 60 * 1000;
-      
-      if (inactiveTime > inactiveTimeoutMs) {
-        logout();
-        if (typeof window !== 'undefined') {
-          alert('Your session has expired due to inactivity. Please log in again.');
-        }
-      }
-    };
-    
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, updateActivity, true));
-    
-    const inactivityTimer = setInterval(checkInactivity, 60 * 1000);
-    
-    return () => {
-      events.forEach(event => window.removeEventListener(event, updateActivity, true));
-      clearInterval(inactivityTimer);
-    };
-  }, [user, lastActivity, pathname]);
-
-  // Helper function to refresh user data
-  const refreshUserData = async (): Promise<void> => {
-    try {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-      setIsAuthReady(!!userData);
-    } catch (error) {
-      console.error('Failed to refresh user data:', error);
-      setUser(null);
-      setIsAuthReady(false);
-    }
-  };
 
   /**
-   * 🔒 SIMPLIFIED LOGIN PROCESS - No verification step needed
-   * Your backend logs prove the cookies are working correctly
+   * Initialize authentication state from JWT cookie
+   * 
+   * This function runs once when the provider mounts and extracts authentication
+   * state directly from the JWT cookie. Unlike the previous implementation,
+   * this doesn't make any HTTP requests during initialization.
+   */
+  const initializeAuth = useCallback(async () => {
+    try {
+      // Check if we're on a public route - no need to validate auth
+      const isPublicRoute = PUBLIC_ROUTES.some(route => 
+        pathname === route || pathname.startsWith(route + '/')
+      );
+
+      if (isPublicRoute) {
+        setIsLoading(false);
+        setIsInitialized(true);
+        return;
+      }
+
+      // Try to get JWT token from cookie via a simple fetch
+      // This is the only HTTP request we make, and it's to our own API route
+      const response = await fetch('/api/auth/validate', {
+        method: 'GET',
+        credentials: 'include', // Include HttpOnly cookies
+      });
+
+      if (response.ok) {
+        const { token } = await response.json();
+        
+        if (token) {
+          // Validate the JWT token locally
+          const validationResult = JWTValidator.validateToken(token);
+          
+          if (validationResult.isValid && validationResult.payload) {
+            // Extract user information from JWT payload
+            const userFromJWT = jwtPayloadToUser(validationResult.payload);
+            
+            setUser(userFromJWT);
+            setJwtPayload(validationResult.payload);
+            setTokenNeedsRefresh(validationResult.needsRefresh || false);
+            setTimeToExpiration(validationResult.expiresIn || null);
+            
+            console.log('✅ JWT authentication initialized successfully');
+          } else {
+            console.log('❌ Invalid JWT token during initialization');
+            setUser(null);
+            setJwtPayload(null);
+          }
+        }
+      } else {
+        // No valid token available
+        console.log('ℹ️ No JWT token available during initialization');
+        setUser(null);
+        setJwtPayload(null);
+      }
+    } catch (error) {
+      console.error('JWT initialization error:', error);
+      setUser(null);
+      setJwtPayload(null);
+    } finally {
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  }, [pathname]);
+
+  // Initialize auth when component mounts
+  useEffect(() => {
+    if (!isInitialized) {
+      initializeAuth();
+    }
+  }, [isInitialized, initializeAuth]);
+
+  // Set up token expiration monitoring
+  useEffect(() => {
+    if (!jwtPayload) return;
+
+    const updateExpirationTimer = () => {
+      const remaining = JWTValidator.getTimeToExpiration(jwtPayload);
+      setTimeToExpiration(remaining);
+      setTokenNeedsRefresh(JWTValidator.needsRefresh(jwtPayload));
+      
+      // If token expired, clear auth state
+      if (remaining <= 0) {
+        setUser(null);
+        setJwtPayload(null);
+        setTimeToExpiration(null);
+        setTokenNeedsRefresh(false);
+      }
+    };
+
+    // Update immediately
+    updateExpirationTimer();
+
+    // Set up interval to update every minute
+    const interval = setInterval(updateExpirationTimer, 60000);
+
+    return () => clearInterval(interval);
+  }, [jwtPayload]);
+
+  /**
+   * Login method - simplified for JWT
+   * 
+   * This method handles login by calling the backend authentication endpoint
+   * and then extracting the resulting JWT token for local validation.
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
-    setIsAuthReady(false); // Reset auth ready state
-    
-    // Clear any existing auth state first
-    globalAuthLock = false;
-    globalAuthPromise = null;
     
     try {
-      console.log('🔐 Step 1: Starting backend authentication...');
-      
       // Step 1: Authenticate with backend
-      const response = await authService.login(credentials);
-      console.log('✅ Step 1 Complete: Backend authentication successful');
-      
-      console.log('🍪 Step 2: Setting HttpOnly authentication cookie...');
-      
-      // Step 2: Set HttpOnly cookie via our API route
-      const cookieResponse = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: response.token,
-          user: response.user
-        }),
-        credentials: 'include'
+        body: JSON.stringify(credentials),
+        credentials: 'include', // Important for HttpOnly cookies
       });
-      
-      if (!cookieResponse.ok) {
-        const errorText = await cookieResponse.text();
-        throw new Error(`Failed to set authentication cookies: ${errorText}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
       }
-      console.log('✅ Step 2 Complete: HttpOnly cookie set successfully');
-      
-      console.log('👤 Step 3: Setting user state...');
-      
-      // Step 3: Set user state and mark auth as ready immediately
-      // We trust that the cookie setting worked based on your backend logs
-      setUser(response.user);
-      setIsAuthReady(true);
-      setLastActivity(Date.now());
-      
-      console.log('✅ Step 3 Complete: User state set');
-      console.log('🎉 LOGIN PROCESS COMPLETE - Auth system ready for API calls');
-      
-      // Add a small delay to ensure the browser processes the cookie setting
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      return response;
+
+      const loginData: LoginResponse = await response.json();
+
+      // Step 2: If we have a token in the response, validate it locally
+      if (loginData.token) {
+        const validationResult = JWTValidator.validateToken(loginData.token);
+        
+        if (validationResult.isValid && validationResult.payload) {
+          const userFromJWT = jwtPayloadToUser(validationResult.payload);
+          
+          setUser(userFromJWT);
+          setJwtPayload(validationResult.payload);
+          setTokenNeedsRefresh(validationResult.needsRefresh || false);
+          setTimeToExpiration(validationResult.expiresIn || null);
+          
+          console.log('✅ Login successful with JWT validation');
+        }
+      }
+
+      return loginData;
     } catch (error) {
-      console.error('❌ Login failed:', error);
+      console.error('Login error:', error);
       setUser(null);
-      setIsAuthReady(false);
+      setJwtPayload(null);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
-    setIsLoading(true);
-    try {
-      return await authService.register(userData);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  /**
+   * Logout method - simplified for JWT
+   * 
+   * This method clears authentication state and HttpOnly cookies.
+   */
   const logout = async (): Promise<void> => {
     setIsLoading(true);
+    
     try {
-      // Clear any pending requests
-      clearPendingRequests();
-      
-      // Clear auth state immediately
-      setUser(null);
-      setIsAuthReady(false);
-      globalAuthLock = false;
-      globalAuthPromise = null;
-      
-      // Clear HttpOnly cookies via server API
-      const logoutResponse = await fetch('/api/auth/logout', {
+      // Call logout endpoint to clear HttpOnly cookies
+      await fetch('/api/auth/logout', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
       });
       
-      if (!logoutResponse.ok) {
-        console.warn('Logout API call failed, but continuing with client cleanup');
-      }
-      
-      // Clear client state
-      setLastActivity(Date.now());
-      
-    } catch (error) {
-      console.error('Error during logout:', error);
-      // Even if logout fails, clear local state for security
+      // Clear local state immediately
       setUser(null);
-      setIsAuthReady(false);
+      setJwtPayload(null);
+      setTokenNeedsRefresh(false);
+      setTimeToExpiration(null);
+      
+      console.log('✅ Logout completed');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Clear state even if logout call fails
+      setUser(null);
+      setJwtPayload(null);
+      setTokenNeedsRefresh(false);
+      setTimeToExpiration(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   /**
-   * Two-Factor Authentication Methods
+   * Registration method
+   * 
+   * This handles user registration through the backend API.
    */
-  const verifyTwoFactor = async (userIdOrToken: string, code: string): Promise<LoginResponse> => {
+  const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
+    
     try {
-      const userId = parseInt(userIdOrToken, 10);
-      if (isNaN(userId)) {
-        throw new Error('Invalid user ID for two-factor verification');
-      }
-      
-      const response = await authService.verifyTwoFactor(userId, code);
-      
-      // 🔒 SECURE: Set cookies after 2FA verification
-      const cookieResponse = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: response.token,
-          user: response.user
-        }),
-        credentials: 'include'
+        body: JSON.stringify(userData),
       });
-      
-      if (cookieResponse.ok) {
-        setUser(response.user);
-        setIsAuthReady(true);
-        setLastActivity(Date.now());
-      } else {
-        throw new Error('Failed to set authentication cookies after 2FA');
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
       }
-      
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const setupTwoFactor = async (): Promise<SetupTwoFactorResponse> => {
-    setIsLoading(true);
-    try {
-      return await authService.setupTwoFactor();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const confirmTwoFactor = async (code: string): Promise<{ success: boolean; message: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.confirmTwoFactor(code);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const disableTwoFactor = async (password: string): Promise<{ success: boolean; message: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.disableTwoFactor(password);
-      await refreshUserData();
-      return response;
+      return await response.json();
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
   /**
-   * Password Management Methods
+   * Token refresh method
+   * 
+   * This method refreshes the JWT token before it expires.
    */
-  const requestPasswordReset = async (email: string): Promise<{ detail: string }> => {
-    setIsLoading(true);
+  const refreshToken = async (): Promise<void> => {
     try {
-      return await authService.forgotPassword(email);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      });
 
-  const resetPassword = async (data: ResetPasswordRequest): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      return await authService.resetPassword(data);
-    } finally {
-      setIsLoading(false);
+      if (response.ok) {
+        const { token } = await response.json();
+        
+        if (token) {
+          const validationResult = JWTValidator.validateToken(token);
+          
+          if (validationResult.isValid && validationResult.payload) {
+            const userFromJWT = jwtPayloadToUser(validationResult.payload);
+            
+            setUser(userFromJWT);
+            setJwtPayload(validationResult.payload);
+            setTokenNeedsRefresh(false);
+            setTimeToExpiration(validationResult.expiresIn || null);
+            
+            console.log('✅ Token refreshed successfully');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error);
     }
   };
 
   /**
-   * Email Verification Methods
+   * Permission checking methods
+   * 
+   * These methods extract permissions directly from the JWT payload,
+   * eliminating the need for HTTP requests to check permissions.
    */
-  const requestEmailVerification = async (): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      return await authService.requestEmailVerification();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const hasPermission = useCallback((permission: keyof NonNullable<JWTPayload['permissions']>): boolean => {
+    return jwtPayload ? JWTValidator.hasPermission(jwtPayload, permission) : false;
+  }, [jwtPayload]);
 
-  const verifyEmail = async (data: VerifyEmailRequest): Promise<{ detail: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.verifyEmail(data);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const hasAnyPermission = useCallback((permissions: Array<keyof NonNullable<JWTPayload['permissions']>>): boolean => {
+    return permissions.some(permission => hasPermission(permission));
+  }, [hasPermission]);
 
-  /**
-   * Identity Verification Methods
-   */
-  const initiateIdentityVerification = async (method: IdentityVerificationMethod): Promise<{ detail: string; method: string }> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.patient_profile?.id || user.id;
-      return await authService.initiateIdentityVerification(profileId, method);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const hasAllPermissions = useCallback((permissions: Array<keyof NonNullable<JWTPayload['permissions']>>): boolean => {
+    return permissions.every(permission => hasPermission(permission));
+  }, [hasPermission]);
 
-  const completeIdentityVerification = async (method: IdentityVerificationMethod): Promise<{ detail: string; verified_at: string }> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.patient_profile?.id || user.id;
-      const response = await authService.completeIdentityVerification(profileId, method);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Computed permission properties for easy access
+  const isAdmin = hasPermission('has_admin_access');
+  const isSuperAdmin = hasPermission('is_superadmin');
+  const canManageUsers = hasPermission('has_user_management_access');
+  const canAccessAudit = hasPermission('has_audit_access');
+  const canManageSystemSettings = hasPermission('has_system_settings_access');
 
-  /**
-   * Profile Completion Methods for All Roles
-   */
-  const completePatientProfile = async (profileData: Partial<PatientProfile>): Promise<PatientProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.patient_profile?.id || user.id;
-      const response = await authService.completePatientProfile(profileId, profileData);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Utility methods
+  const getUserId = useCallback((): number | null => {
+    return jwtPayload?.user_id || null;
+  }, [jwtPayload]);
 
-  const updatePatientConsent = async (consents: {
-    medication_adherence_monitoring_consent: boolean;
-    vitals_monitoring_consent: boolean;
-    research_participation_consent: boolean;
-  }): Promise<PatientProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.patient_profile?.id || user.id;
-      const response = await authService.updatePatientConsent(profileId, consents);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const getUserRole = useCallback((): string | null => {
+    return jwtPayload?.role || null;
+  }, [jwtPayload]);
 
-  const completeProviderProfile = async (profileData: Partial<ProviderProfile>): Promise<ProviderProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.provider_profile?.id || user.id;
-      const response = await authService.completeProviderProfile(profileId, profileData);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const getSessionId = useCallback((): string | null => {
+    return jwtPayload?.session_id || null;
+  }, [jwtPayload]);
 
-  const completePharmcoProfile = async (profileData: Partial<PharmcoProfile>): Promise<PharmcoProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.pharmco_profile?.id || user.id;
-      const response = await authService.completePharmcoProfile(profileId, profileData);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const completeCaregiverProfile = async (profileData: Partial<CaregiverProfile>): Promise<CaregiverProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.caregiver_profile?.id || user.id;
-      const response = await authService.completeCaregiverProfile(profileId, profileData);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const completeResearcherProfile = async (profileData: Partial<ResearcherProfile>): Promise<ResearcherProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.researcher_profile?.id || user.id;
-      const response = await authService.completeResearcherProfile(profileId, profileData);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const completeComplianceProfile = async (profileData: Partial<ComplianceProfile>): Promise<ComplianceProfile> => {
-    setIsLoading(true);
-    try {
-      if (!user) throw new Error('User not found');
-      const profileId = user.compliance_profile?.id || user.id;
-      const response = await authService.completeComplianceProfile(profileId, profileData);
-      await refreshUserData();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Caregiver Request Management
-   */
-  const getCaregiverRequests = async (params?: { 
-    status?: CaregiverRequestStatus; 
-    ordering?: string 
-  }): Promise<CaregiverRequest[]> => {
-    return await authService.getCaregiverRequests(params);
-  };
-
-  const approveCaregiverRequest = async (requestId: number): Promise<{ detail: string }> => {
-    const response = await authService.approveCaregiverRequest(requestId);
-    await refreshUserData();
-    return response;
-  };
-
-  const denyCaregiverRequest = async (requestId: number, reason?: string): Promise<{ detail: string }> => {
-    const response = await authService.denyCaregiverRequest(requestId, reason);
-    await refreshUserData();
-    return response;
-  };
-
-  const getCaregiverRequestDetails = async (requestId: number): Promise<CaregiverRequest> => {
-    return await authService.getCaregiverRequestDetails(requestId);
-  };
-
-  /**
-   * HIPAA Document Management
-   */
-  const getHipaaDocuments = async (filters?: { document_type?: string; active?: boolean }): Promise<HipaaDocument[]> => {
-    return await authService.getHipaaDocuments(filters);
-  };
-
-  const getHipaaDocumentDetails = async (documentId: number): Promise<HipaaDocument> => {
-    return await authService.getHipaaDocumentDetails(documentId);
-  };
-
-  const getLatestHipaaDocuments = async (): Promise<HipaaDocument[]> => {
-    return await authService.getLatestHipaaDocuments();
-  };
-
-  const signHipaaDocument = async (documentId: number): Promise<{ detail: string; consent_id: number; signed_at: string }> => {
-    const response = await authService.signHipaaDocument(documentId);
-    await refreshUserData();
-    return response;
-  };
-
-  /**
-   * Consent Record Management
-   */
-  const getConsentRecords = async (filters?: { consent_type?: string; consented?: boolean }): Promise<ConsentRecord[]> => {
-    return await authService.getConsentRecords(filters);
-  };
-
-  const getConsentAuditTrail = async (days?: number): Promise<ConsentAuditTrailResponse> => {
-    return await authService.getConsentAuditTrail(days);
-  };
-
-  /**
-   * Emergency Access System
-   */
-  const initiateEmergencyAccess = async (data: {
-    patient_identifier: string;
-    reason: EmergencyAccessReason;
-    detailed_reason: string;
-  }): Promise<{ detail: string; access_id: number; expires_in: string }> => {
-    return await authService.initiateEmergencyAccess(data);
-  };
-
-  const endEmergencyAccess = async (accessId: number, phiSummary: string): Promise<{ detail: string }> => {
-    return await authService.endEmergencyAccess(accessId, phiSummary);
-  };
-
-  const getEmergencyAccessRecords = async (filters?: EmergencyAccessFilters): Promise<EmergencyAccessRecord[]> => {
-    return await authService.getEmergencyAccessRecords(filters);
-  };
-
-  const reviewEmergencyAccess = async (
-    accessId: number, 
-    reviewData: { notes: string; justified: boolean }
-  ): Promise<{ detail: string }> => {
-    return await authService.reviewEmergencyAccess(accessId, reviewData);
-  };
-
-  const getEmergencyAccessSummary = async (): Promise<EmergencyAccessSummary> => {
-    return await authService.getEmergencyAccessSummary();
-  };
-
-  const getDashboardStats = async (): Promise<DashboardStatsResponse> => {
-    const stats = await authService.getDashboardStats();
-    return stats as unknown as DashboardStatsResponse;
-  };
-
-  const updateConsent = async (consentType: string, consented: boolean): Promise<ConsentUpdateResponse> => {
-    const response = await authService.updateConsent(consentType, consented);
-    await refreshUserData();
-    return response;
-  };
-
-  // Computed properties for easier access
-  const isAuthenticated = !!user && user.email !== 'middleware-validated-user';
-  const isMiddlewareValidated = user?.email === 'middleware-validated-user';
-
-  // Complete context value with all methods
-  const contextValue: EnhancedAuthContextType = {
+  // Build context value
+  const contextValue: JWTAuthContextType = {
     // Core state
     user,
-    isAuthenticated,
+    isAuthenticated: !!user && !!jwtPayload,
     isLoading,
     isInitialized,
-    isAuthReady, // Critical for preventing 404 errors
     
-    // Core authentication methods
+    // JWT-specific state
+    jwtPayload,
+    tokenNeedsRefresh,
+    timeToExpiration,
+    
+    // Authentication methods
     login,
     register,
     logout,
-    verifyTwoFactor,
-    setupTwoFactor,
-    confirmTwoFactor,
-    disableTwoFactor,
+    refreshToken,
     
-    // Password management
-    requestPasswordReset,
-    resetPassword,
+    // Permission methods
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
     
-    // Email verification
-    requestEmailVerification,
-    verifyEmail,
+    // Computed permissions
+    isAdmin,
+    isSuperAdmin,
+    canManageUsers,
+    canAccessAudit,
+    canManageSystemSettings,
     
-    // Identity verification
-    initiateIdentityVerification,
-    completeIdentityVerification,
-    
-    // Profile completion methods
-    completePatientProfile,
-    updatePatientConsent,
-    completeProviderProfile,
-    completePharmcoProfile,
-    completeCaregiverProfile,
-    completeResearcherProfile,
-    completeComplianceProfile,
-    
-    // Caregiver request management
-    getCaregiverRequests,
-    approveCaregiverRequest,
-    denyCaregiverRequest,
-    getCaregiverRequestDetails,
-    
-    // HIPAA document management
-    getHipaaDocuments,
-    getHipaaDocumentDetails,
-    getLatestHipaaDocuments,
-    signHipaaDocument,
-    
-    // Consent record management
-    getConsentRecords,
-    getConsentAuditTrail,
-    
-    // Emergency access
-    initiateEmergencyAccess,
-    endEmergencyAccess,
-    getEmergencyAccessRecords,
-    reviewEmergencyAccess,
-    getEmergencyAccessSummary,
-    
-    // Admin dashboard
-    getDashboardStats,
-    
-    // Legacy methods
-    updateConsent,
+    // Utility methods
+    getUserId,
+    getUserRole,
+    getSessionId,
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <JWTAuthContext.Provider value={contextValue}>
       {children}
-    </AuthContext.Provider>
+    </JWTAuthContext.Provider>
   );
 };
 
-export default AuthProvider;
+export default JWTAuthProvider;

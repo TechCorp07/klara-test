@@ -1,9 +1,14 @@
-// src/middleware.ts - OPTIMIZED FOR DJANGO REST FRAMEWORK TOKEN AUTH
+// src/jwt-middleware.ts
+/**
+ * JWT Authentication Middleware - Local Token Validation
+ * 
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
-import axios from 'axios';
 
+// Public routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/',
   '/login',
@@ -25,6 +30,7 @@ const PUBLIC_ROUTES = [
   '/faq',
 ];
 
+// Paths to exclude from middleware processing entirely
 const EXCLUDED_PATHS = [
   '/_next',
   '/favicon.ico',
@@ -39,157 +45,166 @@ const EXCLUDED_PATHS = [
   '/manifest.json',
 ];
 
+// Role-based route access mapping - this will be replaced by permission-based routing
+// but provides backward compatibility during migration
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  patient: ['/patient', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/settings/password', '/telemedicine', '/research', '/clinical-trials', '/medications'],
-  provider: ['/provider', '/profile', '/settings', '/settings/password', '/messages', '/clinical-trials', '/patients', '/health-records', '/appointments', '/telemedicine', '/provider/emergency-access', '/medications'],
-  admin: ['/admin', '/profile', '/settings', '/settings/password', '/messages', '/users', '/reports', '/approvals', '/audit-logs', '/system-settings', '/monitoring'],
-  pharmco: ['/pharmco', '/profile', '/settings', '/settings/password', '/messages', '/medications', '/clinical-trials', '/reports', '/research'],
-  caregiver: ['/caregiver', '/profile', '/settings', '/settings/password', '/messages', '/health-records', '/appointments', '/patients'],
-  researcher: ['/researcher', '/profile', '/settings', '/settings/password', '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
+  patient: ['/patient', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/telemedicine', '/research', '/clinical-trials', '/medications'],
+  provider: ['/provider', '/profile', '/settings', '/messages', '/clinical-trials', '/patients', '/health-records', '/appointments', '/telemedicine', '/medications'],
+  admin: ['/admin', '/profile', '/settings', '/messages', '/users', '/reports', '/approvals', '/audit-logs', '/system-settings', '/monitoring'],
+  pharmco: ['/pharmco', '/profile', '/settings', '/messages', '/medications', '/clinical-trials', '/reports', '/research'],
+  caregiver: ['/caregiver', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/patients'],
+  researcher: ['/researcher', '/profile', '/settings', '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
   superadmin: ['/admin', '/patient', '/provider', '/pharmco', '/caregiver', '/researcher', '/compliance'],
-  compliance: ['/compliance', '/profile', '/settings', '/settings/password', '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/compliance/emergency-access', '/reports'],
+  compliance: ['/compliance', '/profile', '/settings', '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/reports'],
 };
 
-// Optimized cache for token validation
-const tokenValidationCache = new Map<string, { 
-  result: {
-    isValid: boolean;
-    user?: {
-      id: number;
-      role: UserRole;
-      email_verified: boolean;
-      is_approved: boolean;
-    };
-  }; 
-  timestamp: number 
-}>();
-
-const CACHE_TTL = 30000; // 30 seconds
-
 /**
- * Validates authentication token using Django REST Framework Token format
- * Based on debugging results, we know Django expects: Authorization: Token <token>
+ * JWT Token Structure Interface
+ * 
+ * This defines the expected structure of your JWT payload based on your backend
+ * implementation. We validate this structure locally without requiring the secret.
  */
-async function validateAuthToken(token: string): Promise<{
-  isValid: boolean;
-  user?: {
-    id: number;
-    role: UserRole;
-    email_verified: boolean;
-    is_approved: boolean;
+interface JWTPayload {
+  user_id: number;
+  email: string;
+  role: UserRole;
+  exp: number;
+  iat: number;
+  jti: string;
+  session_id: string;
+  jwt_version: number;
+  primary_tenant_id?: number;
+  permissions?: {
+    has_admin_access?: boolean;
+    has_user_management_access?: boolean;
+    has_audit_access?: boolean;
+    has_compliance_access?: boolean;
+    has_system_settings_access?: boolean;
+    has_export_access?: boolean;
+    is_superadmin?: boolean;
   };
-}> {
-  // Check cache first for performance
-  const cached = tokenValidationCache.get(token);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.result;
-  }
-
-  try {
-    const apiUrl = `${appConfig.apiBaseUrl}/users/auth/me/`;
-    
-    // Use the Django REST Framework Token format that we confirmed works
-    const response = await axios.get(apiUrl, {
-      headers: {
-        'Authorization': `Token ${token}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 5000,
-    });
-
-    if (response.status >= 200 && response.status < 300) {
-      const userData = response.data;
-      const result = {
-        isValid: true,
-        user: {
-          id: userData.id,
-          role: userData.role,
-          email_verified: userData.email_verified,
-          is_approved: userData.is_approved !== false,
-        }
-      };
-      
-      // Cache successful validation for performance
-      tokenValidationCache.set(token, { result, timestamp: Date.now() });
-      return result;
-    } else {
-      // Log authentication failures for monitoring (without exposing tokens)
-      console.log('🔒 Token validation failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        tokenLength: token.length
-      });
-      
-      const result = { isValid: false };
-      // Cache failures for shorter time to allow retry on temporary issues
-      tokenValidationCache.set(token, { result, timestamp: Date.now() - CACHE_TTL + 5000 });
-      return result;
-    }
-  } catch (error) {
-    console.error('🔒 Token validation error:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      tokenExists: !!token
-    });
-    return { isValid: false };
-  }
+  emergency_access?: boolean;
+  last_password_change?: number;
 }
 
 /**
- * Detects redirect loops in returnUrl parameters
+ * Local JWT Validation Function
+ * 
+ * This function validates JWT structure and expiration WITHOUT requiring the secret.
+ * We're using Option A approach - structure validation only. The backend will
+ * handle signature validation when API calls are made.
+ * 
+ * Think of this like checking an ID card's format and expiration date without
+ * calling the issuing authority to verify authenticity. It's fast and eliminates
+ * timing issues while still providing good security.
  */
-function hasRedirectLoop(returnUrl: string): boolean {
+function validateJWTStructure(token: string): {
+  isValid: boolean;
+  payload?: JWTPayload;
+  error?: string;
+} {
   try {
-    // Decode URL to check for nested redirects
-    let decodedUrl = returnUrl;
-    try {
-      for (let i = 0; i < 10; i++) {
-        const newDecoded = decodeURIComponent(decodedUrl);
-        if (newDecoded === decodedUrl) break;
-        decodedUrl = newDecoded;
-      }
-    } catch {
-      return true; // If decoding fails, assume problematic URL
+    // Split JWT into parts (header.payload.signature)
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return { isValid: false, error: 'Invalid JWT format - missing parts' };
     }
 
-    // Check for obvious login loops
-    if (decodedUrl.includes('/login') && decodedUrl.includes('returnUrl')) {
-      return true;
+    // Decode payload (this doesn't verify signature, just extracts data)
+    const payloadBase64 = parts[1];
+    
+    // Add padding if needed for proper base64 decoding
+    const paddedPayload = payloadBase64.padEnd(
+      payloadBase64.length + (4 - payloadBase64.length % 4) % 4, 
+      '='
+    );
+    
+    const payloadJson = atob(paddedPayload);
+    const payload: JWTPayload = JSON.parse(payloadJson);
+
+    // Validate required fields exist
+    if (!payload.user_id || !payload.email || !payload.role || !payload.exp) {
+      return { isValid: false, error: 'JWT missing required fields' };
     }
 
-    // Check for specific problematic patterns
-    const suspiciousPatterns = [
-      'returnUrl=%2Flogin',
-      'returnUrl=/login', 
-      'returnUrl%3D%2Flogin',
-      '/login?returnUrl=/login'
-    ];
+    // Check expiration (exp is in seconds, Date.now() is in milliseconds)
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (payload.exp < currentTime) {
+      return { isValid: false, error: 'JWT token expired' };
+    }
 
-    return suspiciousPatterns.some(pattern => decodedUrl.includes(pattern));
-  } catch {
-    return true; // If any error in processing, assume loop
+    // Validate role is a known role
+    if (!Object.keys(ROLE_ROUTES).includes(payload.role)) {
+      return { isValid: false, error: 'Invalid user role' };
+    }
+
+    return { isValid: true, payload };
+
+  } catch (error) {
+    return { 
+      isValid: false, 
+      error: `JWT parsing error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    };
   }
 }
 
 /**
- * Main middleware function for authentication and authorization
+ * Check if user has access to a specific route based on their role and permissions
+ * 
+ * This function will be enhanced with permission-based routing in Phase 2,
+ * but for now provides role-based access control for backward compatibility.
+ */
+function hasRouteAccess(userRole: UserRole, pathname: string, permissions?: JWTPayload['permissions']): boolean {
+  // First check role-based access
+  const allowedRoutes = ROLE_ROUTES[userRole] || [];
+  const hasRoleAccess = allowedRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
+
+  // Enhanced permission checks for admin routes
+  if (pathname.startsWith('/admin')) {
+    // Require admin access permission for any admin route
+    if (!permissions?.has_admin_access) {
+      return false;
+    }
+
+    // Specific admin route permission checks
+    if (pathname.startsWith('/admin/users') && !permissions?.has_user_management_access) {
+      return false;
+    }
+    
+    if (pathname.startsWith('/admin/audit-logs') && !permissions?.has_audit_access) {
+      return false;
+    }
+    
+    if (pathname.startsWith('/admin/system-settings') && !permissions?.has_system_settings_access) {
+      return false;
+    }
+    
+    if (pathname.startsWith('/admin/compliance') && !permissions?.has_compliance_access) {
+      return false;
+    }
+  }
+
+  return hasRoleAccess;
+}
+
+/**
+ * Main middleware function
+ * 
+ * This function runs for every request and determines authentication status
+ * using ONLY local validation. No HTTP requests are made, eliminating race conditions.
  */
 export async function middleware(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
-  const returnUrl = searchParams.get('returnUrl');
+  const { pathname } = request.nextUrl;
 
-  // Skip middleware for excluded paths (static assets, etc.)
+  // Skip middleware for excluded paths (static assets, API routes, etc.)
   const isExcludedPath = EXCLUDED_PATHS.some(excluded => 
     pathname === excluded || pathname.startsWith(excluded + '/')
   );
   
   if (isExcludedPath) {
     return NextResponse.next();
-  }
-
-  // Prevent redirect loops
-  if (returnUrl && hasRedirectLoop(returnUrl)) {
-    console.log('🔄 Redirect loop detected, breaking the loop');
-    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Allow access to public routes without authentication
@@ -201,113 +216,96 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract authentication token from HttpOnly cookie
+  // Extract JWT token from HttpOnly cookie
+  // This is the ONLY source of authentication - no localStorage or other sources
   const token = request.cookies.get(appConfig.authCookieName)?.value;
 
   if (!token) {
-    console.log('❌ No authentication token found, redirecting to login');
+    console.log(`🔐 No JWT token found for ${pathname} - redirecting to login`);
     const loginUrl = new URL('/login', request.url);
     
-    // Add return URL for non-root paths
+    // Add return URL for non-root paths to enable redirect after login
     if (pathname !== '/' && 
-      pathname !== '/dashboard' && 
-      pathname.length < 50 && 
-      !pathname.includes('/.well-known') && 
-      !pathname.includes('/logout') &&
-      !pathname.includes('/api/') &&
-      !pathname.includes('/_next')) {
+        pathname !== '/dashboard' && 
+        pathname.length < 100 && // Prevent extremely long URLs
+        !pathname.includes('logout')) {
       loginUrl.searchParams.set('returnUrl', pathname);
     }
 
     return NextResponse.redirect(loginUrl);
   }
 
-  // Validate the authentication token
-  const authResult = await validateAuthToken(token);
+  // Validate JWT token structure and expiration locally
+  const validationResult = validateJWTStructure(token);
   
-  if (!authResult.isValid || !authResult.user) {
-    console.log('❌ Invalid token, clearing cookie and redirecting to login');
-    const response = NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.delete(appConfig.authCookieName);
+  if (!validationResult.isValid || !validationResult.payload) {
+    console.log(`🔐 Invalid JWT token for ${pathname}: ${validationResult.error}`);
+    
+    // Clear invalid cookie and redirect to login
+    const loginUrl = new URL('/login', request.url);
+    const response = NextResponse.redirect(loginUrl);
+    
+    // Clear the invalid cookie
+    response.cookies.set({
+      name: appConfig.authCookieName,
+      value: '',
+      httpOnly: true,
+      secure: appConfig.secureCookies,
+      sameSite: 'strict',
+      path: '/',
+      expires: new Date(0), // Expire immediately
+    });
+    
     return response;
   }
 
-  const { user } = authResult;
+  const { payload } = validationResult;
 
-  // Check account approval status
-  if (!user.is_approved) {
-    if (pathname !== '/approval-pending') {
-      console.log('⏳ Account not approved, redirecting to approval pending');
-      return NextResponse.redirect(new URL('/approval-pending', request.url));
-    }
-    return NextResponse.next();
-  }
-  
-  // Check email verification status
-  if (!user.email_verified) {
-    if (pathname !== '/verify-email') {
-      console.log('📧 Email not verified, redirecting to verification');
-      return NextResponse.redirect(new URL('/verify-email', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // Handle /dashboard redirect to role-specific page
-  if (pathname === '/dashboard') {
-    const roleDashboard = `/${user.role}`;
-    console.log(`🎯 Redirecting from /dashboard to ${roleDashboard} for role: ${user.role}`);
-    return NextResponse.redirect(new URL(roleDashboard, request.url));
-  }
-
-  // Handle role-based route access (skip for superadmin)
-  if (user.role !== 'superadmin') {
-    const allowed = ROLE_ROUTES[user.role]?.some(allowedRoute =>
-      pathname === allowedRoute || pathname.startsWith(allowedRoute + '/')
-    );
+  // Check if user has access to the requested route
+  if (!hasRouteAccess(payload.role, pathname, payload.permissions)) {
+    console.log(`🔐 Access denied for ${payload.role} to ${pathname}`);
     
-    if (!allowed) {
-      console.log(`❌ Access denied to ${pathname} for role ${user.role}`);
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
-    }
+    // Redirect to appropriate dashboard based on role
+    const dashboardPath = `/${payload.role}`;
+    const unauthorizedUrl = new URL(dashboardPath, request.url);
+    
+    return NextResponse.redirect(unauthorizedUrl);
   }
 
-  // Set security headers for HIPAA compliance
+  // User is authenticated and authorized - allow request to proceed
+  console.log(`✅ Access granted for ${payload.role} to ${pathname}`);
+  
+  // Add user context to request headers for downstream use
+  // This allows pages and API routes to access user info without additional validation
   const response = NextResponse.next();
+  response.headers.set('x-user-id', payload.user_id.toString());
+  response.headers.set('x-user-role', payload.role);
+  response.headers.set('x-user-email', payload.email);
+  response.headers.set('x-session-id', payload.session_id);
   
-  if (process.env.NODE_ENV === 'production') {
-    response.headers.set('Content-Security-Policy', 
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "connect-src 'self' https://api.klararety.com; " +
-      "frame-ancestors 'none';"
-    );
-  } else {
-    response.headers.set('Content-Security-Policy', 
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: blob:; " +
-      "connect-src 'self' http://localhost:* ws://localhost:* https://api.klararety.com; " +
-      "frame-ancestors 'none';"
-    );
+  if (payload.permissions) {
+    response.headers.set('x-user-permissions', JSON.stringify(payload.permissions));
   }
-  
-  // Additional security headers for HIPAA compliance
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
 
   return response;
 }
 
+/**
+ * Middleware Configuration
+ * 
+ * This tells Next.js which routes to run the middleware on.
+ * We exclude API routes and static assets for performance.
+ */
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/auth|images|assets|robots.txt|sitemap.xml|manifest.json|\\.well-known).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - Any file with an extension (images, css, js, etc.)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

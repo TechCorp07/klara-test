@@ -1,86 +1,219 @@
 // src/lib/config.ts
+/**
+ * JWT Configuration - Race Condition Free Settings
+ * 
+ */
 
-export const config = {
-  apiBaseUrl: (() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 
-      (process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:8000/api' 
-        : 'https://api.klararety.com/api');
-    return baseUrl.replace(/\/$/, '');
-  })(),
-
-  cookieDomain: (() => {
-    // In development, don't set a domain so cookies work on localhost
-    if (process.env.NODE_ENV === 'development') {
-      return undefined; // Let browser set domain automatically for localhost
-    }
-    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN || 'klararety.com';
-  })(),
+/**
+ * Application Configuration Interface
+ * 
+ * This interface defines all the configuration options needed for the
+ * JWT authentication system and general application operation.
+ */
+interface AppConfig {
+  // Application Identity
+  appName: string;
+  appVersion: string;
   
-  secureCookies: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true' || process.env.NODE_ENV === 'production',
+  // API Configuration
+  apiBaseUrl: string;
   
-  // 🔒 SECURE: Authentication Cookie - Only HttpOnly token needed
-  authCookieName: 'klararety_auth_token',
+  // JWT Authentication Configuration
+  authCookieName: string;
+  refreshCookieName: string;
+  secureCookies: boolean;
+  cookieDomain?: string;
   
-  // 🔒 REMOVED: Non-HttpOnly cookies for security
-  // userRoleCookieName: 'klararety_user_role',
-  // emailVerifiedCookieName: 'klararety_email_verified', 
-  // isApprovedCookieName: 'klararety_is_approved',
+  // Session Configuration
+  sessionTimeoutMinutes: number;
+  tokenRefreshThresholdMinutes: number;
   
-  tokenExpiryDays: 1, // Backend uses longer-lived tokens
+  // Security Configuration
+  enablePermissionDebugging: boolean;
   
-  // Security Settings
-  passwordMinLength: 12,
-  passwordRequiresSpecialChar: true,
-  passwordRequiresNumber: true,
-  passwordRequiresUppercase: true,
-  maxLoginAttempts: 5,
-  lockoutDurationMinutes: 30,
-  
-  // HIPAA Compliance
-  sessionTimeoutMinutes: 20, // Auto-logout after inactivity
+  // External Links
+  termsUrl: string;
+  privacyUrl: string;
+  supportUrl: string;
   
   // Feature Flags
-  enableTwoFactor: true,
-  requireTwoFactorForProviders: true,
-  
-  // Environment Detection
-  isProduction: process.env.NODE_ENV === 'production',
-  isDevelopment: process.env.NODE_ENV === 'development',
-  
-  // Application Settings
-  appName: 'Klararety Healthcare Platform',
-  supportEmail: 'support@klararety.com',
-  
-  // Terms and Privacy URLs
-  termsUrl: '/terms-of-service',
-  privacyUrl: '/privacy-policy',
-  hipaaNoticeUrl: '/hipaa-notice',
-};
+  features: {
+    enableTokenRefresh: boolean;
+    enablePermissionCaching: boolean;
+    enableSecurityLogging: boolean;
+  };
+}
 
-// Separate validation function to avoid circular dependencies
-export const validateApiConnection = async (): Promise<boolean> => {
+/**
+ * Environment-based configuration
+ * 
+ * This function creates the appropriate configuration based on the
+ * current environment, ensuring that development and production
+ * environments have appropriate settings.
+ */
+function createConfig(): AppConfig {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  return {
+    // Application Identity
+    appName: process.env.NEXT_PUBLIC_APP_NAME || 'Klararety Healthcare Platform',
+    appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    
+    // API Configuration
+    apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
+    
+    // JWT Authentication Configuration
+    // These must match your backend JWT middleware settings
+    authCookieName: 'jwt_access_token', // Matches your backend JWT_COOKIE_NAME
+    refreshCookieName: 'jwt_refresh_token',
+    secureCookies: isProduction, // Use secure cookies in production only
+    cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN, // Optional domain setting
+    
+    // Session Configuration
+    sessionTimeoutMinutes: parseInt(process.env.NEXT_PUBLIC_SESSION_TIMEOUT || '30'),
+    tokenRefreshThresholdMinutes: 5, // Refresh when less than 5 minutes remain
+    
+    // Security Configuration
+    enablePermissionDebugging: isDevelopment, // Only enable in development
+    
+    // External Links
+    termsUrl: process.env.NEXT_PUBLIC_TERMS_URL || '/terms-of-service',
+    privacyUrl: process.env.NEXT_PUBLIC_PRIVACY_URL || '/privacy-policy',
+    supportUrl: process.env.NEXT_PUBLIC_SUPPORT_URL || '/support',
+    
+    // Feature Flags
+    features: {
+      enableTokenRefresh: true, // Enable automatic token refresh
+      enablePermissionCaching: false, // Disable to prevent race conditions
+      enableSecurityLogging: isDevelopment, // Log security events in development
+    },
+  };
+}
+
+/**
+ * Export the configuration instance
+ * 
+ * This creates a single configuration instance that can be imported
+ * throughout your application for consistent settings.
+ */
+export const config = createConfig();
+
+/**
+ * Configuration validation
+ * 
+ * This function validates that all required configuration values are present
+ * and have reasonable values. It helps catch configuration errors early.
+ */
+export function validateConfig(): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Validate required fields
+  if (!config.appName) {
+    errors.push('App name is required');
+  }
+  
+  if (!config.apiBaseUrl) {
+    errors.push('API base URL is required');
+  }
+  
+  if (!config.authCookieName) {
+    errors.push('Auth cookie name is required');
+  }
+  
+  // Validate reasonable values
+  if (config.sessionTimeoutMinutes < 1 || config.sessionTimeoutMinutes > 480) {
+    errors.push('Session timeout must be between 1 and 480 minutes');
+  }
+  
+  if (config.tokenRefreshThresholdMinutes < 1 || config.tokenRefreshThresholdMinutes > 30) {
+    errors.push('Token refresh threshold must be between 1 and 30 minutes');
+  }
+  
+  // Validate URL formats
   try {
-    const response = await fetch(`${config.apiBaseUrl}/users/auth/check-status/?email=test@example.com`);
-    return response.status !== 500; // Any non-500 response means API is reachable
+    new URL(config.apiBaseUrl);
   } catch {
-    return false;
+    errors.push('API base URL must be a valid URL');
   }
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Configuration utilities
+ * 
+ * These utility functions provide convenient access to common configuration
+ * operations throughout your application.
+ */
+export const configUtils = {
+  /**
+   * Get full API URL for a given endpoint
+   */
+  getApiUrl: (endpoint: string): string => {
+    return `${config.apiBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  },
+  
+  /**
+   * Check if the application is running in development mode
+   */
+  isDevelopment: (): boolean => {
+    return process.env.NODE_ENV === 'development';
+  },
+  
+  /**
+   * Check if the application is running in production mode
+   */
+  isProduction: (): boolean => {
+    return process.env.NODE_ENV === 'production';
+  },
+  
+  /**
+   * Get session timeout in milliseconds
+   */
+  getSessionTimeoutMs: (): number => {
+    return config.sessionTimeoutMinutes * 60 * 1000;
+  },
+  
+  /**
+   * Get token refresh threshold in milliseconds
+   */
+  getRefreshThresholdMs: (): number => {
+    return config.tokenRefreshThresholdMinutes * 60 * 1000;
+  },
+  
+  /**
+   * Check if a feature is enabled
+   */
+  isFeatureEnabled: (feature: keyof AppConfig['features']): boolean => {
+    return config.features[feature];
+  },
 };
 
-// Validate critical environment variables
-export const validateConfig = () => {
-  const requiredEnvVars = [
-    'NEXT_PUBLIC_API_BASE_URL',
-  ];
-  
-  const missing = requiredEnvVars.filter(
-    envVar => !process.env[envVar] && envVar === 'NEXT_PUBLIC_API_BASE_URL' && !config.apiBaseUrl
-  );
-  
-  if (missing.length > 0 && config.isProduction) {
-    console.warn(`Missing environment variables: ${missing.join(', ')}`);
-  }
-};
+/**
+ * Environment variable documentation
+ * 
+ * This documentation helps developers understand what environment variables
+ * are available and how they affect the application configuration.
+ * 
+ * Required Environment Variables:
+ * - NEXT_PUBLIC_API_URL: Backend API base URL
+ * 
+ * Optional Environment Variables:
+ * - NEXT_PUBLIC_APP_NAME: Application display name
+ * - NEXT_PUBLIC_APP_VERSION: Application version
+ * - NEXT_PUBLIC_SESSION_TIMEOUT: Session timeout in minutes (default: 30)
+ * - NEXT_PUBLIC_COOKIE_DOMAIN: Cookie domain for multi-subdomain setups
+ * - NEXT_PUBLIC_TERMS_URL: Terms of service URL
+ * - NEXT_PUBLIC_PRIVACY_URL: Privacy policy URL
+ * - NEXT_PUBLIC_SUPPORT_URL: Support page URL
+ */
 
+// Export types for use throughout the application
+export type { AppConfig };
+
+// Default export
 export default config;

@@ -1,7 +1,7 @@
 // src/lib/api/services/patient.service.ts
 
 import { DashboardResponse, HealthRecord } from '@/hooks/patient/types';
-import { apiClient } from '../client';
+import { apiClient } from '@/lib/api/client';
 import type {
   PatientProfile,
   VitalSigns,
