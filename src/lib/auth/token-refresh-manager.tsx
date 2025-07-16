@@ -1,4 +1,4 @@
-// src/lib/auth/token-refresh-manager.ts
+// src/lib/auth/token-refresh-manager.tsx
 'use client';
 
 import React from 'react';
@@ -85,21 +85,33 @@ export class TokenRefreshManager {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
-    this.isRefreshing = false;
-    this.retryCount = 0;
   }
 
   /**
-   * Force an immediate refresh
+   * Force a refresh immediately
    */
-  public async forceRefresh(): Promise<void> {
-    if (this.refreshCallback) {
-      await this.performRefresh();
+  public forceRefresh(): void {
+    if (!this.isRefreshing) {
+      this.performRefresh();
     }
   }
 
   /**
-   * Add event listener for refresh events
+   * Update configuration
+   */
+  public updateConfig(newConfig: Partial<RefreshConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  /**
+   * Get current configuration
+   */
+  public getConfig(): RefreshConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Add event listener
    */
   public addEventListener(listener: (event: RefreshEvent) => void): void {
     this.eventListeners.push(listener);
@@ -116,20 +128,6 @@ export class TokenRefreshManager {
   }
 
   /**
-   * Get configuration
-   */
-  public getConfig(): RefreshConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Update configuration
-   */
-  public updateConfig(newConfig: Partial<RefreshConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-  }
-
-  /**
    * Check if currently refreshing
    */
   public isCurrentlyRefreshing(): boolean {
@@ -140,28 +138,27 @@ export class TokenRefreshManager {
    * Get time to expiration in milliseconds
    */
   private getTimeToExpiration(jwtPayload: JWTPayload): number {
-    const now = Math.floor(Date.now() / 1000);
-    const expirationTime = jwtPayload.exp;
-    return (expirationTime - now) * 1000;
+    const currentTime = Math.floor(Date.now() / 1000);
+    return Math.max(0, (jwtPayload.exp - currentTime) * 1000);
   }
 
   /**
-   * Schedule a refresh after a delay
+   * Schedule a refresh
    */
   private scheduleRefresh(delayMs: number): void {
+    this.refreshTimer = setTimeout(() => {
+      this.performRefresh();
+    }, delayMs);
+
     this.emitEvent({
       type: 'refresh_scheduled',
       timestamp: new Date(),
       timeToExpiration: delayMs
     });
-
-    this.refreshTimer = setTimeout(() => {
-      this.performRefresh();
-    }, delayMs);
   }
 
   /**
-   * Perform the actual token refresh
+   * Perform the actual refresh
    */
   private async performRefresh(): Promise<void> {
     if (this.isRefreshing || !this.refreshCallback) {
@@ -169,7 +166,7 @@ export class TokenRefreshManager {
     }
 
     this.isRefreshing = true;
-    
+
     this.emitEvent({
       type: 'refresh_started',
       timestamp: new Date(),
@@ -184,7 +181,7 @@ export class TokenRefreshManager {
         timestamp: new Date(),
         retryCount: this.retryCount
       });
-      
+
       // Reset retry count on success
       this.retryCount = 0;
     } catch (error) {
@@ -333,22 +330,22 @@ export function TokenRefreshStatus({
               ? 'bg-green-100 text-green-800' 
               : 'bg-gray-100 text-gray-800'
           }`}>
-            {config.enableProactiveRefresh ? '✅ Enabled' : '❌ Disabled'}
+            {config.enableProactiveRefresh ? '✓ Active' : '○ Disabled'}
           </span>
         </div>
       </div>
 
       {/* Configuration */}
       <div className="mb-4">
-        <h4 className="text-sm font-medium text-gray-900 mb-2">Configuration</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <h4 className="text-md font-medium text-gray-700 mb-2">Configuration</h4>
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <span className="text-gray-600">Refresh Threshold:</span>
-            <span className="ml-2 font-medium">{config.refreshThresholdMinutes} minutes</span>
+            <span className="text-sm text-gray-600">Refresh Interval:</span>
+            <span className="text-sm font-medium ml-2">{config.refreshThresholdMinutes} minutes</span>
           </div>
           <div>
-            <span className="text-gray-600">Max Retries:</span>
-            <span className="ml-2 font-medium">{config.maxRetries}</span>
+            <span className="text-sm text-gray-600">Max Retries:</span>
+            <span className="text-sm font-medium ml-2">{config.maxRetries}</span>
           </div>
         </div>
       </div>
@@ -356,22 +353,24 @@ export function TokenRefreshStatus({
       {/* Controls */}
       {showControls && (
         <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Controls</h4>
-          <div className="flex items-center space-x-4">
+          <h4 className="text-md font-medium text-gray-700 mb-2">Controls</h4>
+          <div className="space-y-3">
             <button
               onClick={() => manager.forceRefresh()}
               disabled={isRefreshing}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
             >
               Force Refresh
             </button>
             
-            <div className="flex items-center space-x-2">
-              <label className="text-sm text-gray-600">Threshold (min):</label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Threshold (min):
+              </label>
               <select
                 value={config.refreshThresholdMinutes}
-                onChange={(e) => updateRefreshThreshold(Number(e.target.value))}
-                className="text-sm border border-gray-300 rounded px-2 py-1"
+                onChange={(e) => updateRefreshThreshold(parseInt(e.target.value))}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
               >
                 <option value={1}>1 minute</option>
                 <option value={5}>5 minutes</option>
@@ -383,32 +382,28 @@ export function TokenRefreshStatus({
         </div>
       )}
 
-      {/* Recent Events */}
+      {/* Events */}
       {showEvents && refreshEvents.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-gray-900 mb-2">
-            Recent Events ({refreshEvents.length})
-          </h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
+          <h4 className="text-md font-medium text-gray-700 mb-2">Recent Events</h4>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {refreshEvents.map((event, index) => (
-              <div key={index} className="flex items-start justify-between p-2 bg-gray-50 rounded">
+              <div key={index} className="flex items-center space-x-2 text-sm p-2 bg-gray-50 rounded">
                 <div className="flex items-center space-x-2">
-                  <span>{getEventIcon(event.type)}</span>
-                  <div>
-                    <span className={`text-sm font-medium ${getEventColor(event.type)}`}>
-                      {event.type.replace('_', ' ').toUpperCase()}
-                    </span>
-                    {event.error && (
-                      <p className="text-xs text-red-600 mt-1">{event.error}</p>
-                    )}
-                    {event.retryCount !== undefined && event.retryCount > 0 && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        Retry #{event.retryCount}
-                      </p>
-                    )}
-                  </div>
+                  <span className={`text-lg ${getEventColor(event.type)}`}>
+                    {getEventIcon(event.type)}
+                  </span>
+                  <span className="font-medium">{event.type.replace('_', ' ')}</span>
                 </div>
-                <span className="text-xs text-gray-500">
+                {event.error && (
+                  <p className="text-red-600 text-xs">{event.error}</p>
+                )}
+                {event.retryCount !== undefined && event.retryCount > 0 && (
+                  <p className="text-orange-600 text-xs">
+                    Retry #{event.retryCount}
+                  </p>
+                )}
+                <span className="text-xs text-gray-500 ml-auto">
                   {event.timestamp.toLocaleTimeString()}
                 </span>
               </div>
@@ -417,14 +412,11 @@ export function TokenRefreshStatus({
         </div>
       )}
 
-      {/* No Events Message */}
       {showEvents && refreshEvents.length === 0 && (
-        <div className="text-center py-4 text-gray-500 text-sm">
-          No refresh events yet
+        <div className="text-center py-4">
+          <p className="text-gray-500 text-sm">No refresh events yet.</p>
         </div>
       )}
     </div>
   );
 }
-
-export default TokenRefreshManager;

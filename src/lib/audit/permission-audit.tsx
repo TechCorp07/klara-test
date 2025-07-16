@@ -1,4 +1,4 @@
-// src/lib/audit/permission-audit.ts
+// src/lib/audit/permission-audit.tsx
 'use client';
 
 import React from 'react';
@@ -193,8 +193,6 @@ export class PermissionAuditSystem {
       sessionId,
       severity: 'low',
       category: 'authentication',
-      ipAddress: metadata?.ipAddress,
-      userAgent: metadata?.userAgent,
       metadata
     };
 
@@ -205,57 +203,55 @@ export class PermissionAuditSystem {
    * Query audit entries
    */
   public queryEntries(query: AuditQuery = {}): PermissionAuditEntry[] {
-    let filtered = [...this.entries];
+    let filteredEntries = [...this.entries];
 
-    if (query.userId) {
-      filtered = filtered.filter(entry => entry.userId === query.userId);
+    if (query.userId !== undefined) {
+      filteredEntries = filteredEntries.filter(entry => entry.userId === query.userId);
     }
 
     if (query.userRole) {
-      filtered = filtered.filter(entry => entry.userRole === query.userRole);
+      filteredEntries = filteredEntries.filter(entry => entry.userRole === query.userRole);
     }
 
     if (query.permission) {
-      filtered = filtered.filter(entry => entry.permission === query.permission);
+      filteredEntries = filteredEntries.filter(entry => entry.permission === query.permission);
     }
 
     if (query.action) {
-      filtered = filtered.filter(entry => entry.action === query.action);
+      filteredEntries = filteredEntries.filter(entry => entry.action === query.action);
     }
 
     if (query.category) {
-      filtered = filtered.filter(entry => entry.category === query.category);
+      filteredEntries = filteredEntries.filter(entry => entry.category === query.category);
     }
 
     if (query.severity) {
-      filtered = filtered.filter(entry => entry.severity === query.severity);
+      filteredEntries = filteredEntries.filter(entry => entry.severity === query.severity);
     }
 
     if (query.startDate) {
-      filtered = filtered.filter(entry => entry.timestamp >= query.startDate!);
+      filteredEntries = filteredEntries.filter(entry => entry.timestamp >= query.startDate!);
     }
 
     if (query.endDate) {
-      filtered = filtered.filter(entry => entry.timestamp <= query.endDate!);
+      filteredEntries = filteredEntries.filter(entry => entry.timestamp <= query.endDate!);
     }
 
     // Sort by timestamp (newest first)
-    filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    filteredEntries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
     // Apply pagination
-    if (query.offset) {
-      filtered = filtered.slice(query.offset);
+    if (query.offset !== undefined || query.limit !== undefined) {
+      const offset = query.offset || 0;
+      const limit = query.limit || 50;
+      filteredEntries = filteredEntries.slice(offset, offset + limit);
     }
 
-    if (query.limit) {
-      filtered = filtered.slice(0, query.limit);
-    }
-
-    return filtered;
+    return filteredEntries;
   }
 
   /**
-   * Get audit summary
+   * Get audit summary for dashboard
    */
   public getAuditSummary(timeRange?: { start: Date; end: Date }): AuditSummary {
     let entries = this.entries;
@@ -266,56 +262,21 @@ export class PermissionAuditSystem {
       );
     }
 
-    const totalEvents = entries.length;
-    const successfulAccess = entries.filter(entry => entry.granted).length;
-    const deniedAccess = entries.filter(entry => !entry.granted).length;
-    const emergencyAccess = entries.filter(entry => entry.category === 'emergency').length;
-    const permissionChanges = entries.filter(entry => 
-      ['permission_granted', 'permission_revoked', 'permission_modified'].includes(entry.action)
-    ).length;
-
-    const uniqueUsers = new Set(entries.map(entry => entry.userId)).size;
-
-    // Top permissions
-    const permissionCounts = new Map<string, number>();
-    entries.forEach(entry => {
-      if (entry.permission) {
-        permissionCounts.set(entry.permission, (permissionCounts.get(entry.permission) || 0) + 1);
-      }
-    });
-    const topPermissions = Array.from(permissionCounts.entries())
-      .map(([permission, count]) => ({ permission, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    // Top users
-    const userCounts = new Map<string, { userId: number; email: string; count: number }>();
-    entries.forEach(entry => {
-      const key = `${entry.userId}_${entry.userEmail}`;
-      const existing = userCounts.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        userCounts.set(key, { userId: entry.userId, email: entry.userEmail, count: 1 });
-      }
-    });
-    const topUsers = Array.from(userCounts.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    const securityAlerts = this.alerts.length;
-
-    return {
-      totalEvents,
-      successfulAccess,
-      deniedAccess,
-      emergencyAccess,
-      permissionChanges,
-      uniqueUsers,
-      topPermissions,
-      topUsers,
-      securityAlerts
+    const summary: AuditSummary = {
+      totalEvents: entries.length,
+      successfulAccess: entries.filter(entry => entry.granted && entry.action === 'permission_check').length,
+      deniedAccess: entries.filter(entry => !entry.granted && entry.action === 'permission_check').length,
+      emergencyAccess: entries.filter(entry => entry.action === 'emergency_access').length,
+      permissionChanges: entries.filter(entry => 
+        ['permission_granted', 'permission_revoked', 'permission_modified'].includes(entry.action)
+      ).length,
+      uniqueUsers: new Set(entries.map(entry => entry.userId)).size,
+      topPermissions: this.getTopPermissions(entries),
+      topUsers: this.getTopUsers(entries),
+      securityAlerts: this.alerts.length
     };
+
+    return summary;
   }
 
   /**
@@ -326,7 +287,7 @@ export class PermissionAuditSystem {
   }
 
   /**
-   * Add event listener
+   * Add event listener for new audit entries
    */
   public addEventListener(listener: (entry: PermissionAuditEntry) => void): void {
     this.listeners.push(listener);
@@ -345,7 +306,10 @@ export class PermissionAuditSystem {
   /**
    * Export audit data
    */
-  public exportAuditData(format: 'json' | 'csv', query?: AuditQuery): string {
+  public exportAuditData(
+    format: 'json' | 'csv',
+    query: AuditQuery = {}
+  ): string {
     const data = this.queryEntries(query);
 
     if (format === 'json') {
@@ -417,157 +381,177 @@ export class PermissionAuditSystem {
         severity: 'medium',
         alertThreshold: 5,
         pattern: (entries: PermissionAuditEntry[]) => {
-          const recentEntries = entries.filter(e => 
-            e.timestamp > new Date(Date.now() - 5 * 60 * 1000) && // Last 5 minutes
-            e.action === 'permission_check' && 
-            !e.granted
-          );
+          const recentEntries = entries.filter(entry => {
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            return entry.timestamp > fiveMinutesAgo && !entry.granted && entry.action === 'permission_check';
+          });
           return recentEntries.length >= 5;
         }
       },
       {
-        id: 'privilege_escalation',
-        name: 'Potential Privilege Escalation',
-        description: 'Admin permissions granted to non-admin user',
-        severity: 'high',
+        id: 'unusual_permission_pattern',
+        name: 'Unusual Permission Access Pattern',
+        description: 'User accessing permissions outside normal hours or pattern',
+        severity: 'medium',
         alertThreshold: 1,
         pattern: (entries: PermissionAuditEntry[]) => {
-          return entries.some(e => 
-            e.action === 'permission_granted' &&
-            e.permission?.includes('admin') &&
-            e.userRole !== 'admin' &&
-            e.userRole !== 'superadmin'
-          );
+          const now = new Date();
+          const isOutsideHours = now.getHours() < 6 || now.getHours() > 22;
+          return isOutsideHours && entries.some(entry => entry.granted && entry.severity === 'high');
         }
       },
       {
         id: 'emergency_access_spike',
         name: 'Emergency Access Spike',
-        description: 'Unusual number of emergency access events',
+        description: 'Multiple emergency access events in short timeframe',
         severity: 'critical',
         alertThreshold: 3,
         pattern: (entries: PermissionAuditEntry[]) => {
-          const recentEmergencyAccess = entries.filter(e => 
-            e.category === 'emergency' &&
-            e.timestamp > new Date(Date.now() - 60 * 60 * 1000) // Last hour
-          );
+          const recentEmergencyAccess = entries.filter(entry => {
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            return entry.timestamp > oneHourAgo && entry.action === 'emergency_access';
+          });
           return recentEmergencyAccess.length >= 3;
-        }
-      },
-      {
-        id: 'after_hours_access',
-        name: 'After Hours Administrative Access',
-        description: 'Administrative actions performed outside business hours',
-        severity: 'medium',
-        alertThreshold: 1,
-        pattern: (entries: PermissionAuditEntry[]) => {
-          const now = new Date();
-          const hour = now.getHours();
-          const isWeekend = now.getDay() === 0 || now.getDay() === 6;
-          const isAfterHours = hour < 8 || hour > 18 || isWeekend;
-          
-          return entries.some(e => 
-            isAfterHours &&
-            e.permission?.includes('admin') &&
-            e.granted &&
-            e.timestamp > new Date(Date.now() - 60 * 60 * 1000) // Last hour
-          );
         }
       }
     ];
   }
 
   /**
-   * Check entry against security patterns
+   * Check for security patterns and generate alerts
    */
   private checkSecurityPatterns(newEntry: PermissionAuditEntry): void {
-    const recentEntries = this.entries.filter(e => 
-      e.timestamp > new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-    );
+    const recentEntries = this.entries.filter(entry => {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      return entry.timestamp > oneHourAgo && entry.userId === newEntry.userId;
+    });
 
     this.securityPatterns.forEach(pattern => {
-      if (pattern.pattern([newEntry, ...recentEntries])) {
+      if (pattern.pattern(recentEntries)) {
         const alertEntry: PermissionAuditEntry = {
           ...newEntry,
           id: this.generateId(),
           action: 'permission_check',
-          permission: `SECURITY_ALERT_${pattern.id}`,
-          granted: false,
           severity: pattern.severity,
           category: 'system',
-          reason: `Security pattern detected: ${pattern.description}`,
+          reason: `Security pattern detected: ${pattern.name}`,
           metadata: {
-            ...newEntry.metadata,
-            securityPattern: pattern.id,
-            patternName: pattern.name
+            patternId: pattern.id,
+            patternDescription: pattern.description,
+            triggeringUserId: newEntry.userId
           }
         };
 
-        this.alerts.push(alertEntry);
-        
-        // Keep only recent alerts (last 30 days)
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        this.alerts = this.alerts.filter(alert => alert.timestamp > thirtyDaysAgo);
+        // Only add if not already alerted for this pattern recently
+        const existingAlert = this.alerts.find(alert => 
+          alert.metadata?.patternId === pattern.id &&
+          alert.userId === newEntry.userId &&
+          alert.timestamp > new Date(Date.now() - 60 * 60 * 1000)
+        );
+
+        if (!existingAlert) {
+          this.alerts.push(alertEntry);
+        }
       }
     });
   }
 
   /**
-   * Generate unique ID
+   * Generate unique ID for entries
    */
   private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
   }
 
   /**
-   * Load mock data for demonstration
+   * Get top permissions by usage
+   */
+  private getTopPermissions(entries: PermissionAuditEntry[]): Array<{ permission: string; count: number }> {
+    const permissionCounts = new Map<string, number>();
+
+    entries
+      .filter(entry => entry.permission && entry.action === 'permission_check')
+      .forEach(entry => {
+        const permission = entry.permission!;
+        permissionCounts.set(permission, (permissionCounts.get(permission) || 0) + 1);
+      });
+
+    return Array.from(permissionCounts.entries())
+      .map(([permission, count]) => ({ permission, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }
+
+  /**
+   * Get top users by audit events
+   */
+  private getTopUsers(entries: PermissionAuditEntry[]): Array<{ userId: number; email: string; count: number }> {
+    const userCounts = new Map<number, { email: string; count: number }>();
+
+    entries.forEach(entry => {
+      const existing = userCounts.get(entry.userId);
+      userCounts.set(entry.userId, {
+        email: entry.userEmail,
+        count: (existing?.count || 0) + 1
+      });
+    });
+
+    return Array.from(userCounts.entries())
+      .map(([userId, { email, count }]) => ({ userId, email, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }
+
+  /**
+   * Load mock data for testing
    */
   private loadMockData(): void {
     const now = new Date();
-    const mockEntries: Partial<PermissionAuditEntry>[] = [
+    const mockEntries = [
       {
         userId: 1,
         userEmail: 'admin@example.com',
-        userRole: 'admin',
-        action: 'login',
+        userRole: 'admin' as UserRole,
+        action: 'permission_check' as const,
+        permission: 'can_manage_users',
         granted: true,
-        severity: 'low',
-        category: 'authentication',
+        severity: 'low' as const,
+        category: 'authorization' as const,
         timestamp: new Date(now.getTime() - 60000)
       },
       {
         userId: 2,
-        userEmail: 'doctor@example.com',
-        userRole: 'provider',
-        action: 'permission_check',
+        userEmail: 'provider@example.com',
+        userRole: 'provider' as UserRole,
+        action: 'permission_check' as const,
         permission: 'can_access_patient_data',
         granted: true,
-        severity: 'low',
-        category: 'authorization',
+        severity: 'low' as const,
+        category: 'authorization' as const,
         timestamp: new Date(now.getTime() - 120000)
       },
       {
         userId: 3,
         userEmail: 'patient@example.com',
-        userRole: 'patient',
-        action: 'permission_check',
+        userRole: 'patient' as UserRole,
+        action: 'permission_check' as const,
         permission: 'can_manage_users',
         granted: false,
-        severity: 'medium',
-        category: 'authorization',
+        severity: 'medium' as const,
+        category: 'authorization' as const,
         timestamp: new Date(now.getTime() - 180000)
       },
       {
         userId: 1,
         userEmail: 'admin@example.com',
-        userRole: 'admin',
-        action: 'emergency_access',
+        userRole: 'admin' as UserRole,
+        action: 'emergency_access' as const,
         resourceType: 'patient_record',
         resourceId: '12345',
         granted: true,
         reason: 'Medical emergency - patient unresponsive',
-        severity: 'critical',
-        category: 'emergency',
+        severity: 'critical' as const,
+        category: 'emergency' as const,
         timestamp: new Date(now.getTime() - 240000)
       }
     ];
@@ -634,7 +618,7 @@ export function usePermissionAudit() {
  * Audit dashboard component
  */
 export function AuditDashboard() {
-  const { recentEntries, alerts, getAuditSummary, queryEntries, exportAuditData } = usePermissionAudit();
+  const { recentEntries, alerts, getAuditSummary, exportAuditData } = usePermissionAudit();
   const [summary, setSummary] = React.useState<AuditSummary | null>(null);
   const [selectedTimeRange, setSelectedTimeRange] = React.useState('24h');
   const [activeTab, setActiveTab] = React.useState<'overview' | 'entries' | 'alerts'>('overview');
@@ -671,18 +655,18 @@ export function AuditDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `audit-log-${new Date().toISOString().split('T')[0]}.${format}`;
+    a.download = `audit-data.${format}`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'text-red-600 bg-red-100';
-      case 'high': return 'text-orange-600 bg-orange-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'low': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'low': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'critical': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -690,12 +674,12 @@ export function AuditDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Audit Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Audit Dashboard</h1>
         <div className="flex items-center space-x-4">
           <select
             value={selectedTimeRange}
             onChange={(e) => setSelectedTimeRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
           >
             <option value="1h">Last Hour</option>
             <option value="24h">Last 24 Hours</option>
@@ -704,42 +688,38 @@ export function AuditDashboard() {
           </select>
           <button
             onClick={() => handleExport('csv')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
           >
             Export CSV
           </button>
         </div>
       </div>
 
-      {/* Alerts Bar */}
+      {/* Security Alerts */}
       {alerts.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-red-600">⚠️</span>
-              <span className="text-red-800 font-medium">
-                {alerts.length} Security Alert{alerts.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <button
-              onClick={() => setActiveTab('alerts')}
-              className="text-red-600 hover:text-red-800"
-            >
-              View Details →
-            </button>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-red-900">🚨 Security Alert</h2>
+            <span className="text-sm text-red-700">{alerts.length} alert{alerts.length !== 1 ? 's' : ''}</span>
           </div>
+          <button
+            onClick={() => setActiveTab('alerts')}
+            className="text-sm text-red-600 hover:text-red-800 underline"
+          >
+            View Details →
+          </button>
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Navigation Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'overview'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             Overview
@@ -749,73 +729,69 @@ export function AuditDashboard() {
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'entries'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Audit Entries ({recentEntries.length})
+            Audit Entries
           </button>
           <button
             onClick={() => setActiveTab('alerts')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'alerts'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Security Alerts ({alerts.length})
+            Security Alerts
           </button>
         </nav>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'overview' && summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600">Total Events</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-lg border">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Total Events</h3>
             <p className="text-3xl font-bold text-blue-600">{summary.totalEvents}</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600">Successful Access</h3>
+          <div className="bg-white p-6 rounded-lg border">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Successful Access</h3>
             <p className="text-3xl font-bold text-green-600">{summary.successfulAccess}</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600">Denied Access</h3>
+          <div className="bg-white p-6 rounded-lg border">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Denied Access</h3>
             <p className="text-3xl font-bold text-red-600">{summary.deniedAccess}</p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600">Emergency Access</h3>
+          <div className="bg-white p-6 rounded-lg border">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Emergency Access</h3>
             <p className="text-3xl font-bold text-orange-600">{summary.emergencyAccess}</p>
           </div>
         </div>
       )}
 
       {activeTab === 'entries' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-lg border">
+          <div className="px-6 py-4 border-b">
             <h3 className="text-lg font-medium text-gray-900">Recent Audit Entries</h3>
           </div>
-          <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {recentEntries.map((entry) => (
-              <div key={entry.id} className="p-6">
-                <div className="flex items-start justify-between">
+          <div className="overflow-hidden">
+            {recentEntries.map((entry, index) => (
+              <div key={entry.id} className={`px-6 py-4 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
+                    <div className="flex items-center space-x-2">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(entry.severity)}`}>
-                        {entry.severity}
+                        {entry.severity.toUpperCase()}
                       </span>
-                      <span className="text-sm font-medium text-gray-900">{entry.action}</span>
-                      {entry.permission && (
-                        <span className="text-sm text-gray-600">• {entry.permission}</span>
-                      )}
+                      <span className="text-sm text-gray-900">{entry.action}</span>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      User: {entry.userEmail} ({entry.userRole})
-                    </p>
-                    <p className={`text-sm ${entry.granted ? 'text-green-600' : 'text-red-600'}`}>
-                      {entry.granted ? 'Granted' : 'Denied'}
+                    <p className="text-sm text-gray-600 mt-1">
+                      User: {entry.userEmail} | Permission: {entry.permission || 'N/A'}
                     </p>
                     {entry.reason && (
-                      <p className="text-sm text-gray-600 mt-1">Reason: {entry.reason}</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Reason: {entry.reason}
+                      </p>
                     )}
                   </div>
                   <span className="text-sm text-gray-500">
@@ -829,45 +805,39 @@ export function AuditDashboard() {
       )}
 
       {activeTab === 'alerts' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-lg border">
+          <div className="px-6 py-4 border-b">
             <h3 className="text-lg font-medium text-gray-900">Security Alerts</h3>
           </div>
-          {alerts.length > 0 ? (
-            <div className="divide-y divide-gray-200">
-              {alerts.map((alert) => (
-                <div key={alert.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}>
-                          {alert.severity}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {alert.metadata?.patternName || 'Security Alert'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        User: {alert.userEmail} ({alert.userRole})
-                      </p>
-                      <p className="text-sm text-gray-800">{alert.reason}</p>
+          <div className="p-6">
+            {alerts.map((alert, index) => (
+              <div key={alert.id} className={`p-4 rounded-lg mb-4 ${index === 0 ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}>
+                        {alert.severity.toUpperCase()}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">{alert.metadata?.patternDescription}</span>
                     </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      User: {alert.userEmail}
+                    </p>
                     <span className="text-sm text-gray-500">
                       {alert.timestamp.toLocaleString()}
                     </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              No security alerts at this time.
-            </div>
-          )}
+              </div>
+            ))}
+            {alerts.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No security alerts at this time.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
-
-export default PermissionAuditSystem;

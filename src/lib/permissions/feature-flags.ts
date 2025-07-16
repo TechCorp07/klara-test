@@ -1,26 +1,40 @@
 // src/lib/permissions/feature-flags.ts
 'use client';
 
+import React from 'react';
+
+import { useAuth } from '@/lib/auth';
 import { UserRole } from '@/types/auth.types';
 
 interface FeatureFlag {
   id: string;
   name: string;
+  description: string;
   enabled: boolean;
   requiredPermissions?: string[];
   requiredRoles?: UserRole[];
-  rolloutPercentage?: number;
+  environment?: 'development' | 'staging' | 'production' | 'all';
+  rolloutPercentage?: number; // 0-100
+  dependencies?: string[]; // Other feature flags this depends on
+  expiresAt?: Date;
+  metadata?: Record<string, any>;
 }
 
 interface FeatureFlagConfig {
   userId?: number;
   userRole?: UserRole;
   permissions?: string[];
+  environment?: string;
 }
 
+/**
+ * Phase 3: Permission-Based Feature Flags System
+ * Dynamic feature access based on permissions and other criteria
+ */
 export class FeatureFlagManager {
   private flags: Map<string, FeatureFlag> = new Map();
   private config: FeatureFlagConfig = {};
+  private listeners: ((flagId: string, enabled: boolean) => void)[] = [];
 
   constructor(config?: FeatureFlagConfig) {
     this.config = config || {};
@@ -28,45 +42,160 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Initialize basic feature flags
+   * Initialize default feature flags
    */
   private initializeDefaultFlags(): void {
     const defaultFlags: FeatureFlag[] = [
+      // Admin Features
       {
         id: 'user_management',
         name: 'User Management',
+        description: 'Access to user management features',
         enabled: true,
-        requiredPermissions: ['can_manage_users']
+        requiredPermissions: ['can_manage_users'],
+        requiredRoles: ['admin', 'superadmin']
       },
       {
-        id: 'emergency_access',
-        name: 'Emergency Access',
+        id: 'bulk_user_actions',
+        name: 'Bulk User Actions',
+        description: 'Perform bulk operations on users',
         enabled: true,
-        requiredPermissions: ['can_emergency_access']
+        requiredPermissions: ['can_manage_users'],
+        dependencies: ['user_management']
       },
       {
-        id: 'patient_data_access',
-        name: 'Patient Data Access',
+        id: 'permission_management',
+        name: 'Permission Management',
+        description: 'Manage user permissions and roles',
         enabled: true,
-        requiredPermissions: ['can_access_patient_data']
-      },
-      {
-        id: 'research_data_access',
-        name: 'Research Data Access',
-        enabled: true,
-        requiredPermissions: ['can_access_research_data']
+        requiredPermissions: ['can_manage_users'],
+        requiredRoles: ['admin', 'superadmin']
       },
       {
         id: 'system_monitoring',
         name: 'System Monitoring',
+        description: 'Access to system monitoring and health checks',
         enabled: true,
         requiredPermissions: ['can_access_admin']
       },
       {
         id: 'audit_logs',
         name: 'Audit Logs',
+        description: 'Access to system audit logs',
         enabled: true,
         requiredPermissions: ['can_access_admin']
+      },
+
+      // Emergency Features
+      {
+        id: 'emergency_access',
+        name: 'Emergency Access',
+        description: 'Emergency access to restricted data',
+        enabled: true,
+        requiredPermissions: ['can_emergency_access']
+      },
+      {
+        id: 'emergency_override',
+        name: 'Emergency Override',
+        description: 'Override normal access restrictions in emergencies',
+        enabled: true,
+        requiredPermissions: ['can_emergency_access'],
+        environment: 'production'
+      },
+
+      // Patient Data Features
+      {
+        id: 'patient_data_access',
+        name: 'Patient Data Access',
+        description: 'Access to patient health data',
+        enabled: true,
+        requiredPermissions: ['can_access_patient_data']
+      },
+      {
+        id: 'patient_export',
+        name: 'Patient Data Export',
+        description: 'Export patient data',
+        enabled: true,
+        requiredPermissions: ['can_access_patient_data', 'can_export_data'],
+        requiredRoles: ['provider', 'admin']
+      },
+
+      // Research Features
+      {
+        id: 'research_data_access',
+        name: 'Research Data Access',
+        description: 'Access to research and clinical trial data',
+        enabled: true,
+        requiredPermissions: ['can_access_research_data']
+      },
+      {
+        id: 'research_analytics',
+        name: 'Research Analytics',
+        description: 'Advanced analytics for research data',
+        enabled: true,
+        requiredPermissions: ['can_access_research_data'],
+        requiredRoles: ['researcher', 'admin']
+      },
+
+      // Beta Features
+      {
+        id: 'new_dashboard_layout',
+        name: 'New Dashboard Layout',
+        description: 'Beta version of the redesigned dashboard',
+        enabled: false,
+        rolloutPercentage: 25,
+        environment: 'development'
+      },
+      {
+        id: 'advanced_search',
+        name: 'Advanced Search',
+        description: 'Enhanced search capabilities with filters',
+        enabled: true,
+        rolloutPercentage: 50,
+        environment: 'staging'
+      },
+      {
+        id: 'real_time_notifications',
+        name: 'Real-time Notifications',
+        description: 'Live notification system',
+        enabled: false,
+        rolloutPercentage: 10,
+        environment: 'production'
+      },
+
+      // Telemedicine Features
+      {
+        id: 'telemedicine_access',
+        name: 'Telemedicine Access',
+        description: 'Access to telemedicine features',
+        enabled: true,
+        requiredRoles: ['patient', 'provider']
+      },
+      {
+        id: 'video_consultations',
+        name: 'Video Consultations',
+        description: 'Video consultation capabilities',
+        enabled: true,
+        dependencies: ['telemedicine_access'],
+        requiredRoles: ['provider']
+      },
+
+      // Reporting Features
+      {
+        id: 'custom_reports',
+        name: 'Custom Reports',
+        description: 'Create and customize reports',
+        enabled: true,
+        requiredPermissions: ['can_access_admin'],
+        requiredRoles: ['admin', 'superadmin']
+      },
+      {
+        id: 'scheduled_reports',
+        name: 'Scheduled Reports',
+        description: 'Schedule automatic report generation',
+        enabled: true,
+        dependencies: ['custom_reports'],
+        rolloutPercentage: 75
       }
     ];
 
@@ -76,12 +205,39 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Check if a feature flag is enabled
+   * Check if a feature flag is enabled for the current user
    */
   public isEnabled(flagId: string): boolean {
     const flag = this.flags.get(flagId);
-    if (!flag || !flag.enabled) {
+    if (!flag) {
+      console.warn(`Feature flag '${flagId}' not found`);
       return false;
+    }
+
+    // Check if flag is globally disabled
+    if (!flag.enabled) {
+      return false;
+    }
+
+    // Check expiration
+    if (flag.expiresAt && flag.expiresAt < new Date()) {
+      return false;
+    }
+
+    // Check environment
+    if (flag.environment && flag.environment !== 'all') {
+      const currentEnv = process.env.NODE_ENV || 'development';
+      if (flag.environment !== currentEnv) {
+        return false;
+      }
+    }
+
+    // Check dependencies
+    if (flag.dependencies) {
+      const dependenciesMet = flag.dependencies.every(depId => this.isEnabled(depId));
+      if (!dependenciesMet) {
+        return false;
+      }
     }
 
     // Check required roles
@@ -114,31 +270,6 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Get all enabled features
-   */
-  public getEnabledFeatures(): string[] {
-    return Array.from(this.flags.keys()).filter(flagId => this.isEnabled(flagId));
-  }
-
-  /**
-   * Update configuration
-   */
-  public updateConfig(config: Partial<FeatureFlagConfig>): void {
-    this.config = { ...this.config, ...config };
-  }
-
-  /**
-   * Update a feature flag
-   */
-  public updateFlag(flagId: string, updates: Partial<FeatureFlag>): void {
-    const existingFlag = this.flags.get(flagId);
-    if (existingFlag) {
-      const updatedFlag = { ...existingFlag, ...updates };
-      this.flags.set(flagId, updatedFlag);
-    }
-  }
-
-  /**
    * Get feature flag details
    */
   public getFlag(flagId: string): FeatureFlag | undefined {
@@ -150,6 +281,65 @@ export class FeatureFlagManager {
    */
   public getAllFlags(): FeatureFlag[] {
     return Array.from(this.flags.values());
+  }
+
+  /**
+   * Get enabled features for current user
+   */
+  public getEnabledFeatures(): string[] {
+    return Array.from(this.flags.keys()).filter(flagId => this.isEnabled(flagId));
+  }
+
+  /**
+   * Update feature flag
+   */
+  public updateFlag(flagId: string, updates: Partial<FeatureFlag>): void {
+    const existingFlag = this.flags.get(flagId);
+    if (existingFlag) {
+      const updatedFlag = { ...existingFlag, ...updates };
+      this.flags.set(flagId, updatedFlag);
+      this.notifyListeners(flagId, this.isEnabled(flagId));
+    }
+  }
+
+  /**
+   * Add new feature flag
+   */
+  public addFlag(flag: FeatureFlag): void {
+    this.flags.set(flag.id, flag);
+    this.notifyListeners(flag.id, this.isEnabled(flag.id));
+  }
+
+  /**
+   * Remove feature flag
+   */
+  public removeFlag(flagId: string): void {
+    this.flags.delete(flagId);
+    this.notifyListeners(flagId, false);
+  }
+
+  /**
+   * Update configuration
+   */
+  public updateConfig(config: Partial<FeatureFlagConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Add listener for flag changes
+   */
+  public addListener(listener: (flagId: string, enabled: boolean) => void): void {
+    this.listeners.push(listener);
+  }
+
+  /**
+   * Remove listener
+   */
+  public removeListener(listener: (flagId: string, enabled: boolean) => void): void {
+    const index = this.listeners.indexOf(listener);
+    if (index > -1) {
+      this.listeners.splice(index, 1);
+    }
   }
 
   /**
@@ -165,6 +355,261 @@ export class FeatureFlagManager {
     }
     return Math.abs(hash);
   }
+
+  /**
+   * Notify listeners of flag changes
+   */
+  private notifyListeners(flagId: string, enabled: boolean): void {
+    this.listeners.forEach(listener => {
+      try {
+        listener(flagId, enabled);
+      } catch (error) {
+        console.error('Error in feature flag listener:', error);
+      }
+    });
+  }
+}
+
+/**
+ * React hook for feature flags
+ */
+export function useFeatureFlags() {
+  const { user, hasPermission, getUserRole } = useAuth();
+  const [manager] = React.useState(() => {
+    return new FeatureFlagManager({
+      userId: user?.id,
+      userRole: getUserRole(),
+      permissions: [] // This would be populated from your permission system
+    });
+  });
+  
+  const [enabledFeatures, setEnabledFeatures] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    // Update manager configuration when user changes
+    if (user) {
+      const permissions: string[] = [];
+      
+      // Add permissions based on your JWT payload structure
+      if (hasPermission('can_manage_users')) permissions.push('can_manage_users');
+      if (hasPermission('can_access_admin')) permissions.push('can_access_admin');
+      if (hasPermission('can_access_patient_data')) permissions.push('can_access_patient_data');
+      if (hasPermission('can_access_research_data')) permissions.push('can_access_research_data');
+      if (hasPermission('can_emergency_access')) permissions.push('can_emergency_access');
+      
+      manager.updateConfig({
+        userId: user.id,
+        userRole: getUserRole(),
+        permissions
+      });
+
+      setEnabledFeatures(manager.getEnabledFeatures());
+    }
+  }, [user, hasPermission, getUserRole, manager]);
+
+  React.useEffect(() => {
+    const handleFlagChange = () => {
+      setEnabledFeatures(manager.getEnabledFeatures());
+    };
+
+    manager.addListener(handleFlagChange);
+    return () => manager.removeListener(handleFlagChange);
+  }, [manager]);
+
+  return {
+    isEnabled: manager.isEnabled.bind(manager),
+    getFlag: manager.getFlag.bind(manager),
+    getAllFlags: manager.getAllFlags.bind(manager),
+    enabledFeatures,
+    updateFlag: manager.updateFlag.bind(manager),
+    manager
+  };
+}
+
+/**
+ * Feature Flag component for conditional rendering
+ */
+interface FeatureFlagProps {
+  flag: string;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+export function FeatureFlag({ flag, children, fallback = null }: FeatureFlagProps) {
+  const { isEnabled } = useFeatureFlags();
+  
+  return isEnabled(flag) ? <>{children}</> : <>{fallback}</>;
+}
+
+/**
+ * Multiple feature flags component (any enabled)
+ */
+interface FeatureFlagsProps {
+  flags: string[];
+  requireAll?: boolean;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+export function FeatureFlags({ 
+  flags, 
+  requireAll = false, 
+  children, 
+  fallback = null 
+}: FeatureFlagsProps) {
+  const { isEnabled } = useFeatureFlags();
+  
+  const hasAccess = requireAll 
+    ? flags.every(flag => isEnabled(flag))
+    : flags.some(flag => isEnabled(flag));
+  
+  return hasAccess ? <>{children}</> : <>{fallback}</>;
+}
+
+/**
+ * Feature flag admin panel component
+ */
+export function FeatureFlagAdmin() {
+  const { getAllFlags, updateFlag, isEnabled } = useFeatureFlags();
+  const [flags, setFlags] = React.useState<FeatureFlag[]>([]);
+  const [searchTerm, setSearchTerm] = React.useState('');
+
+  React.useEffect(() => {
+    setFlags(getAllFlags());
+  }, [getAllFlags]);
+
+  const filteredFlags = flags.filter(flag =>
+    flag.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    flag.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleFlag = (flagId: string, enabled: boolean) => {
+    updateFlag(flagId, { enabled });
+    setFlags(getAllFlags());
+  };
+
+  const updateRollout = (flagId: string, percentage: number) => {
+    updateFlag(flagId, { rolloutPercentage: percentage });
+    setFlags(getAllFlags());
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Feature Flag Management</h2>
+        <div className="w-64">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search features..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {filteredFlags.map((flag) => (
+          <div key={flag.id} className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-3">
+                <h3 className="text-lg font-medium text-gray-900">{flag.name}</h3>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  isEnabled(flag.id) 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {isEnabled(flag.id) ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-4">
+                {flag.rolloutPercentage !== undefined && (
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm text-gray-600">Rollout:</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={flag.rolloutPercentage}
+                      onChange={(e) => updateRollout(flag.id, Number(e.target.value))}
+                      className="w-20"
+                    />
+                    <span className="text-sm text-gray-900 w-8">{flag.rolloutPercentage}%</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => toggleFlag(flag.id, !flag.enabled)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    flag.enabled
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {flag.enabled ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+            </div>
+            
+            <p className="text-gray-600 text-sm mb-3">{flag.description}</p>
+            
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              {flag.requiredPermissions && (
+                <div>
+                  <span className="text-gray-600">Required Permissions:</span>
+                  <div className="mt-1 space-x-1">
+                    {flag.requiredPermissions.map(perm => (
+                      <span key={perm} className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        {perm}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {flag.requiredRoles && (
+                <div>
+                  <span className="text-gray-600">Required Roles:</span>
+                  <div className="mt-1 space-x-1">
+                    {flag.requiredRoles.map(role => (
+                      <span key={role} className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {flag.environment && (
+                <div>
+                  <span className="text-gray-600">Environment:</span>
+                  <span className="ml-2 font-medium">{flag.environment}</span>
+                </div>
+              )}
+              
+              {flag.dependencies && flag.dependencies.length > 0 && (
+                <div>
+                  <span className="text-gray-600">Dependencies:</span>
+                  <div className="mt-1 space-x-1">
+                    {flag.dependencies.map(dep => (
+                      <span key={dep} className="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
+                        {dep}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredFlags.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No feature flags found matching your search.
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default FeatureFlagManager;
