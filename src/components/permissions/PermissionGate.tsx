@@ -8,10 +8,6 @@ import { UserRole } from '@/types/auth.types';
 
 /**
  * Permission Gate Component
- * 
- * This component provides conditional rendering based on user permissions.
- * It replaces the complex AdminGuard and similar components that were making
- * async permission checks and creating race conditions.
  */
 interface PermissionGateProps {
   children: ReactNode;
@@ -149,8 +145,6 @@ export function PermissionGate({
 
 /**
  * Admin Permission Gate
- * 
- * Simplified component for admin-only content that replaces the complex AdminGuard.
  */
 interface AdminGateProps {
   children: ReactNode;
@@ -172,8 +166,6 @@ export function AdminGate({ children, fallback, showAccessDenied = true }: Admin
 
 /**
  * User Management Permission Gate
- * 
- * Component for content that requires user management permissions.
  */
 interface UserManagementGateProps {
   children: ReactNode;
@@ -194,8 +186,6 @@ export function UserManagementGate({ children, fallback }: UserManagementGatePro
 
 /**
  * Audit Access Permission Gate
- * 
- * Component for content that requires audit log access.
  */
 interface AuditGateProps {
   children: ReactNode;
@@ -216,9 +206,6 @@ export function AuditGate({ children, fallback }: AuditGateProps) {
 
 /**
  * Role-Based Render Component
- * 
- * This component provides conditional rendering based on user roles.
- * It's useful for showing different content to different types of users.
  */
 interface RoleBasedRenderProps {
   allowedRoles: UserRole[];
@@ -239,9 +226,6 @@ export function RoleBasedRender({ allowedRoles, children, fallback }: RoleBasedR
 
 /**
  * Feature Flag Component
- * 
- * This component provides feature flag functionality for gradual feature rollouts.
- * It uses permission-based logic but can be extended with other feature flag systems.
  */
 interface FeatureFlagProps {
   feature: string;
@@ -253,7 +237,6 @@ export function FeatureFlag({ feature, children, fallback }: FeatureFlagProps) {
   const { jwtPayload } = useJWTAuth();
   
   // For now, we'll use permission-based feature flags
-  // This can be extended to integrate with external feature flag services
   const hasFeatureAccess = () => {
     if (!jwtPayload) return false;
     
@@ -277,8 +260,6 @@ export function FeatureFlag({ feature, children, fallback }: FeatureFlagProps) {
 
 /**
  * Conditional Render Component
- * 
- * This component provides flexible conditional rendering based on custom logic.
  */
 interface ConditionalRenderProps {
   condition: (user: unknown, jwtPayload: JWTPayload | null) => boolean;
@@ -299,8 +280,6 @@ export function ConditionalRender({ condition, children, fallback }: Conditional
 
 /**
  * Access Denied Message Component
- * 
- * Standardized component for displaying access denied messages.
  */
 interface AccessDeniedMessageProps {
   message?: string;
@@ -335,9 +314,6 @@ function AccessDeniedMessage({
 
 /**
  * Permission Debug Component
- * 
- * This component is useful during development to see what permissions
- * the current user has. Should be removed in production.
  */
 export function PermissionDebug() {
   const { jwtPayload, getUserRole, isAuthenticated } = useJWTAuth();

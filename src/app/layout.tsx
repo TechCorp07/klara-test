@@ -1,8 +1,4 @@
 // src/app/layout.tsx
-/**
- * Updated Root Layout - JWT Authentication Integration
- * 
- */
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -42,20 +38,10 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  // Security headers for healthcare compliance
-  other: {
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-  },
 };
 
 /**
  * Authentication Error Boundary Component
- * 
- * This component catches authentication-related errors and provides
- * a clean fallback experience instead of crashing the application.
  */
 interface AuthErrorBoundaryProps {
   children: React.ReactNode;
@@ -71,9 +57,6 @@ function AuthErrorBoundary({ children }: AuthErrorBoundaryProps) {
 
 /**
  * Performance Monitoring Component
- * 
- * This component monitors authentication performance and helps
- * identify any potential issues during development.
  */
 function AuthPerformanceMonitor() {
   if (process.env.NODE_ENV !== 'development') {
@@ -102,11 +85,6 @@ function AuthPerformanceMonitor() {
 
 /**
  * Root Layout Component
- * 
- * This is the main layout component that wraps your entire application
- * with the new JWT authentication system. It provides authentication
- * context to all child components without the race conditions that
- * existed in the previous implementation.
  */
 export default function RootLayout({
   children,
@@ -180,26 +158,16 @@ export default function RootLayout({
   );
 }
 
-/**
- * Layout Configuration
- * 
- * These exports help Next.js optimize the layout and provide better
- * performance for your authentication system.
- */
-
-// Enable static optimization where possible
 export const dynamic = 'force-dynamic'; // Required for authentication
 
-// Configure viewport for responsive design
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // Disable zoom for better mobile experience
+  userScalable: false,
   themeColor: '#3B82F6',
 };
 
-// Configure loading behavior
 export const loading = {
-  eager: true, // Load authentication components immediately
+  eager: true,
 };

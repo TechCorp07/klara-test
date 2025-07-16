@@ -1,15 +1,4 @@
 // src/lib/config.ts
-/**
- * JWT Configuration - Race Condition Free Settings
- * 
- */
-
-/**
- * Application Configuration Interface
- * 
- * This interface defines all the configuration options needed for the
- * JWT authentication system and general application operation.
- */
 interface AppConfig {
   // Application Identity
   appName: string;
@@ -46,10 +35,6 @@ interface AppConfig {
 
 /**
  * Environment-based configuration
- * 
- * This function creates the appropriate configuration based on the
- * current environment, ensuring that development and production
- * environments have appropriate settings.
  */
 function createConfig(): AppConfig {
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -64,18 +49,17 @@ function createConfig(): AppConfig {
     apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
     
     // JWT Authentication Configuration
-    // These must match your backend JWT middleware settings
-    authCookieName: 'jwt_access_token', // Matches your backend JWT_COOKIE_NAME
+    authCookieName: 'jwt_access_token', // Matches backend JWT_COOKIE_NAME
     refreshCookieName: 'jwt_refresh_token',
-    secureCookies: isProduction, // Use secure cookies in production only
-    cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN, // Optional domain setting
+    secureCookies: isProduction,
+    cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
     
     // Session Configuration
     sessionTimeoutMinutes: parseInt(process.env.NEXT_PUBLIC_SESSION_TIMEOUT || '30'),
-    tokenRefreshThresholdMinutes: 5, // Refresh when less than 5 minutes remain
+    tokenRefreshThresholdMinutes: 5,
     
     // Security Configuration
-    enablePermissionDebugging: isDevelopment, // Only enable in development
+    enablePermissionDebugging: isDevelopment,
     
     // External Links
     termsUrl: process.env.NEXT_PUBLIC_TERMS_URL || '/terms-of-service',
@@ -84,26 +68,20 @@ function createConfig(): AppConfig {
     
     // Feature Flags
     features: {
-      enableTokenRefresh: true, // Enable automatic token refresh
+      enableTokenRefresh: true,
       enablePermissionCaching: false, // Disable to prevent race conditions
-      enableSecurityLogging: isDevelopment, // Log security events in development
+      enableSecurityLogging: isDevelopment,
     },
   };
 }
 
 /**
  * Export the configuration instance
- * 
- * This creates a single configuration instance that can be imported
- * throughout your application for consistent settings.
  */
 export const config = createConfig();
 
 /**
  * Configuration validation
- * 
- * This function validates that all required configuration values are present
- * and have reasonable values. It helps catch configuration errors early.
  */
 export function validateConfig(): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -145,9 +123,6 @@ export function validateConfig(): { isValid: boolean; errors: string[] } {
 
 /**
  * Configuration utilities
- * 
- * These utility functions provide convenient access to common configuration
- * operations throughout your application.
  */
 export const configUtils = {
   /**
@@ -192,25 +167,6 @@ export const configUtils = {
     return config.features[feature];
   },
 };
-
-/**
- * Environment variable documentation
- * 
- * This documentation helps developers understand what environment variables
- * are available and how they affect the application configuration.
- * 
- * Required Environment Variables:
- * - NEXT_PUBLIC_API_URL: Backend API base URL
- * 
- * Optional Environment Variables:
- * - NEXT_PUBLIC_APP_NAME: Application display name
- * - NEXT_PUBLIC_APP_VERSION: Application version
- * - NEXT_PUBLIC_SESSION_TIMEOUT: Session timeout in minutes (default: 30)
- * - NEXT_PUBLIC_COOKIE_DOMAIN: Cookie domain for multi-subdomain setups
- * - NEXT_PUBLIC_TERMS_URL: Terms of service URL
- * - NEXT_PUBLIC_PRIVACY_URL: Privacy policy URL
- * - NEXT_PUBLIC_SUPPORT_URL: Support page URL
- */
 
 // Export types for use throughout the application
 export type { AppConfig };

@@ -1,8 +1,4 @@
 // src/lib/auth/index.ts
-/**
- * JWT Authentication System - Unified Exports
- * 
- */
 
 // Core JWT authentication components
 export { JWTAuthProvider } from './auth-provider';
@@ -72,26 +68,16 @@ export { PERMISSION_HIERARCHIES } from '../../types/permissions.types';
 
 /**
  * Main authentication hook for backward compatibility
- * 
- * This provides the same interface as your current useAuth hook while
- * using the new JWT system underneath. This allows for gradual migration
- * of existing components.
  */
 export { useJWTAuth as useAuth } from './use-auth';
 
 /**
  * Main authentication provider for backward compatibility
- * 
- * This allows existing code to continue working while gradually migrating
- * to the new JWT authentication system.
  */
 export { JWTAuthProvider as AuthProvider } from './auth-provider';
 
 /**
  * Permission checking utilities
- * 
- * These utilities provide convenient functions for checking permissions
- * throughout your application without requiring component context.
  */
 export const PermissionUtils = {
   /**
@@ -193,9 +179,6 @@ export const PermissionUtils = {
 
 /**
  * Token management utilities
- * 
- * These utilities provide helpful functions for working with JWT tokens
- * throughout your application.
  */
 export const TokenUtils = {
   /**
@@ -238,9 +221,6 @@ export const TokenUtils = {
 
 /**
  * Route protection utilities
- * 
- * These utilities help with implementing route-level protection
- * throughout your application.
  */
 export const RouteUtils = {
   /**
@@ -293,8 +273,6 @@ export const RouteUtils = {
 
 /**
  * Development utilities
- * 
- * These utilities are helpful during development and debugging.
  */
 export const DevUtils = {
   /**
@@ -318,34 +296,24 @@ export const DevUtils = {
   validatePayloadStructure: (jwtPayload: unknown): boolean => {
     if (!jwtPayload || typeof jwtPayload !== 'object') return false;
     
-    const payload = jwtPayload as any;
+    const payload = jwtPayload as unknown;
     const requiredFields = ['user_id', 'email', 'role', 'exp', 'iat'];
     
-    return requiredFields.every(field => field in payload);
+    return requiredFields.every(field => field in (payload as Record<string, unknown>));
   },
 };
 
 /**
  * Legacy compatibility exports
- * 
- * These exports maintain compatibility with your existing authentication
- * system while transitioning to the new JWT implementation.
  */
-
-// Maintain compatibility with existing auth context usage
 export type AuthContextType = UseJWTAuthReturn;
 
 // Export configuration
 export { config } from '../config';
-
-// Export validation utilities
 export { validateConfig, configUtils } from '../config';
 
 /**
  * Migration utilities
- * 
- * These utilities help with migrating from the old authentication system
- * to the new JWT system.
  */
 export const MigrationUtils = {
   /**

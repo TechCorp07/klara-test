@@ -1,9 +1,4 @@
-// src/lib/auth/use-jwt-auth.ts
-/**
- * JWT Authentication Hook
- * 
- */
-
+// src/lib/auth/use-auth.ts
 import { useContext } from 'react';
 import { JWTAuthContext } from './auth-provider';
 import { JWTPayload } from './validator';
@@ -11,9 +6,6 @@ import { UserRole } from '@/types/auth.types';
 
 /**
  * Extended authentication hook interface
- * 
- * This interface provides everything components need for authentication
- * and authorization decisions without requiring additional async operations.
  */
 export interface UseJWTAuthReturn {
   // Core authentication state
@@ -65,9 +57,6 @@ export interface UseJWTAuthReturn {
 
 /**
  * Main JWT authentication hook
- * 
- * This hook provides access to the JWT authentication context and adds
- * additional utility methods for common authentication and authorization tasks.
  */
 export function useJWTAuth(): UseJWTAuthReturn {
   const context = useContext(JWTAuthContext);
@@ -104,8 +93,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
   /**
    * Get user email from JWT payload
-   * 
-   * Simple utility method to extract email from the validated JWT.
    */
   const getUserEmail = (): string | null => {
     return jwtPayload?.email || null;
@@ -113,24 +100,16 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
   /**
    * Check if user has compliance access
-   * 
-   * Additional permission check for compliance-related features.
    */
   const canAccessCompliance = hasPermission('has_compliance_access');
 
   /**
    * Check if user can export data
-   * 
-   * Additional permission check for data export features.
    */
   const canExportData = hasPermission('has_export_access');
 
   /**
    * Get accessible routes based on user permissions
-   * 
-   * This method returns an array of route paths that the current user
-   * can access based on their role and permissions. This is useful for
-   * dynamically building navigation menus and determining redirect paths.
    */
   const getAccessibleRoutes = (): string[] => {
     if (!jwtPayload) return [];
@@ -239,9 +218,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
   /**
    * Check if user can access a specific route
-   * 
-   * This method checks if the current user has permission to access
-   * a specific route path based on their role and permissions.
    */
   const canAccessRoute = (route: string): boolean => {
     if (!jwtPayload) return false;
@@ -259,9 +235,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
   /**
    * Get the appropriate dashboard path for the user
-   * 
-   * This method returns the main dashboard path that the user should
-   * be redirected to based on their role and permissions.
    */
   const getDashboardPath = (): string => {
     if (!jwtPayload) return '/login';
@@ -292,9 +265,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
   /**
    * Format time to expiration in human-readable format
-   * 
-   * This method formats the remaining token lifetime for display
-   * in UI components or notifications.
    */
   const formatTimeToExpiration = (): string => {
     if (!timeToExpiration) return 'Unknown';
@@ -311,9 +281,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
   /**
    * Check if token is expiring soon
-   * 
-   * This method determines if the token is close to expiration,
-   * which can be used to show warnings or trigger automatic refresh.
    */
   const isTokenExpiringSoon = (): boolean => {
     if (!timeToExpiration) return false;
@@ -374,9 +341,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
 
 /**
  * Convenience hooks for specific permission checks
- * 
- * These hooks provide simple boolean returns for common permission checks,
- * making them easy to use in component conditional rendering.
  */
 
 export function useAdminAccess() {
@@ -406,9 +370,6 @@ export function useSystemSettingsAccess() {
 
 /**
  * Hook for permission-based route guards
- * 
- * This hook provides utilities for implementing route-level permission checks
- * in your application without the complex async logic that caused race conditions.
  */
 export function useRoutePermissions() {
   const { canAccessRoute, getAccessibleRoutes, getDashboardPath } = useJWTAuth();
@@ -422,9 +383,6 @@ export function useRoutePermissions() {
 
 /**
  * Hook for token monitoring and refresh logic
- * 
- * This hook provides utilities for monitoring token expiration and
- * implementing proactive refresh strategies.
  */
 export function useTokenMonitoring() {
   const { 
@@ -444,5 +402,4 @@ export function useTokenMonitoring() {
   };
 }
 
-// Export the main hook as default
 export default useJWTAuth;

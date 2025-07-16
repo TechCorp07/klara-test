@@ -1,26 +1,8 @@
-// src/lib/auth/jwt-validator.ts
-/**
- * JWT Validation Library - Local Token Processing
- * 
- * This library provides local JWT validation capabilities that eliminate the need
- * for HTTP requests during authentication checks. Think of this as a smart ID card
- * reader that can verify card authenticity and extract information without
- * connecting to external systems.
- * 
- * We're implementing Option A: Structure validation without signature verification.
- * This provides excellent security for client-side decisions while maintaining
- * simplicity and performance. The backend still performs full signature validation
- * when API calls are made.
- */
-
+// src/lib/auth/validator.ts
 import { UserRole } from '@/types/auth.types';
 
 /**
  * JWT Payload Interface
- * 
- * This interface defines the structure of JWT tokens that your backend creates.
- * Based on your backend implementation, each JWT contains user information,
- * permissions, and security metadata.
  */
 export interface JWTPayload {
   // Core user identity
@@ -73,9 +55,6 @@ export interface JWTPayload {
 
 /**
  * JWT Validation Result Interface
- * 
- * This standardizes the response from JWT validation operations,
- * making it easy to handle both success and failure cases consistently.
  */
 export interface JWTValidationResult {
   isValid: boolean;
@@ -87,9 +66,6 @@ export interface JWTValidationResult {
 
 /**
  * JWT Validation Error Types
- * 
- * These specific error types help with debugging and provide better
- * user experience by allowing different handling for different problems.
  */
 export enum JWTValidationError {
   INVALID_FORMAT = 'INVALID_FORMAT',
@@ -104,10 +80,6 @@ export enum JWTValidationError {
 
 /**
  * JWT Validator Class
- * 
- * This class encapsulates all JWT validation logic and provides a clean
- * interface for the rest of your application to use. Think of it as a
- * specialized document inspector that can quickly assess ID authenticity.
  */
 export class JWTValidator {
   // Validation constants
@@ -119,10 +91,6 @@ export class JWTValidator {
 
   /**
    * Primary validation method - validates JWT structure and content
-   * 
-   * This is the main method used by middleware and components to validate
-   * JWT tokens. It performs comprehensive checks while remaining fast and
-   * synchronous to prevent race conditions.
    */
   static validateToken(token: string): JWTValidationResult {
     try {
@@ -195,9 +163,6 @@ export class JWTValidator {
 
   /**
    * Decode JWT payload from base64
-   * 
-   * This method safely decodes the JWT payload section and handles
-   * common base64 padding issues that can occur with JWT tokens.
    */
   private static decodePayload(payloadBase64: string): JWTPayload | null {
     try {
@@ -220,9 +185,6 @@ export class JWTValidator {
 
   /**
    * Validate that all required fields are present in the JWT payload
-   * 
-   * This ensures that the JWT contains all the information needed for
-   * authentication and authorization decisions.
    */
   private static validateRequiredFields(payload: JWTPayload): JWTValidationResult {
     const requiredFields = ['user_id', 'email', 'role', 'exp', 'iat', 'jti'];
@@ -256,9 +218,6 @@ export class JWTValidator {
 
   /**
    * Validate JWT timestamps (expiration, issued at)
-   * 
-   * This method checks that the token hasn't expired and wasn't issued
-   * in the future (which could indicate tampering or clock issues).
    */
   private static validateTimestamps(payload: JWTPayload): JWTValidationResult {
     const currentTime = Math.floor(Date.now() / 1000);
@@ -285,10 +244,6 @@ export class JWTValidator {
 
   /**
    * Extract user permissions from JWT payload
-   * 
-   * This method provides a clean way to access user permissions that are
-   * embedded in the JWT token, enabling fast permission checks without
-   * additional API calls.
    */
   static extractPermissions(payload: JWTPayload): JWTPayload['permissions'] {
     return payload.permissions || {};
@@ -296,9 +251,6 @@ export class JWTValidator {
 
   /**
    * Check if user has a specific permission
-   * 
-   * This is a utility method that makes it easy to check individual
-   * permissions throughout your application.
    */
   static hasPermission(
     payload: JWTPayload, 
@@ -309,8 +261,6 @@ export class JWTValidator {
 
   /**
    * Get user role from JWT payload
-   * 
-   * Simple utility to extract the user role, with proper type safety.
    */
   static getUserRole(payload: JWTPayload): UserRole {
     return payload.role;
@@ -318,9 +268,6 @@ export class JWTValidator {
 
   /**
    * Check if token needs refresh soon
-   * 
-   * This helps implement proactive token refresh before expiration,
-   * providing seamless user experience.
    */
   static needsRefresh(payload: JWTPayload): boolean {
     const currentTime = Math.floor(Date.now() / 1000);
@@ -330,8 +277,6 @@ export class JWTValidator {
 
   /**
    * Get remaining token lifetime in seconds
-   * 
-   * Useful for displaying session timeout warnings or scheduling refresh operations.
    */
   static getTimeToExpiration(payload: JWTPayload): number {
     const currentTime = Math.floor(Date.now() / 1000);
@@ -340,9 +285,6 @@ export class JWTValidator {
 
   /**
    * Validate token for specific route access
-   * 
-   * This method combines JWT validation with route-specific permission checks,
-   * providing a complete authentication and authorization solution.
    */
   static validateForRoute(token: string, routePath: string): JWTValidationResult {
     // First validate the token structure
@@ -354,7 +296,6 @@ export class JWTValidator {
     const { payload } = validationResult;
 
     // Add route-specific permission checks here
-    // This will be expanded with the permission system in Phase 2
     if (routePath.startsWith('/admin') && !payload.permissions?.has_admin_access) {
       return {
         isValid: false,
@@ -367,10 +308,7 @@ export class JWTValidator {
 }
 
 /**
- * Convenience functions for common JWT operations
- * 
- * These utility functions provide simple interfaces for the most common
- * JWT validation tasks throughout your application.
+ * FIXED: Added missing convenience functions that were causing import errors
  */
 
 export function validateJWT(token: string): JWTValidationResult {

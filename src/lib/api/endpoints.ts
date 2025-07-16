@@ -31,6 +31,7 @@ export const ENDPOINTS = {
     
     // Account status
     CHECK_STATUS: '/users/auth/check-status/',
+    REFRESH_TOKEN: '/users/auth/refresh/',
     ME: '/users/auth/me/',
   },
 

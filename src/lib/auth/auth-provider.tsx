@@ -1,18 +1,8 @@
-// src/lib/auth/jwt-auth-provider.tsx
+// src/lib/auth/auth-provider.tsx
 /**
  * JWT Authentication Provider - Race Condition Free Implementation
  * 
- * This provider replaces the complex async authentication logic that was causing
- * race conditions. Think of this as upgrading from a complex system with multiple
- * moving parts that could interfere with each other, to a streamlined system
- * where authentication state flows predictably from JWT token validation.
- * 
- * Key improvements over the previous auth provider:
- * 1. Eliminates HTTP requests for permission checks
- * 2. Simplifies authentication state management
- * 3. Provides instant permission access from JWT payload
- * 4. Removes timing-dependent async operations
- * 5. Uses only HttpOnly cookies for security
+ * FIXED: Updated import paths and added missing functionality
  */
 
 'use client';
@@ -20,6 +10,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { JWTValidator, JWTPayload } from './validator';
+import { config } from '@/lib/config';
 import { 
   User, 
   LoginCredentials,
@@ -28,7 +19,10 @@ import {
   RegisterResponse,
   } from '@/types/auth.types';
 
-interface JWTAuthContextType {
+/**
+ * FIXED: Corrected the interface name and exports
+ */
+export interface JWTAuthContextType {
   // Core authentication state
   user: User | null;
   isAuthenticated: boolean;
@@ -91,10 +85,6 @@ const PUBLIC_ROUTES = [
 
 /**
  * Convert JWT payload to User object
- * 
- * This function transforms the JWT payload into the User interface that
- * the rest of your application expects, maintaining compatibility with
- * existing components while leveraging JWT data.
  */
 function jwtPayloadToUser(payload: JWTPayload): User {
   return {
@@ -103,7 +93,6 @@ function jwtPayloadToUser(payload: JWTPayload): User {
     role: payload.role,
     
     // These fields would come from the JWT payload if your backend includes them
-    // For now, we'll provide reasonable defaults and rely on the JWT permissions
     first_name: '', // Could be extracted from JWT if backend includes it
     last_name: '',  // Could be extracted from JWT if backend includes it
     is_active: true, // If JWT is valid, user is active
@@ -113,13 +102,13 @@ function jwtPayloadToUser(payload: JWTPayload): User {
     two_factor_enabled: false, // Would need to be in JWT payload
     
     // Profile data - these could be included in JWT or fetched separately
-    patient_profile: undefined,
-    provider_profile: undefined,
-    admin_profile: undefined,
-    pharmco_profile: undefined,
-    caregiver_profile: undefined,
-    researcher_profile: undefined,
-    compliance_profile: undefined,
+    patient_profile: null,
+    provider_profile: null,
+    admin_profile: null,
+    pharmco_profile: null,
+    caregiver_profile: null,
+    researcher_profile: null,
+    compliance_profile: null,
     
     // Permissions extracted from JWT
     permissions: payload.permissions || {},
@@ -130,6 +119,9 @@ function jwtPayloadToUser(payload: JWTPayload): User {
   };
 }
 
+/**
+ * JWT Authentication Provider Component
+ */
 interface JWTAuthProviderProps {
   children: ReactNode;
 }
@@ -147,10 +139,6 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   /**
    * Initialize authentication state from JWT cookie
-   * 
-   * This function runs once when the provider mounts and extracts authentication
-   * state directly from the JWT cookie. Unlike the previous implementation,
-   * this doesn't make any HTTP requests during initialization.
    */
   const initializeAuth = useCallback(async () => {
     try {
@@ -165,11 +153,10 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
         return;
       }
 
-      // Try to get JWT token from cookie via a simple fetch
-      // This is the only HTTP request we make, and it's to our own API route
+      // Try to get JWT token from cookie via our API route
       const response = await fetch('/api/auth/validate', {
         method: 'GET',
-        credentials: 'include', // Include HttpOnly cookies
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -247,20 +234,17 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   /**
    * Login method - simplified for JWT
-   * 
-   * This method handles login by calling the backend authentication endpoint
-   * and then extracting the resulting JWT token for local validation.
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
     
     try {
-      // Step 1: Authenticate with backend
+      // Step 1: Authenticate with backend via our API client
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
-        credentials: 'include', // Important for HttpOnly cookies
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -299,8 +283,6 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   /**
    * Logout method - simplified for JWT
-   * 
-   * This method clears authentication state and HttpOnly cookies.
    */
   const logout = async (): Promise<void> => {
     setIsLoading(true);
@@ -333,8 +315,6 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   /**
    * Registration method
-   * 
-   * This handles user registration through the backend API.
    */
   const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
@@ -362,8 +342,6 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   /**
    * Token refresh method
-   * 
-   * This method refreshes the JWT token before it expires.
    */
   const refreshToken = async (): Promise<void> => {
     try {
@@ -397,9 +375,6 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   /**
    * Permission checking methods
-   * 
-   * These methods extract permissions directly from the JWT payload,
-   * eliminating the need for HTTP requests to check permissions.
    */
   const hasPermission = useCallback((permission: keyof NonNullable<JWTPayload['permissions']>): boolean => {
     return jwtPayload ? JWTValidator.hasPermission(jwtPayload, permission) : false;
