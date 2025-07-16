@@ -1,10 +1,9 @@
 // src/lib/auth/auth-provider.tsx
 'use client';
 
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { JWTValidator, JWTPayload } from './validator';
-import { config } from '@/lib/config';
 import { 
   User, 
   UserRole,
@@ -21,7 +20,7 @@ import {
   ComplianceProfile,
 } from '@/types/auth.types';
 
-export interface JWTAuthContextType {
+export interface EnhancedJWTAuthContextType {
   // Core authentication state
   user: User | null;
   isAuthenticated: boolean;
@@ -39,28 +38,48 @@ export interface JWTAuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   
-  // Permission checking methods (extracted from JWT)
+  // Permission checking methods
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
   
-  // Role-based access methods
+  // Computed permission properties (from your current provider)
   isAdmin: boolean;
   isSuperAdmin: boolean;
   canManageUsers: boolean;
   canAccessAudit: boolean;
   canManageSystemSettings: boolean;
   
+  // Enhanced computed permissions (from enhanced version)
+  canEmergencyAccess: boolean;
+  canAccessPatientData: boolean;
+  canAccessResearchData: boolean;
+  
+  // Healthcare-specific permissions (from your current provider)
+  hasMedicalRecordsAccess: boolean;
+  canManageAppointments: boolean;
+  canAccessTelemedicine: boolean;
+  canManageMedications: boolean;
+  canAccessClinicalTrials: boolean;
+  
   // Utility methods
   getUserId: () => number | null;
   getUserRole: () => UserRole | null;
   getSessionId: () => string | null;
+  
+  // Feature flags system (from enhanced version)
+  isFeatureEnabled: (flag: string) => boolean;
+  
+  // Route protection (from your current provider)
+  isPublicRoute: boolean;
 }
 
-// Create the context
-export const JWTAuthContext = createContext<JWTAuthContextType | null>(null);
+const EnhancedJWTAuthContext = createContext<EnhancedJWTAuthContextType | null>(null);
 
-// Public routes that don't require authentication
+// Export the context for use in hooks
+export { EnhancedJWTAuthContext };
+
+// Public routes that don't require authentication (from your current provider)
 const PUBLIC_ROUTES = [
   '/',
   '/login',
@@ -82,13 +101,13 @@ const PUBLIC_ROUTES = [
 ];
 
 /**
- * Convert JWT payload to User object
- * Updated to handle backend JWT structure
+ * Convert JWT payload to User object (from your current provider)
+ * Enhanced with proper type safety and comprehensive permission mapping
  */
 function jwtPayloadToUser(payload: JWTPayload): User {
   // Map backend permissions to frontend AdminPermissions structure
   const permissions: AdminPermissions = {
-    // Core admin permissions - using backend permission names
+    // Core admin permissions
     has_admin_access: payload.permissions?.can_access_admin ?? false,
     has_user_management_access: payload.permissions?.can_manage_users ?? false,
     has_system_settings_access: payload.permissions?.can_access_admin ?? false,
@@ -148,11 +167,12 @@ function jwtPayloadToUser(payload: JWTPayload): User {
   };
 }
 
-interface JWTAuthProviderProps {
+interface EnhancedJWTAuthProviderProps {
   children: ReactNode;
 }
 
-export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
+export function EnhancedJWTAuthProvider({ children }: EnhancedJWTAuthProviderProps) {
+  // Core authentication state
   const [user, setUser] = useState<User | null>(null);
   const [jwtPayload, setJwtPayload] = useState<JWTPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,91 +183,76 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Check if current route is public
+  // Check if current route is public (from your current provider)
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || 
     pathname.startsWith('/verify-email/') || 
     pathname.startsWith('/reset-password/');
 
-  /**
-   * Initialize authentication state from JWT cookie
-   */
+  // Initialize authentication state
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Try to extract token from HTTP-only cookie via API
-        const response = await fetch('/api/auth/validate', {
-          method: 'POST',
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const { token } = await response.json();
-          
-          if (token) {
-            const validationResult = JWTValidator.validateToken(token);
-            
-            if (validationResult.isValid && validationResult.payload) {
-              const userFromJWT = jwtPayloadToUser(validationResult.payload);
-              
-              setUser(userFromJWT);
-              setJwtPayload(validationResult.payload);
-              setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
-              setTimeToExpiration(validationResult.expiresIn ?? null);
-              
-              console.log('✅ JWT authentication initialized');
-            }
-          }
-        } else if (response.status === 401) {
-          // 401 is expected when no JWT cookie exists - this is normal for unauthenticated users
-          console.log('ℹ️ No JWT token found - user not authenticated (this is normal)');
-        } else {
-          // Other error statuses might indicate actual problems
-          console.warn(`⚠️ Auth validation returned ${response.status}: ${response.statusText}`);
-        }
-      } catch (error) {
-        // Network errors or other issues
-        console.error('Auth initialization error:', error);
-      } finally {
-        setIsLoading(false);
-        setIsInitialized(true);
-      }
-    };
-
     initializeAuth();
   }, []);
 
-  /**
-   * Set up token expiration monitoring
-   */
+  // Monitor token expiration (from enhanced version)
   useEffect(() => {
-    if (!jwtPayload) return;
-
-    const interval = setInterval(() => {
-      const timeLeft = JWTValidator.getTimeToExpiration(jwtPayload);
-      setTimeToExpiration(timeLeft);
+    if (jwtPayload) {
+      const expirationTime = jwtPayload.exp * 1000;
+      const currentTime = Date.now();
+      const timeRemaining = expirationTime - currentTime;
       
-      if (timeLeft <= 0) {
-        // Token expired, clear auth state
-        setUser(null);
-        setJwtPayload(null);
-        setTokenNeedsRefresh(false);
-        setTimeToExpiration(null);
-        
-        if (!isPublicRoute) {
-          router.push('/login');
-        }
-      } else if (timeLeft < 5 * 60) { // 5 minutes
-        setTokenNeedsRefresh(true);
-      }
-    }, 1000);
+      setTimeToExpiration(Math.max(0, timeRemaining));
+      setTokenNeedsRefresh(timeRemaining < 5 * 60 * 1000); // 5 minutes
 
-    return () => clearInterval(interval);
-  }, [jwtPayload, isPublicRoute, router]);
+      // Set up automatic refresh
+      if (timeRemaining > 0 && timeRemaining < 5 * 60 * 1000) {
+        const refreshTimeout = setTimeout(() => {
+          refreshToken();
+        }, Math.max(1000, timeRemaining - 60000)); // Refresh 1 minute before expiry
+
+        return () => clearTimeout(refreshTimeout);
+      }
+    }
+  }, [jwtPayload]);
 
   /**
-   * Login method
+   * Initialize authentication state from JWT cookie (from your current provider)
+   */
+  const initializeAuth = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Try to extract token from HTTP-only cookie via API
+      const response = await fetch('/api/auth/validate', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const { token } = await response.json();
+        
+        if (token) {
+          const validationResult = JWTValidator.validateToken(token);
+          
+          if (validationResult.isValid && validationResult.payload) {
+            const userFromJWT = jwtPayloadToUser(validationResult.payload);
+            
+            setUser(userFromJWT);
+            setJwtPayload(validationResult.payload);
+            setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
+            setTimeToExpiration(validationResult.expiresIn ?? null);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+    } finally {
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  };
+
+  /**
+   * Login method (from your current provider with enhancements)
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
@@ -262,11 +267,12 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed');
+        throw new Error(errorData.message || 'Login failed');
       }
 
       const loginResponse: LoginResponse = await response.json();
       
+          // Handle successful login with JWT token
       if (loginResponse.token) {
         const validationResult = JWTValidator.validateToken(loginResponse.token);
         
@@ -277,6 +283,10 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
           setJwtPayload(validationResult.payload);
           setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
           setTimeToExpiration(validationResult.expiresIn ?? null);
+          
+          // Enhanced redirect logic based on role
+          const userRole = validationResult.payload.role;
+          router.push(`/${userRole}`);
           
           console.log('✅ Login successful');
         }
@@ -292,38 +302,7 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
   };
 
   /**
-   * Logout method
-   */
-  const logout = async (): Promise<void> => {
-    setIsLoading(true);
-    
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      
-      // Clear auth state
-      setUser(null);
-      setJwtPayload(null);
-      setTokenNeedsRefresh(false);
-      setTimeToExpiration(null);
-      
-      console.log('✅ Logout completed');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Clear state even if logout call fails
-      setUser(null);
-      setJwtPayload(null);
-      setTokenNeedsRefresh(false);
-      setTimeToExpiration(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Registration method
+   * Register method (from your current provider)
    */
   const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
@@ -350,7 +329,39 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
   };
 
   /**
-   * Token refresh method
+   * Logout method (from your current provider)
+   */
+  const logout = async (): Promise<void> => {
+    setIsLoading(true);
+    
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // Clear auth state
+      setUser(null);
+      setJwtPayload(null);
+      setTokenNeedsRefresh(false);
+      setTimeToExpiration(null);
+      
+      router.push('/login');
+      console.log('✅ Logout completed');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Clear state even if logout call fails
+      setUser(null);
+      setJwtPayload(null);
+      setTokenNeedsRefresh(false);
+      setTimeToExpiration(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Token refresh method (enhanced from both versions)
    */
   const refreshToken = async (): Promise<void> => {
     try {
@@ -382,10 +393,7 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
     }
   };
 
-  /**
-   * Permission checking methods
-   * Updated to handle string permissions
-   */
+  // Permission checking methods (enhanced from both versions)
   const hasPermission = useCallback((permission: string): boolean => {
     return jwtPayload ? JWTValidator.hasPermission(jwtPayload, permission) : false;
   }, [jwtPayload]);
@@ -398,14 +406,24 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
     return permissions.every(permission => hasPermission(permission));
   }, [hasPermission]);
 
-  // Computed permission properties for easy access
-  const isAdmin = hasPermission('has_admin_access');
+  // Computed permission properties (from both versions)
+  const isAdmin = hasPermission('is_admin') || hasPermission('can_access_admin');
   const isSuperAdmin = hasPermission('is_superadmin');
-  const canManageUsers = hasPermission('has_user_management_access');
+  const canManageUsers = hasPermission('can_manage_users');
   const canAccessAudit = hasPermission('has_audit_access');
-  const canManageSystemSettings = hasPermission('has_system_settings_access');
+  const canManageSystemSettings = hasPermission('can_access_admin');
+  const canEmergencyAccess = hasPermission('can_emergency_access');
+  const canAccessPatientData = hasPermission('can_access_patient_data');
+  const canAccessResearchData = hasPermission('can_access_research_data');
+  
+  // Healthcare-specific permissions (from your current provider)
+  const hasMedicalRecordsAccess = hasPermission('has_medical_records_access');
+  const canManageAppointments = hasPermission('can_manage_appointments');
+  const canAccessTelemedicine = hasPermission('can_access_telemedicine');
+  const canManageMedications = hasPermission('can_manage_medications');
+  const canAccessClinicalTrials = hasPermission('can_access_clinical_trials');
 
-  // Utility methods
+  // Utility methods (from enhanced version)
   const getUserId = useCallback((): number | null => {
     return jwtPayload?.user_id ?? null;
   }, [jwtPayload]);
@@ -418,8 +436,32 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
     return jwtPayload?.session_id ?? null;
   }, [jwtPayload]);
 
+  // Feature flag system (from enhanced version)
+  const isFeatureEnabled = useCallback((flag: string): boolean => {
+    const featureFlags: Record<string, boolean> = {
+      'user_management': canManageUsers,
+      'emergency_access': canEmergencyAccess,
+      'patient_data_access': canAccessPatientData,
+      'research_data_access': canAccessResearchData,
+      'system_monitoring': canManageSystemSettings,
+      'audit_logs': canAccessAudit,
+      'telemedicine_access': canAccessTelemedicine || getUserRole() === 'patient' || getUserRole() === 'provider',
+      'medical_records': hasMedicalRecordsAccess,
+      'appointment_management': canManageAppointments,
+      'medication_management': canManageMedications,
+      'clinical_trials': canAccessClinicalTrials,
+      'custom_reports': canManageSystemSettings,
+    };
+
+    return featureFlags[flag] || false;
+  }, [
+    canManageUsers, canEmergencyAccess, canAccessPatientData, canAccessResearchData,
+    canManageSystemSettings, canAccessAudit, canAccessTelemedicine, hasMedicalRecordsAccess,
+    canManageAppointments, canManageMedications, canAccessClinicalTrials, getUserRole
+  ]);
+
   // Build context value
-  const contextValue: JWTAuthContextType = {
+  const contextValue: EnhancedJWTAuthContextType = {
     // Core state
     user,
     isAuthenticated: !!user && !!jwtPayload,
@@ -442,24 +484,49 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
     hasAnyPermission,
     hasAllPermissions,
     
-    // Computed permissions
+    // Computed permissions (from your current provider)
     isAdmin,
     isSuperAdmin,
     canManageUsers,
     canAccessAudit,
     canManageSystemSettings,
     
+    // Enhanced computed permissions (from enhanced version)
+    canEmergencyAccess,
+    canAccessPatientData,
+    canAccessResearchData,
+    
+    // Healthcare-specific permissions (from your current provider)
+    hasMedicalRecordsAccess,
+    canManageAppointments,
+    canAccessTelemedicine,
+    canManageMedications,
+    canAccessClinicalTrials,
+    
     // Utility methods
     getUserId,
     getUserRole,
     getSessionId,
+    
+    // Feature flags
+    isFeatureEnabled,
+    
+    // Route protection
+    isPublicRoute,
   };
 
   return (
-    <JWTAuthContext.Provider value={contextValue}>
+    <EnhancedJWTAuthContext.Provider value={contextValue}>
       {children}
-    </JWTAuthContext.Provider>
+    </EnhancedJWTAuthContext.Provider>
   );
 }
 
-export default JWTAuthProvider;
+// Export for backward compatibility - provider only
+export { EnhancedJWTAuthProvider as JWTAuthProvider };
+export { EnhancedJWTAuthProvider as AuthProvider };
+
+// Export types for backward compatibility
+export type { EnhancedJWTAuthContextType as JWTAuthContextType };
+
+export default EnhancedJWTAuthProvider;
