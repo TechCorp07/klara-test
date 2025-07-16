@@ -16,7 +16,7 @@ interface FeatureFlag {
   rolloutPercentage?: number; // 0-100
   dependencies?: string[]; // Other feature flags this depends on
   expiresAt?: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface FeatureFlagConfig {
@@ -184,6 +184,20 @@ export class FeatureFlagManager {
   }
 
   /**
+   * Hash user ID for consistent rollout percentage
+   */
+  private hashUserId(userId: number, flagId: string): number {
+    const str = `${userId}-${flagId}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+  }
+
+  /**
    * Initialize default feature flags
    */
   private initializeDefaultFlags(): void {
@@ -200,35 +214,33 @@ export class FeatureFlagManager {
       {
         id: 'beta_user_management',
         name: 'Beta User Management',
-        description: 'New user management interface (beta)',
+        description: 'New user management interface with enhanced features',
         enabled: true,
-        requiredPermissions: ['can_manage_users'],
-        requiredRoles: ['admin', 'superadmin'],
+        requiredRoles: ['admin'],
         environment: 'all',
-        rolloutPercentage: 75
+        rolloutPercentage: 50
       },
       {
-        id: 'emergency_access_module',
-        name: 'Emergency Access Module',
-        description: 'Advanced emergency access controls',
+        id: 'emergency_protocols',
+        name: 'Emergency Access Protocols',
+        description: 'Enhanced emergency access controls and tracking',
         enabled: true,
         requiredPermissions: ['can_emergency_access'],
         environment: 'all',
         rolloutPercentage: 100
       },
       {
-        id: 'research_data_export',
-        name: 'Research Data Export',
-        description: 'Enhanced data export capabilities for researchers',
+        id: 'research_analytics',
+        name: 'Research Analytics Dashboard',
+        description: 'Advanced analytics for research data and studies',
         enabled: true,
-        requiredPermissions: ['can_access_research_data'],
         requiredRoles: ['researcher', 'admin'],
         environment: 'all',
-        rolloutPercentage: 50
+        rolloutPercentage: 75
       },
       {
         id: 'patient_portal_v2',
-        name: 'Patient Portal V2',
+        name: 'Patient Portal v2',
         description: 'Next generation patient portal with enhanced features',
         enabled: false,
         requiredRoles: ['patient'],
@@ -236,12 +248,12 @@ export class FeatureFlagManager {
         rolloutPercentage: 25
       },
       {
-        id: 'ai_diagnostic_assistant',
-        name: 'AI Diagnostic Assistant',
-        description: 'AI-powered diagnostic recommendations',
+        id: 'ai_assisted_diagnosis',
+        name: 'AI-Assisted Diagnosis',
+        description: 'Machine learning powered diagnostic assistance',
         enabled: false,
-        requiredPermissions: ['can_access_patient_data'],
         requiredRoles: ['provider', 'admin'],
+        requiredPermissions: ['can_access_patient_data'],
         environment: 'development',
         rolloutPercentage: 10
       }
@@ -253,21 +265,7 @@ export class FeatureFlagManager {
   }
 
   /**
-   * Hash user ID for consistent rollout percentages
-   */
-  private hashUserId(userId: number, flagId: string): number {
-    const str = `${userId}-${flagId}`;
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash);
-  }
-
-  /**
-   * Notify all listeners of flag changes
+   * Notify listeners of flag changes
    */
   private notifyListeners(flagId: string, enabled: boolean): void {
     this.listeners.forEach(listener => {
@@ -282,13 +280,16 @@ export class FeatureFlagManager {
 
 /**
  * React hook for feature flags
+ * FIXED: Handle null to undefined conversion for UserRole type compatibility
  */
 export function useFeatureFlags() {
   const { user, hasPermission, getUserRole } = useAuth();
   const [manager] = React.useState(() => {
+    const userRole = getUserRole();
     return new FeatureFlagManager({
       userId: user?.id,
-      userRole: getUserRole(),
+      // FIXED: Convert null to undefined to match FeatureFlagConfig interface
+      userRole: userRole || undefined,
       permissions: [] // This would be populated from your permission system
     });
   });
@@ -307,9 +308,11 @@ export function useFeatureFlags() {
       if (hasPermission('can_access_research_data')) permissions.push('can_access_research_data');
       if (hasPermission('can_emergency_access')) permissions.push('can_emergency_access');
       
+      const userRole = getUserRole();
       manager.updateConfig({
         userId: user.id,
-        userRole: getUserRole(),
+        // FIXED: Convert null to undefined to match FeatureFlagConfig interface
+        userRole: userRole || undefined,
         permissions
       });
 
@@ -432,25 +435,25 @@ export function FeatureFlagAdmin() {
                   {isEnabled(flag.id) ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
                 {flag.rolloutPercentage !== undefined && (
                   <div className="flex items-center space-x-2">
-                    <label className="text-sm text-gray-600">Rollout:</label>
+                    <span className="text-sm text-gray-600">Rollout:</span>
                     <input
                       type="range"
                       min="0"
                       max="100"
                       value={flag.rolloutPercentage}
-                      onChange={(e) => updateRollout(flag.id, Number(e.target.value))}
+                      onChange={(e) => updateRollout(flag.id, parseInt(e.target.value))}
                       className="w-20"
                     />
-                    <span className="text-sm text-gray-900 w-8">{flag.rolloutPercentage}%</span>
+                    <span className="text-sm text-gray-600 w-10">{flag.rolloutPercentage}%</span>
                   </div>
                 )}
                 <button
                   onClick={() => toggleFlag(flag.id, !flag.enabled)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    flag.enabled
+                  className={`px-3 py-1 rounded text-sm font-medium ${
+                    flag.enabled 
                       ? 'bg-red-600 text-white hover:bg-red-700'
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
