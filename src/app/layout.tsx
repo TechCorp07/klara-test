@@ -3,7 +3,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { JWTAuthProvider } from '@/lib/auth';
+import { JWTAuthProvider } from '@/lib/auth/auth-provider';
 import { AuthDebug } from '@/components/debug/AuthDebug';
 
 const inter = Inter({ subsets: ['latin'] });

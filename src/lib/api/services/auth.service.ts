@@ -1,9 +1,4 @@
-// src/lib/api/services/jwt-auth.service.ts
-/**
- * JWT Authentication Service - Simplified Implementation
- * 
- */
-
+// src/lib/api/services/auth.service.ts
 import { jwtApiClient, extractDataFromResponse } from '../client';
 import { ENDPOINTS } from '../endpoints';
 import type { 
@@ -16,8 +11,6 @@ import type {
 
 /**
  * Authentication response interfaces
- * 
- * These interfaces define the expected responses from authentication endpoints.
  */
 interface AuthResponse {
   success: boolean;
@@ -39,17 +32,10 @@ interface LogoutResponse {
 
 /**
  * JWT Authentication Service Class
- * 
- * This service provides authentication methods that work seamlessly with
- * JWT tokens stored in HttpOnly cookies, eliminating the complex token
- * management that was causing race conditions.
  */
 class JWTAuthService {
   /**
    * User login with credentials
-   * 
-   * This method authenticates users and relies on the backend to set
-   * HttpOnly cookies. No client-side token storage is needed.
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
@@ -64,10 +50,9 @@ class JWTAuthService {
         throw new Error(data.message || 'Login failed');
       }
 
-      // Return the response - cookies are automatically set by the backend
       return {
         success: true,
-        token: data.token || '', // Token for immediate use if needed
+        token: data.token || '',
         user: data.user as User,
         message: data.message || 'Login successful',
       };
@@ -82,8 +67,6 @@ class JWTAuthService {
 
   /**
    * User registration
-   * 
-   * This method handles user registration through the backend API.
    */
   async register(userData: RegisterRequest): Promise<RegisterResponse> {
     try {
@@ -102,7 +85,7 @@ class JWTAuthService {
         success: true,
         user: data.user as User,
         message: data.message || 'Registration successful',
-        requiresVerification: true, // Most registrations require email verification
+        requiresVerification: true,
       };
 
     } catch (error) {
@@ -114,37 +97,37 @@ class JWTAuthService {
   }
 
   /**
-   * User logout
-   * 
-   * This method logs out the user and clears HttpOnly cookies via the backend.
+   * User logout - Updated for proper session termination
    */
   async logout(): Promise<void> {
     try {
-      const response = await jwtApiClient.post<LogoutResponse>(
-        ENDPOINTS.AUTH.LOGOUT
-      );
+      console.log('🚪 AuthService: Starting logout...');
+      
+      // Call the frontend logout API (this will handle both frontend and backend logout)
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      const data = extractDataFromResponse(response);
-
-      if (!data.success) {
-        console.warn('Logout API returned non-success, but continuing with client cleanup');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ AuthService: Logout successful:', data.message);
+      } else {
+        console.warn('⚠️ AuthService: Logout API returned non-success, but continuing');
       }
-
-      // Cookies are cleared by the backend, no client-side cleanup needed
-      console.log('Logout completed successfully');
 
     } catch (error) {
       // Log error but don't throw - logout should always succeed on client side
-      console.error('Logout service error:', error);
-      console.log('Logout completed despite API error');
+      console.error('❌ AuthService: Logout error:', error);
+      console.log('✅ AuthService: Logout completed despite API error');
     }
   }
 
   /**
    * Get current user information
-   * 
-   * This method retrieves current user data using the JWT token in cookies.
-   * The backend validates the JWT and returns user information.
    */
   async getCurrentUser(): Promise<User> {
     try {
@@ -163,9 +146,6 @@ class JWTAuthService {
 
   /**
    * Refresh JWT token
-   * 
-   * This method refreshes the JWT token before it expires to maintain
-   * seamless authentication without requiring user re-login.
    */
   async refreshToken(): Promise<string> {
     try {
@@ -179,7 +159,6 @@ class JWTAuthService {
         throw new Error('Token refresh failed');
       }
 
-      // Return the new token - cookies are automatically updated by backend
       return data.token;
 
     } catch (error) {
@@ -192,8 +171,6 @@ class JWTAuthService {
 
   /**
    * Verify email address
-   * 
-   * This method handles email verification for new user accounts.
    */
   async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
     try {
@@ -219,8 +196,6 @@ class JWTAuthService {
 
   /**
    * Request password reset
-   * 
-   * This method initiates the password reset process.
    */
   async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
     try {
@@ -233,11 +208,11 @@ class JWTAuthService {
 
       return {
         success: data.success,
-        message: data.message || 'Password reset requested',
+        message: data.message || 'Password reset email sent',
       };
 
     } catch (error) {
-      console.error('Password reset request service error:', error);
+      console.error('Password reset request error:', error);
       throw new Error(
         error instanceof Error ? error.message : 'Password reset request failed'
       );
@@ -246,13 +221,8 @@ class JWTAuthService {
 
   /**
    * Reset password with token
-   * 
-   * This method completes the password reset process using a reset token.
    */
-  async resetPassword(
-    token: string, 
-    newPassword: string
-  ): Promise<{ success: boolean; message: string }> {
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await jwtApiClient.post<AuthResponse>(
         ENDPOINTS.AUTH.RESET_PASSWORD,
@@ -263,136 +233,22 @@ class JWTAuthService {
 
       return {
         success: data.success,
-        message: data.message || 'Password reset successfully',
+        message: data.message || 'Password reset successful',
       };
 
     } catch (error) {
-      console.error('Password reset service error:', error);
+      console.error('Password reset error:', error);
       throw new Error(
         error instanceof Error ? error.message : 'Password reset failed'
       );
     }
   }
-
-  /**
-   * Setup two-factor authentication
-   * 
-   * This method initiates 2FA setup for a user account.
-   */
-  async setupTwoFactor(): Promise<{ qr_code: string; secret: string }> {
-    try {
-      const response = await jwtApiClient.post<{ qr_code: string; secret: string }>(
-        ENDPOINTS.AUTH.SETUP_2FA
-      );
-
-      return extractDataFromResponse(response);
-
-    } catch (error) {
-      console.error('2FA setup service error:', error);
-      throw new Error(
-        error instanceof Error ? error.message : '2FA setup failed'
-      );
-    }
-  }
-
-  /**
-   * Verify two-factor authentication code
-   * 
-   * This method verifies a 2FA code during the authentication process.
-   */
-  async verifyTwoFactor(userId: number, code: string): Promise<LoginResponse> {
-    try {
-      const response = await jwtApiClient.post<AuthResponse>(
-        ENDPOINTS.AUTH.VERIFY_2FA,
-        { user_id: userId, code }
-      );
-
-      const data = extractDataFromResponse(response);
-
-      if (!data.success) {
-        throw new Error(data.message || '2FA verification failed');
-      }
-
-      return {
-        success: true,
-        token: data.token || '',
-        user: data.user as User,
-        message: data.message || '2FA verification successful',
-      };
-
-    } catch (error) {
-      console.error('2FA verification service error:', error);
-      throw new Error(
-        error instanceof Error ? error.message : '2FA verification failed'
-      );
-    }
-  }
-
-  /**
-   * Check account status
-   * 
-   * This method checks the status of a user account (useful for registration flow).
-   */
-  async checkAccountStatus(email: string): Promise<{
-    exists: boolean;
-    is_approved: boolean;
-    email_verified: boolean;
-    role: string;
-    message: string;
-  }> {
-    try {
-      const response = await jwtApiClient.post<{
-        exists: boolean;
-        is_approved: boolean;
-        email_verified: boolean;
-        role: string;
-        message: string;
-      }>(
-        ENDPOINTS.AUTH.CHECK_STATUS,
-        { email }
-      );
-
-      return extractDataFromResponse(response);
-
-    } catch (error) {
-      console.error('Account status check service error:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Account status check failed'
-      );
-    }
-  }
-
-  /**
-   * Health check method
-   * 
-   * This method verifies that the authentication service is responding correctly.
-   */
-  async healthCheck(): Promise<boolean> {
-    try {
-      // Try to access a lightweight endpoint
-      await jwtApiClient.get('/health');
-      return true;
-    } catch (error) {
-      console.error('Auth service health check failed:', error);
-      return false;
-    }
-  }
 }
 
 /**
- * Create and export the JWT authentication service instance
- * 
- * This singleton pattern ensures consistent configuration throughout your application.
+ * Export singleton instance
  */
 export const jwtAuthService = new JWTAuthService();
 
-/**
- * Backward compatibility exports
- * 
- * These exports maintain compatibility with existing code while transitioning
- * to the new JWT authentication service.
- */
-export const authService = jwtAuthService; // Alias for backward compatibility
-
-// Export the main service as default
 export default jwtAuthService;
+export const authService = jwtAuthService; // Alias for backward compatibility

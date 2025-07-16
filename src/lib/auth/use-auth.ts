@@ -1,8 +1,8 @@
 // src/lib/auth/use-auth.ts
 'use client';
 
-import { useContext } from 'react';
-import { EnhancedJWTAuthContext, type EnhancedJWTAuthContextType } from './auth-provider';
+import { useContext, useCallback } from 'react';
+import { JWTAuthContext, type JWTAuthContextType } from './auth-provider';
 import { JWTPayload } from './validator';
 import { 
   UserRole, 
@@ -14,7 +14,7 @@ import {
 
 export interface UseJWTAuthReturn {
   // Core authentication state
-  user: EnhancedJWTAuthContextType['user'];
+  user: JWTAuthContextType['user'];
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
@@ -30,7 +30,13 @@ export interface UseJWTAuthReturn {
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   
-  // Permission checking methods
+  // Additional auth methods that components might expect
+  requestPasswordReset?: (email: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
+  resetPassword?: (token: string, password: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
+  verifyTwoFactor?: (userId: number, code: string) => Promise<LoginResponse>;
+  verifyEmail?: (token: string) => Promise<{ success: boolean; message: string }>;
+  
+  // Permission checking methods - Updated to handle string permissions
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
@@ -42,211 +48,171 @@ export interface UseJWTAuthReturn {
   canAccessAudit: boolean;
   canManageSystemSettings: boolean;
   
-  // Enhanced permissions
-  canEmergencyAccess: boolean;
-  canAccessPatientData: boolean;
-  canAccessResearchData: boolean;
-  hasMedicalRecordsAccess: boolean;
-  canManageAppointments: boolean;
-  canAccessTelemedicine: boolean;
-  canManageMedications: boolean;
-  canAccessClinicalTrials: boolean;
-  
   // Utility methods
   getUserId: () => number | null;
   getUserRole: () => UserRole | null;
   getSessionId: () => string | null;
-  
-  // Feature flags
-  isFeatureEnabled: (flag: string) => boolean;
-  
-  // Route protection
-  isPublicRoute: boolean;
-  
-  // Additional computed properties for easier access
-  currentUserId: number | null;
-  currentUserRole: UserRole | null;
-  currentSessionId: string | null;
-  
-  // Permission helpers
-  isPatient: boolean;
-  isProvider: boolean;
-  isPharmco: boolean;
-  isCaregiver: boolean;
-  isResearcher: boolean;
-  isCompliance: boolean;
-  
-  // Quick access to common permissions
-  canViewOwnData: boolean;
-  canEditOwnProfile: boolean;
-  hasIdentityVerified: boolean;
-  
-  // Token status helpers
-  isTokenExpiringSoon: boolean;
-  tokenExpirationMinutes: number | null;
-  
-  // Enhanced feature checks
-  canAccessDashboard: boolean;
-  canAccessUserManagement: boolean;
-  canAccessReports: boolean;
-  canAccessSystemSettings: boolean;
 }
 
 /**
- * Main JWT authentication hook - Enhanced with all features
- * This is the single hook that replaces your existing useAuth
+ * Main JWT authentication hook
  */
 export function useJWTAuth(): UseJWTAuthReturn {
-  const context = useContext(EnhancedJWTAuthContext);
+  const context = useContext(JWTAuthContext);
   
   if (!context) {
-    throw new Error('useJWTAuth must be used within an EnhancedJWTAuthProvider');
+    throw new Error('useJWTAuth must be used within a JWTAuthProvider');
   }
 
-  // Properly destructure context with type safety
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    isInitialized,
-    jwtPayload,
-    tokenNeedsRefresh,
-    timeToExpiration,
-    login,
-    register,
-    logout,
-    refreshToken,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    isAdmin,
-    isSuperAdmin,
-    canManageUsers,
-    canAccessAudit,
-    canManageSystemSettings,
-    canEmergencyAccess,
-    canAccessPatientData,
-    canAccessResearchData,
-    hasMedicalRecordsAccess,
-    canManageAppointments,
-    canAccessTelemedicine,
-    canManageMedications,
-    canAccessClinicalTrials,
-    getUserId,
-    getUserRole,
-    getSessionId,
-    isFeatureEnabled,
-    isPublicRoute,
-  } = context;
+  // Fallback implementations for methods that components might expect
+  const requestPasswordReset = useCallback(async (email: string) => {
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      return { 
+        detail: data.message || 'Password reset email sent',
+        success: response.ok,
+        message: data.message || 'Password reset email sent'
+      };
+    } catch (error) {
+      throw new Error('Password reset request failed');
+    }
+  }, []);
 
-  // Additional computed properties
-  const currentUserId = getUserId();
-  const currentUserRole = getUserRole();
-  const currentSessionId = getSessionId();
-  
-  // Role-based boolean helpers
-  const isPatient = currentUserRole === 'patient';
-  const isProvider = currentUserRole === 'provider';
-  const isPharmco = currentUserRole === 'pharmco';
-  const isCaregiver = currentUserRole === 'caregiver';
-  const isResearcher = currentUserRole === 'researcher';
-  const isCompliance = currentUserRole === 'compliance';
-  
-  // Permission helpers for common use cases
-  const canViewOwnData = hasPermission('can_view_own_data');
-  const canEditOwnProfile = hasPermission('can_edit_own_profile');
-  const hasIdentityVerified = hasPermission('identity_verified') || false;
-  
-  // Token status helpers
-  const isTokenExpiringSoon = timeToExpiration !== null && timeToExpiration < 10 * 60 * 1000; // 10 minutes
-  const tokenExpirationMinutes = timeToExpiration !== null ? Math.floor(timeToExpiration / (60 * 1000)) : null;
-  
-  // Enhanced feature checks
-  const canAccessDashboard = isFeatureEnabled('system_monitoring') || hasPermission('has_dashboard_access');
-  const canAccessUserManagement = isFeatureEnabled('user_management');
-  const canAccessReports = isFeatureEnabled('custom_reports');
-  const canAccessSystemSettings = isFeatureEnabled('system_monitoring');
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      });
+      
+      const data = await response.json();
+      return {
+        detail: data.message || 'Password reset successful',
+        success: response.ok,
+        message: data.message || 'Password reset successful'
+      };
+    } catch (error) {
+      throw new Error('Password reset failed');
+    }
+  }, []);
+
+  const verifyTwoFactor = useCallback(async (userId: number, code: string): Promise<LoginResponse> => {
+    try {
+      const response = await fetch('/api/auth/verify-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, code }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Two-factor verification failed');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw new Error('Two-factor verification failed');
+    }
+  }, []);
+
+  const verifyEmail = useCallback(async (token: string) => {
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      
+      const data = await response.json();
+      return {
+        success: response.ok,
+        message: data.message || 'Email verification processed'
+      };
+    } catch (error) {
+      throw new Error('Email verification failed');
+    }
+  }, []);
 
   // Return all context methods and properties with proper typing
   return {
     // Core state
-    user,
-    isAuthenticated,
-    isLoading,
-    isInitialized,
+    user: context.user,
+    isAuthenticated: context.isAuthenticated,
+    isLoading: context.isLoading,
+    isInitialized: context.isInitialized,
     
-    // JWT state
-    jwtPayload,
-    tokenNeedsRefresh,
-    timeToExpiration,
+    // JWT-specific state
+    jwtPayload: context.jwtPayload,
+    tokenNeedsRefresh: context.tokenNeedsRefresh,
+    timeToExpiration: context.timeToExpiration,
     
-    // Authentication methods
-    login,
-    register,
-    logout,
-    refreshToken,
+    // Authentication methods - already properly typed in context
+    login: context.login,
+    register: context.register,
+    logout: context.logout,
+    refreshToken: context.refreshToken,
     
-    // Permission methods
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
+    // Additional methods for backward compatibility
+    requestPasswordReset,
+    resetPassword,
+    verifyTwoFactor,
+    verifyEmail,
+    
+    // Permission methods - now handle string permissions
+    hasPermission: context.hasPermission,
+    hasAnyPermission: context.hasAnyPermission,
+    hasAllPermissions: context.hasAllPermissions,
     
     // Computed permissions
-    isAdmin,
-    isSuperAdmin,
-    canManageUsers,
-    canAccessAudit,
-    canManageSystemSettings,
-    canEmergencyAccess,
-    canAccessPatientData,
-    canAccessResearchData,
-    hasMedicalRecordsAccess,
-    canManageAppointments,
-    canAccessTelemedicine,
-    canManageMedications,
-    canAccessClinicalTrials,
+    isAdmin: context.isAdmin,
+    isSuperAdmin: context.isSuperAdmin,
+    canManageUsers: context.canManageUsers,
+    canAccessAudit: context.canAccessAudit,
+    canManageSystemSettings: context.canManageSystemSettings,
     
     // Utility methods
-    getUserId,
-    getUserRole,
-    getSessionId,
-    
-    // Feature flags
-    isFeatureEnabled,
-    
-    // Route protection
-    isPublicRoute,
-    
-    // Additional computed properties
-    currentUserId,
-    currentUserRole,
-    currentSessionId,
-    
-    // Role helpers
-    isPatient,
-    isProvider,
-    isPharmco,
-    isCaregiver,
-    isResearcher,
-    isCompliance,
-    
-    // Permission helpers
-    canViewOwnData,
-    canEditOwnProfile,
-    hasIdentityVerified,
-    
-    // Token status helpers
-    isTokenExpiringSoon,
-    tokenExpirationMinutes,
-    
-    // Enhanced feature checks
-    canAccessDashboard,
-    canAccessUserManagement,
-    canAccessReports,
-    canAccessSystemSettings,
+    getUserId: context.getUserId,
+    getUserRole: context.getUserRole,
+    getSessionId: context.getSessionId,
   };
 }
 
-// Export for backward compatibility
-export { useJWTAuth as useAuth };
+/**
+ * Specialized hooks for common permission checks
+ */
+export function useAdminAccess() {
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_admin_access'), [hasPermission]);
+}
+
+export function useUserManagementAccess() {
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_user_management_access'), [hasPermission]);
+}
+
+export function useAuditAccess() {
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_audit_access'), [hasPermission]);
+}
+
+export function useComplianceAccess() {
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_compliance_access'), [hasPermission]);
+}
+
+export function useSystemSettingsAccess() {
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_system_settings_access'), [hasPermission]);
+}
+
+// Export default and compatibility exports
 export default useJWTAuth;
+
+// For backward compatibility, export as useAuth as well
+export { useJWTAuth as useAuth };

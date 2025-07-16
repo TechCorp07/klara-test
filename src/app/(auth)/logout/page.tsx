@@ -1,23 +1,25 @@
-// src/app/auth/logout/page.tsx
+// src/app/(auth)/logout/page.tsx
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 /**
- * This page handles the /logout route that was causing 404 errors.
- * It immediately calls the logout API and redirects to login.
+ * Logout page component - Fixed endpoint calls
+ * 
+ * This page handles the /logout route and performs proper logout
+ * by calling the correct API endpoints.
  */
-export default function AuthLogoutPage() {
+export default function LogoutPage() {
   const router = useRouter();
 
   useEffect(() => {
     const performLogout = async () => {
       try {
-        console.log('🚪 /logout route accessed, performing logout...');
+        console.log('🚪 Logout page accessed, performing logout...');
         
-        // Call the logout API endpoint
-        await fetch('/api/logout', {
+        // Call the correct logout API endpoint
+        const response = await fetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -25,12 +27,20 @@ export default function AuthLogoutPage() {
           },
         });
         
-        console.log('✅ Logout API called successfully');
+        if (response.ok) {
+          console.log('✅ Logout API called successfully');
+        } else {
+          console.warn('⚠️ Logout API returned non-success status, but continuing');
+        }
+        
       } catch (error) {
         console.error('❌ Logout API error:', error);
+        // Continue with redirect even if API fails
       } finally {
         // Always redirect to login regardless of API success/failure
         console.log('🔄 Redirecting to login page...');
+        
+        // Use replace to prevent back button issues
         router.replace('/login');
       }
     };
@@ -48,7 +58,9 @@ export default function AuthLogoutPage() {
           <div className="h-4 w-4 bg-blue-500 rounded-full mx-auto"></div>
         </div>
         <p className="text-gray-600">Signing out...</p>
-        <p className="text-sm text-gray-400 mt-2">Please wait while we securely log you out.</p>
+        <p className="text-sm text-gray-400 mt-2">
+          Please wait while we securely log you out.
+        </p>
       </div>
     </div>
   );
