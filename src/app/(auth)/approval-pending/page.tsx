@@ -37,25 +37,23 @@ export default function ApprovalPendingPage() {
 
   
   
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      setErrorMessage(null);
-      
-      await logout();
-      router.push('/login');
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Logout error:', error.message);
-      } else {
-        console.error('Logout error:', error);
-      }
-      setErrorMessage('Failed to log out. Please try again.');
-    } finally {
-      setIsLoggingOut(false);
+// Handle logout
+const handleLogout = async () => {
+  try {
+    setIsLoggingOut(true);
+    setErrorMessage(null);
+    
+    await logout();
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Logout error:', error.message);
+    } else {
+      console.error('Logout error:', error);
     }
-  };
+    setErrorMessage('Failed to log out. Please try again.');
+    setIsLoggingOut(false);
+  }
+};
   
   // Get user role for appropriate messaging
   const userRole = user?.role || '';

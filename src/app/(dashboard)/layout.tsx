@@ -1,25 +1,32 @@
 // src/app/(dashboard)/layout.tsx
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useDashboardPermissions } from '@/hooks/dashboard/useDashboardPermissions';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { Spinner } from '@/components/ui/spinner';
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-/**
- * Main dashboard layout with permission-based navigation
- * This replaces the basic dashboard layout with a permission-aware system
- */
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isLoading, isAuthenticated, user, hasPermission, getUserRole } = useAuth();
   const { navigation, quickActions, canViewDashboard, userRole } = useDashboardPermissions();
+  const { logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Show loading spinner during authentication check
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      // Auth context handles redirect
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setIsLoggingOut(false);
+    }
+  };
+  
   if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -30,8 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
     );
   }
-
-  // Check if user has permission to view any dashboard
+``
   if (!canViewDashboard) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -44,12 +50,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             Role: {userRole} | Email: {user?.email}
           </p>
           <div className="mt-6">
-            <a
-              href="/logout"
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign Out
-            </a>
+              {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+            </button>
           </div>
         </div>
       </div>
@@ -57,7 +64,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const getIconComponent = (iconName: string) => {
-    // Simple icon mapping - in production, use a proper icon library
     const iconMap: Record<string, string> = {
       'home': '🏠',
       'users': '👥',
@@ -253,12 +259,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </span>
               
               {/* Logout link */}
-              <a
-                href="/logout"
-                className="text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                Sign Out
-              </a>
+              <div className="mt-6">
+                <button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

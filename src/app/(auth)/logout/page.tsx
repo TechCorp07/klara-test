@@ -3,44 +3,23 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 
-/**
- * Logout page component - Fixed endpoint calls
- * 
- * This page handles the /logout route and performs proper logout
- * by calling the correct API endpoints.
- */
 export default function LogoutPage() {
   const router = useRouter();
+  const { logout } = useAuth();
 
   useEffect(() => {
     const performLogout = async () => {
       try {
         console.log('🚪 Logout page accessed, performing logout...');
         
-        // Call the correct logout API endpoint
-        const response = await fetch('/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          console.log('✅ Logout API called successfully');
-        } else {
-          console.warn('⚠️ Logout API returned non-success status, but continuing');
-        }
+        // Use the auth context logout method which handles everything
+        await logout();
         
       } catch (error) {
-        console.error('❌ Logout API error:', error);
-        // Continue with redirect even if API fails
-      } finally {
-        // Always redirect to login regardless of API success/failure
-        console.log('🔄 Redirecting to login page...');
-        
-        // Use replace to prevent back button issues
+        console.error('❌ Logout error:', error);
+        // Even if logout fails, redirect to login
         router.replace('/login');
       }
     };
@@ -49,7 +28,7 @@ export default function LogoutPage() {
     const timeoutId = setTimeout(performLogout, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [router]);
+  }, [logout, router]);
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">

@@ -111,14 +111,14 @@ class JWTAuthService {
           'Content-Type': 'application/json',
         },
       });
-
+  
       if (response.ok) {
         const data = await response.json();
         console.log('✅ AuthService: Logout successful:', data.message);
       } else {
         console.warn('⚠️ AuthService: Logout API returned non-success, but continuing');
       }
-
+  
     } catch (error) {
       // Log error but don't throw - logout should always succeed on client side
       console.error('❌ AuthService: Logout error:', error);

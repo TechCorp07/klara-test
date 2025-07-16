@@ -75,7 +75,6 @@ export default function BaseAuthenticatedLayout({
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }

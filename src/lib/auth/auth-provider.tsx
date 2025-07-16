@@ -298,34 +298,22 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /**
-   * Logout method - FIXED
-   */
   const logout = async (): Promise<void> => {
     try {
       console.log('🚪 Starting logout process...');
       
-      // Call both frontend and backend logout endpoints
-      const frontendLogout = fetch('/api/auth/logout', {
+      // Call the frontend logout API which handles both frontend and backend logout
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
-      
-      // Call backend logout through our API proxy if session ID is available
-      const backendLogout = jwtPayload?.session_id 
-        ? fetch('/api/auth/logout-backend', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: jwtPayload.session_id }),
-          })
-        : Promise.resolve();
-
-      // Wait for both calls to complete (don't throw on errors)
-      await Promise.allSettled([frontendLogout, backendLogout]);
-      
-      console.log('✅ Logout API calls completed');
+  
+      if (response.ok) {
+        console.log('✅ Logout API successful');
+      } else {
+        console.warn('⚠️ Logout API returned non-success status, but continuing with cleanup');
+      }
       
     } catch (error) {
       console.error('❌ Logout API error:', error);
@@ -339,7 +327,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       
       console.log('✅ Local logout state cleared');
       
-      // Redirect to login
+      // Redirect to login page
       router.push('/login');
     }
   };
