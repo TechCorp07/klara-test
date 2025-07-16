@@ -1,42 +1,42 @@
 // src/hooks/useNavigationPermissions.ts
-import { usePermissions } from './usePermissions';
+import { useAuth } from '@/lib/auth';
 
 export const useNavigationPermissions = () => {
-  const { permissions, loading, error } = usePermissions();
+  const { user, jwtPayload, hasPermission, isLoading } = useAuth();
 
   const canAccess = {
     // Admin-only navigation items
-    userManagement: permissions?.has_user_management_access || false,
-    approvals: permissions?.has_approval_permissions || false,
-    systemSettings: permissions?.has_system_settings_access || false,
+    userManagement: hasPermission('has_user_management_access'),
+    approvals: hasPermission('has_approval_permissions'),
+    systemSettings: hasPermission('has_system_settings_access'),
     
     // Compliance navigation items
-    auditLogs: permissions?.has_audit_access || false,
-    complianceReports: permissions?.has_compliance_reports_access || false,
+    auditLogs: hasPermission('has_audit_access'),
+    complianceReports: hasPermission('has_compliance_reports_access'),
     
     // Healthcare navigation items
-    healthRecords: permissions?.has_patient_data_access || false,
-    medicalRecords: permissions?.has_medical_records_access || false,
-    appointments: permissions?.can_manage_appointments || false,
-    telemedicine: permissions?.can_access_telemedicine || false,
-    medications: permissions?.can_manage_medications || false,
+    healthRecords: hasPermission('has_patient_data_access'),
+    medicalRecords: hasPermission('has_medical_records_access'),
+    appointments: hasPermission('can_manage_appointments'),
+    telemedicine: hasPermission('can_access_telemedicine'),
+    medications: hasPermission('can_manage_medications'),
     
     // Research navigation items
-    research: permissions?.can_view_research_data || false,
-    clinicalTrials: permissions?.can_access_clinical_trials || false,
+    research: hasPermission('has_research_data_access'),
+    clinicalTrials: hasPermission('can_access_clinical_trials'),
     
-    // General navigation items (all users)
-    dashboard: permissions?.has_dashboard_access || false,
-    profile: permissions?.can_view_own_data || false,
-    messages: permissions?.has_dashboard_access || false, // All dashboard users can access messages
-    settings: permissions?.can_view_own_data || false,
+    // General navigation items (all authenticated users)
+    dashboard: true, // All authenticated users can access their dashboard
+    profile: true,   // All users can view their own profile
+    messages: true,  // All users can access messages
+    settings: true,  // All users can access settings
   };
 
   return {
     canAccess,
-    permissions,
-    loading,
-    error,
-    userRole: permissions?.user_role || 'unknown'
+    permissions: jwtPayload?.permissions || null,
+    loading: isLoading,
+    error: null, // No more async permission loading, so no errors
+    userRole: user?.role || 'unknown'
   };
 };

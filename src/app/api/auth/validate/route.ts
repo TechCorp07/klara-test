@@ -18,9 +18,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Return the token for client-side validation
-    // Note: This doesn't verify the token signature - that's done on the backend
-    // The client will validate structure, expiration, and extract permissions
     return NextResponse.json({
       token,
       message: 'Token extracted successfully'
