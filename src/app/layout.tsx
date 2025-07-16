@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { JWTAuthProvider } from '@/lib/auth';
+import { AuthDebug } from '@/components/debug/AuthDebug';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <JWTAuthProvider>
           {children}
+          <AuthDebug />
         </JWTAuthProvider>
       </body>
     </html>

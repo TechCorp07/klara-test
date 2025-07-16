@@ -1,9 +1,4 @@
-// src/jwt-middleware.ts
-/**
- * JWT Authentication Middleware - Local Token Validation
- * 
- */
-
+// src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
@@ -45,8 +40,7 @@ const EXCLUDED_PATHS = [
   '/manifest.json',
 ];
 
-// Role-based route access mapping - this will be replaced by permission-based routing
-// but provides backward compatibility during migration
+// Role-based route access mapping
 const ROLE_ROUTES: Record<UserRole, string[]> = {
   patient: ['/patient', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/telemedicine', '/research', '/clinical-trials', '/medications'],
   provider: ['/provider', '/profile', '/settings', '/messages', '/clinical-trials', '/patients', '/health-records', '/appointments', '/telemedicine', '/medications'],
@@ -59,10 +53,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
 };
 
 /**
- * JWT Token Structure Interface
- * 
- * This defines the expected structure of your JWT payload based on your backend
- * implementation. We validate this structure locally without requiring the secret.
+ * JWT Token Structure Interface for local validation
  */
 interface JWTPayload {
   user_id: number;
@@ -88,54 +79,45 @@ interface JWTPayload {
 }
 
 /**
- * Local JWT Validation Function
- * 
- * This function validates JWT structure and expiration WITHOUT requiring the secret.
- * We're using Option A approach - structure validation only. The backend will
- * handle signature validation when API calls are made.
- * 
- * Think of this like checking an ID card's format and expiration date without
- * calling the issuing authority to verify authenticity. It's fast and eliminates
- * timing issues while still providing good security.
+ * Validate JWT token structure and expiration locally
+ * This does NOT verify the signature - that's done on the backend
  */
-function validateJWTStructure(token: string): {
-  isValid: boolean;
-  payload?: JWTPayload;
-  error?: string;
-} {
+function validateJWTStructure(token: string): { isValid: boolean; payload?: JWTPayload; error?: string } {
   try {
-    // Split JWT into parts (header.payload.signature)
+    // Basic format validation
+    if (!token || typeof token !== 'string') {
+      return { isValid: false, error: 'Invalid token format' };
+    }
+
+    // JWT structure validation (header.payload.signature)
     const parts = token.split('.');
     if (parts.length !== 3) {
-      return { isValid: false, error: 'Invalid JWT format - missing parts' };
+      return { isValid: false, error: 'Invalid JWT structure' };
     }
 
-    // Decode payload (this doesn't verify signature, just extracts data)
-    const payloadBase64 = parts[1];
-    
-    // Add padding if needed for proper base64 decoding
-    const paddedPayload = payloadBase64.padEnd(
-      payloadBase64.length + (4 - payloadBase64.length % 4) % 4, 
-      '='
-    );
-    
-    const payloadJson = atob(paddedPayload);
-    const payload: JWTPayload = JSON.parse(payloadJson);
-
-    // Validate required fields exist
-    if (!payload.user_id || !payload.email || !payload.role || !payload.exp) {
-      return { isValid: false, error: 'JWT missing required fields' };
+    // Decode payload without signature verification
+    const payload = decodeJWTPayload(parts[1]);
+    if (!payload) {
+      return { isValid: false, error: 'Failed to decode payload' };
     }
 
-    // Check expiration (exp is in seconds, Date.now() is in milliseconds)
+    // Validate required fields
+    const requiredFields = ['user_id', 'email', 'role', 'exp', 'iat', 'jti'];
+    for (const field of requiredFields) {
+      if (!(field in payload)) {
+        return { isValid: false, error: `Missing required field: ${field}` };
+      }
+    }
+
+    // Check if token is expired
     const currentTime = Math.floor(Date.now() / 1000);
-    if (payload.exp < currentTime) {
-      return { isValid: false, error: 'JWT token expired' };
+    if (payload.exp <= currentTime) {
+      return { isValid: false, error: 'Token expired' };
     }
 
-    // Validate role is a known role
-    if (!Object.keys(ROLE_ROUTES).includes(payload.role)) {
-      return { isValid: false, error: 'Invalid user role' };
+    // Check if token was issued in the future (clock skew protection)
+    if (payload.iat > currentTime + 60) { // Allow 60 seconds of clock skew
+      return { isValid: false, error: 'Token issued in future' };
     }
 
     return { isValid: true, payload };
@@ -143,92 +125,94 @@ function validateJWTStructure(token: string): {
   } catch (error) {
     return { 
       isValid: false, 
-      error: `JWT parsing error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      error: `Token validation error: ${error instanceof Error ? error.message : 'Unknown error'}` 
     };
   }
 }
 
 /**
- * Check if user has access to a specific route based on their role and permissions
- * 
- * This function will be enhanced with permission-based routing in Phase 2,
- * but for now provides role-based access control for backward compatibility.
+ * Decode JWT payload from base64
  */
-function hasRouteAccess(userRole: UserRole, pathname: string, permissions?: JWTPayload['permissions']): boolean {
-  // First check role-based access
-  const allowedRoutes = ROLE_ROUTES[userRole] || [];
-  const hasRoleAccess = allowedRoutes.some(route => 
-    pathname === route || pathname.startsWith(route + '/')
-  );
+function decodeJWTPayload(payloadBase64: string): JWTPayload | null {
+  try {
+    // Handle base64 padding
+    const paddedPayload = payloadBase64.padEnd(
+      payloadBase64.length + (4 - payloadBase64.length % 4) % 4,
+      '='
+    );
 
-  // Enhanced permission checks for admin routes
-  if (pathname.startsWith('/admin')) {
-    // Require admin access permission for any admin route
-    if (!permissions?.has_admin_access) {
-      return false;
-    }
+    const payloadJson = atob(paddedPayload);
+    return JSON.parse(payloadJson) as JWTPayload;
+  } catch (error) {
+    console.error('JWT payload decode error:', error);
+    return null;
+  }
+}
 
-    // Specific admin route permission checks
-    if (pathname.startsWith('/admin/users') && !permissions?.has_user_management_access) {
-      return false;
-    }
-    
-    if (pathname.startsWith('/admin/audit-logs') && !permissions?.has_audit_access) {
-      return false;
-    }
-    
-    if (pathname.startsWith('/admin/system-settings') && !permissions?.has_system_settings_access) {
-      return false;
-    }
-    
-    if (pathname.startsWith('/admin/compliance') && !permissions?.has_compliance_access) {
-      return false;
-    }
+/**
+ * Check if user role has access to the requested route
+ */
+function hasRouteAccess(
+  role: UserRole, 
+  pathname: string, 
+  permissions?: JWTPayload['permissions']
+): boolean {
+  // Superadmin has access to everything
+  if (role === 'superadmin' || permissions?.is_superadmin) {
+    return true;
   }
 
-  return hasRoleAccess;
+  // Check admin routes with permission-based access
+  if (pathname.startsWith('/admin')) {
+    return permissions?.has_admin_access === true;
+  }
+
+  // Check role-based access for other routes
+  const allowedRoutes = ROLE_ROUTES[role] || [];
+  return allowedRoutes.some(route => pathname.startsWith(route));
+}
+
+/**
+ * Check if the path should be excluded from middleware processing
+ */
+function shouldExcludePath(pathname: string): boolean {
+  return EXCLUDED_PATHS.some(path => pathname.startsWith(path));
+}
+
+/**
+ * Check if the path is a public route
+ */
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname) || 
+         pathname.startsWith('/verify-email/') || 
+         pathname.startsWith('/reset-password/');
 }
 
 /**
  * Main middleware function
- * 
- * This function runs for every request and determines authentication status
- * using ONLY local validation. No HTTP requests are made, eliminating race conditions.
  */
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for excluded paths (static assets, API routes, etc.)
-  const isExcludedPath = EXCLUDED_PATHS.some(excluded => 
-    pathname === excluded || pathname.startsWith(excluded + '/')
-  );
-  
-  if (isExcludedPath) {
+  // Skip middleware for excluded paths
+  if (shouldExcludePath(pathname)) {
     return NextResponse.next();
   }
 
-  // Allow access to public routes without authentication
-  const isPublicRoute = PUBLIC_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(route + '/')
-  );
-  
-  if (isPublicRoute) {
+  // Allow public routes to proceed without authentication
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // Extract JWT token from HttpOnly cookie
-  // This is the ONLY source of authentication - no localStorage or other sources
+  // Extract JWT token from HTTP-only cookie
   const token = request.cookies.get(appConfig.authCookieName)?.value;
-
+  
   if (!token) {
-    console.log(`🔐 No JWT token found for ${pathname} - redirecting to login`);
-    const loginUrl = new URL('/login', request.url);
+    console.log(`🔐 No authentication token found for ${pathname}`);
     
-    // Add return URL for non-root paths to enable redirect after login
-    if (pathname !== '/' && 
-        pathname !== '/dashboard' && 
-        pathname.length < 100 && // Prevent extremely long URLs
-        !pathname.includes('logout')) {
+    // Store the attempted URL for post-login redirect
+    const loginUrl = new URL('/login', request.url);
+    if (pathname !== '/login') {
       loginUrl.searchParams.set('returnUrl', pathname);
     }
 
@@ -276,7 +260,6 @@ export async function middleware(request: NextRequest) {
   console.log(`✅ Access granted for ${payload.role} to ${pathname}`);
   
   // Add user context to request headers for downstream use
-  // This allows pages and API routes to access user info without additional validation
   const response = NextResponse.next();
   response.headers.set('x-user-id', payload.user_id.toString());
   response.headers.set('x-user-role', payload.role);
@@ -292,9 +275,6 @@ export async function middleware(request: NextRequest) {
 
 /**
  * Middleware Configuration
- * 
- * This tells Next.js which routes to run the middleware on.
- * We exclude API routes and static assets for performance.
  */
 export const config = {
   matcher: [

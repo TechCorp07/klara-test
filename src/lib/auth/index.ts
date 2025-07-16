@@ -1,5 +1,8 @@
 // src/lib/auth/index.ts
 
+// Import validator and types first
+import { JWTValidator, JWTPayload, JWTValidationResult, extractJWTPayload } from './validator';
+
 // Core JWT authentication components
 export { JWTAuthProvider } from './auth-provider';
 export type { JWTAuthContextType } from './auth-provider';
@@ -55,6 +58,62 @@ export const PermissionUtils = {
     return permissions.every(permission => 
       PermissionUtils.hasPermission(jwtPayload, permission)
     );
+  },
+
+  /**
+   * Check if token needs refresh
+   */
+  needsRefresh: (jwtPayload: JWTPayload | null): boolean => {
+    return jwtPayload ? JWTValidator.needsRefresh(jwtPayload) : false;
+  },
+
+  /**
+   * Get time to token expiration
+   */
+  getTimeToExpiration: (jwtPayload: JWTPayload | null): number => {
+    return jwtPayload ? JWTValidator.getTimeToExpiration(jwtPayload) : 0;
+  },
+
+  /**
+   * Format time to expiration for display
+   */
+  formatTimeToExpiration: (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
+  },
+
+  /**
+   * Check if token is expiring soon
+   */
+  isExpiringSoon: (jwtPayload: JWTPayload | null, thresholdMinutes: number = 5): boolean => {
+    if (!jwtPayload) return false;
+    const timeToExpiration = JWTValidator.getTimeToExpiration(jwtPayload);
+    return timeToExpiration < (thresholdMinutes * 60);
+  },
+};
+
+/**
+ * Token utilities for JWT management
+ */
+export const TokenUtils = {
+  /**
+   * Validate JWT token structure
+   */
+  validateToken: (token: string): JWTValidationResult => {
+    return JWTValidator.validateToken(token);
+  },
+
+  /**
+   * Extract payload from JWT token
+   */
+  extractPayload: (token: string): JWTPayload | null => {
+    return extractJWTPayload(token);
   },
 
   /**
@@ -177,4 +236,55 @@ export const DevUtils = {
     
     return requiredFields.every(field => field in payload);
   },
+};
+
+// Export configuration
+export { config } from '../config';
+export { validateConfig, configUtils } from '../config';
+
+/**
+ * Migration utilities
+ */
+export const MigrationUtils = {
+  /**
+   * Check if the new JWT system is active
+   */
+  isJWTSystemActive: (): boolean => {
+    return true; // Always true in the new system
+  },
+
+  /**
+   * Get migration status
+   */
+  getMigrationStatus: (): { 
+    phase: 'complete';
+    features: string[];
+    deprecated: string[];
+  } => {
+    return {
+      phase: 'complete',
+      features: [
+        'JWT token validation',
+        'Local permission checking',
+        'Race condition elimination',
+        'Permission-based routing',
+        'Automatic token refresh',
+      ],
+      deprecated: [
+        'HTTP-based token validation',
+        'localStorage token storage',
+        'Complex authentication guards',
+        'Async permission resolution',
+      ],
+    };
+  },
+};
+
+// Default export for easy importing
+export default {
+  JWTValidator,
+  PermissionUtils,
+  TokenUtils,
+  RouteUtils,
+  DevUtils,
 };

@@ -83,7 +83,6 @@ const PUBLIC_ROUTES = [
 
 /**
  * Convert JWT payload to User object
- * FIXED: Handle undefined values properly for profile types
  */
 function jwtPayloadToUser(payload: JWTPayload): User {
   // Create complete AdminPermissions object with all required fields
@@ -170,6 +169,7 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
 
   /**
    * Initialize authentication state from JWT cookie
+   * FIXED: Better error handling for 401 responses
    */
   useEffect(() => {
     const initializeAuth = async () => {
@@ -199,8 +199,15 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
               console.log('✅ JWT authentication initialized');
             }
           }
+        } else if (response.status === 401) {
+          // 401 is expected when no JWT cookie exists - this is normal for unauthenticated users
+          console.log('ℹ️ No JWT token found - user not authenticated (this is normal)');
+        } else {
+          // Other error statuses might indicate actual problems
+          console.warn(`⚠️ Auth validation returned ${response.status}: ${response.statusText}`);
         }
       } catch (error) {
+        // Network errors or other issues
         console.error('Auth initialization error:', error);
       } finally {
         setIsLoading(false);

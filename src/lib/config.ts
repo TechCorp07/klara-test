@@ -23,6 +23,7 @@ interface AppConfig {
   // External Links
   termsUrl: string;
   privacyUrl: string;
+  hipaaNoticeUrl: string; // FIXED: Added missing HIPAA URL
   supportUrl: string;
   
   // Feature Flags
@@ -64,6 +65,7 @@ function createConfig(): AppConfig {
     // External Links
     termsUrl: process.env.NEXT_PUBLIC_TERMS_URL || '/terms-of-service',
     privacyUrl: process.env.NEXT_PUBLIC_PRIVACY_URL || '/privacy-policy',
+    hipaaNoticeUrl: process.env.NEXT_PUBLIC_HIPAA_URL || '/hipaa-notice', // FIXED: Added HIPAA URL
     supportUrl: process.env.NEXT_PUBLIC_SUPPORT_URL || '/support',
     
     // Feature Flags

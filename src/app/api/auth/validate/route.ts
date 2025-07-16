@@ -1,19 +1,14 @@
 // src/app/api/auth/validate/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
 
 /**
  * POST /api/auth/validate
- * 
- * Extract JWT token from HTTP-only cookie for client-side validation
- * This endpoint safely extracts the token from secure cookies so the client
- * can perform local JWT validation without exposing the token to JavaScript
- */
+ */ 
 export async function POST(request: NextRequest) {
   try {
-    // Extract JWT token from HTTP-only cookie
-    const cookieName = config.jwt.cookieName || 'jwt_access_token';
+    // Extract JWT token from HTTP-only cookie using the correct config property
+    const cookieName = config.authCookieName;
     const token = request.cookies.get(cookieName)?.value;
 
     if (!token) {
