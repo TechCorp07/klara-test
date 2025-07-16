@@ -1,15 +1,21 @@
 // src/lib/auth/use-auth.ts
-import { useContext } from 'react';
-import { JWTAuthContext } from './auth-provider';
-import { JWTPayload } from './validator';
-import { UserRole } from '@/types/auth.types';
 
-/**
- * Extended authentication hook interface
- */
+'use client';
+
+import { useContext, useCallback } from 'react';
+import { JWTAuthContext, type JWTAuthContextType } from './auth-provider';
+import { JWTPayload } from './validator';
+import { 
+  UserRole, 
+  LoginCredentials, 
+  LoginResponse, 
+  RegisterRequest, 
+  RegisterResponse 
+} from '@/types/auth.types';
+
 export interface UseJWTAuthReturn {
   // Core authentication state
-  user: unknown | null;
+  user: JWTAuthContextType['user'];
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
@@ -19,40 +25,28 @@ export interface UseJWTAuthReturn {
   tokenNeedsRefresh: boolean;
   timeToExpiration: number | null;
   
-  // Authentication methods
-  login: (credentials: { email: string; password: string }) => Promise<unknown>;
-  register: (userData: unknown) => Promise<unknown>;
+  // Authentication methods - Fixed types to match backend expectations
+  login: (credentials: LoginCredentials) => Promise<LoginResponse>;
+  register: (userData: RegisterRequest) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   
-  // Permission checking methods (instant, no async)
+  // Permission checking methods
   hasPermission: (permission: keyof NonNullable<JWTPayload['permissions']>) => boolean;
   hasAnyPermission: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
   hasAllPermissions: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
   
-  // Role-based access methods (instant, computed from JWT)
+  // Role-based access methods
   isAdmin: boolean;
   isSuperAdmin: boolean;
   canManageUsers: boolean;
   canAccessAudit: boolean;
   canManageSystemSettings: boolean;
-  canAccessCompliance: boolean;
-  canExportData: boolean;
   
-  // User information methods (instant, from JWT payload)
+  // Utility methods - Fixed return type
   getUserId: () => number | null;
   getUserRole: () => UserRole | null;
-  getUserEmail: () => string | null;
   getSessionId: () => string | null;
-  
-  // Utility methods for dashboard logic
-  getAccessibleRoutes: () => string[];
-  canAccessRoute: (route: string) => boolean;
-  getDashboardPath: () => string;
-  
-  // Token monitoring utilities
-  formatTimeToExpiration: () => string;
-  isTokenExpiringSoon: () => boolean;
 }
 
 /**
@@ -65,340 +59,135 @@ export function useJWTAuth(): UseJWTAuthReturn {
     throw new Error('useJWTAuth must be used within a JWTAuthProvider');
   }
 
-  // Extract context values for easier access
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    isInitialized,
-    jwtPayload,
-    tokenNeedsRefresh,
-    timeToExpiration,
-    login,
-    register,
-    logout,
-    refreshToken,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    isAdmin,
-    isSuperAdmin,
-    canManageUsers,
-    canAccessAudit,
-    canManageSystemSettings,
-    getUserId,
-    getUserRole,
-    getSessionId,
-  } = context;
-
-  /**
-   * Get user email from JWT payload
-   */
-  const getUserEmail = (): string | null => {
-    return jwtPayload?.email || null;
-  };
-
-  /**
-   * Check if user has compliance access
-   */
-  const canAccessCompliance = hasPermission('has_compliance_access');
-
-  /**
-   * Check if user can export data
-   */
-  const canExportData = hasPermission('has_export_access');
-
-  /**
-   * Get accessible routes based on user permissions
-   */
-  const getAccessibleRoutes = (): string[] => {
-    if (!jwtPayload) return [];
-
-    const routes: string[] = [];
-    const { role } = jwtPayload;
-
-    // Base routes available to all authenticated users
-    routes.push('/profile', '/settings');
-
-    // Role-specific routes
-    switch (role) {
-      case 'patient':
-        routes.push(
-          '/patient',
-          '/patient/appointments',
-          '/patient/health-records',
-          '/patient/medications',
-          '/patient/profile'
-        );
-        
-        // Conditional patient features based on permissions
-        if (hasPermission('can_view_phi')) {
-          routes.push('/patient/health-records/detailed');
-        }
-        break;
-
-      case 'provider':
-        routes.push(
-          '/provider',
-          '/provider/patients',
-          '/provider/appointments',
-          '/provider/clinical-notes'
-        );
-        
-        // Conditional provider features
-        if (hasPermission('can_approve_users')) {
-          routes.push('/provider/approvals');
-        }
-        break;
-
-      case 'admin':
-      case 'superadmin':
-        routes.push('/admin');
-        
-        // Permission-based admin routes
-        if (canManageUsers) {
-          routes.push('/admin/users', '/admin/approvals');
-        }
-        
-        if (canAccessAudit) {
-          routes.push('/admin/audit-logs');
-        }
-        
-        if (canManageSystemSettings) {
-          routes.push('/admin/system-settings');
-        }
-        
-        if (canAccessCompliance) {
-          routes.push('/admin/compliance');
-        }
-        
-        if (hasPermission('has_admin_access')) {
-          routes.push('/admin/monitoring', '/admin/reports');
-        }
-        break;
-
-      case 'pharmco':
-        routes.push(
-          '/pharmco',
-          '/pharmco/research',
-          '/pharmco/clinical-trials',
-          '/pharmco/reports'
-        );
-        break;
-
-      case 'researcher':
-        routes.push(
-          '/researcher',
-          '/researcher/studies',
-          '/researcher/data-analysis',
-          '/researcher/publications'
-        );
-        break;
-
-      case 'caregiver':
-        routes.push(
-          '/caregiver',
-          '/caregiver/patients',
-          '/caregiver/appointments'
-        );
-        break;
-
-      case 'compliance':
-        routes.push(
-          '/compliance',
-          '/compliance/audit-logs',
-          '/compliance/emergency-access',
-          '/compliance/consent-management'
-        );
-        break;
-    }
-
-    return routes;
-  };
-
-  /**
-   * Check if user can access a specific route
-   */
-  const canAccessRoute = (route: string): boolean => {
-    if (!jwtPayload) return false;
-
-    // Public routes are always accessible
-    const publicRoutes = ['/', '/profile', '/settings'];
-    if (publicRoutes.includes(route)) return true;
-
-    // Check against accessible routes
-    const accessibleRoutes = getAccessibleRoutes();
-    return accessibleRoutes.some(accessibleRoute => 
-      route === accessibleRoute || route.startsWith(accessibleRoute + '/')
-    );
-  };
-
-  /**
-   * Get the appropriate dashboard path for the user
-   */
-  const getDashboardPath = (): string => {
-    if (!jwtPayload) return '/login';
-
-    const { role } = jwtPayload;
-
-    // Return role-specific dashboard paths
-    switch (role) {
-      case 'patient':
-        return '/patient';
-      case 'provider':
-        return '/provider';
-      case 'admin':
-      case 'superadmin':
-        return '/admin';
-      case 'pharmco':
-        return '/pharmco';
-      case 'researcher':
-        return '/researcher';
-      case 'caregiver':
-        return '/caregiver';
-      case 'compliance':
-        return '/compliance';
-      default:
-        return '/';
-    }
-  };
-
-  /**
-   * Format time to expiration in human-readable format
-   */
-  const formatTimeToExpiration = (): string => {
-    if (!timeToExpiration) return 'Unknown';
-
-    const minutes = Math.floor(timeToExpiration / 60);
-    const seconds = timeToExpiration % 60;
-
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    } else {
-      return `${seconds}s`;
-    }
-  };
-
-  /**
-   * Check if token is expiring soon
-   */
-  const isTokenExpiringSoon = (): boolean => {
-    if (!timeToExpiration) return false;
-    
-    // Consider "soon" to be less than 5 minutes
-    return timeToExpiration < 300;
-  };
-
-  // Return the complete hook interface
+  // Return all context methods and properties with proper typing
   return {
-    // Core authentication state
-    user,
-    isAuthenticated,
-    isLoading,
-    isInitialized,
+    // Core state
+    user: context.user,
+    isAuthenticated: context.isAuthenticated,
+    isLoading: context.isLoading,
+    isInitialized: context.isInitialized,
     
     // JWT-specific state
-    jwtPayload,
-    tokenNeedsRefresh,
-    timeToExpiration,
+    jwtPayload: context.jwtPayload,
+    tokenNeedsRefresh: context.tokenNeedsRefresh,
+    timeToExpiration: context.timeToExpiration,
     
-    // Authentication methods
-    login,
-    register,
-    logout,
-    refreshToken,
+    // Authentication methods - already properly typed in context
+    login: context.login,
+    register: context.register,
+    logout: context.logout,
+    refreshToken: context.refreshToken,
     
-    // Permission checking methods
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
+    // Permission methods
+    hasPermission: context.hasPermission,
+    hasAnyPermission: context.hasAnyPermission,
+    hasAllPermissions: context.hasAllPermissions,
     
-    // Role-based access methods
-    isAdmin,
-    isSuperAdmin,
-    canManageUsers,
-    canAccessAudit,
-    canManageSystemSettings,
-    canAccessCompliance,
-    canExportData,
+    // Computed permissions
+    isAdmin: context.isAdmin,
+    isSuperAdmin: context.isSuperAdmin,
+    canManageUsers: context.canManageUsers,
+    canAccessAudit: context.canAccessAudit,
+    canManageSystemSettings: context.canManageSystemSettings,
     
-    // User information methods
-    getUserId,
-    getUserRole,
-    getUserEmail,
-    getSessionId,
-    
-    // Utility methods for dashboard logic
-    getAccessibleRoutes,
-    canAccessRoute,
-    getDashboardPath,
-    
-    // Token monitoring utilities
-    formatTimeToExpiration,
-    isTokenExpiringSoon,
+    // Utility methods
+    getUserId: context.getUserId,
+    getUserRole: context.getUserRole,
+    getSessionId: context.getSessionId,
   };
 }
 
 /**
- * Convenience hooks for specific permission checks
+ * Specialized hooks for common permission checks
  */
 
 export function useAdminAccess() {
-  const { isAdmin, isLoading } = useJWTAuth();
-  return { hasAccess: isAdmin, isLoading };
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_admin_access'), [hasPermission]);
 }
 
 export function useUserManagementAccess() {
-  const { canManageUsers, isLoading } = useJWTAuth();
-  return { hasAccess: canManageUsers, isLoading };
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_user_management_access'), [hasPermission]);
 }
 
 export function useAuditAccess() {
-  const { canAccessAudit, isLoading } = useJWTAuth();
-  return { hasAccess: canAccessAudit, isLoading };
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_audit_access'), [hasPermission]);
 }
 
 export function useComplianceAccess() {
-  const { canAccessCompliance, isLoading } = useJWTAuth();
-  return { hasAccess: canAccessCompliance, isLoading };
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_compliance_access'), [hasPermission]);
 }
 
 export function useSystemSettingsAccess() {
-  const { canManageSystemSettings, isLoading } = useJWTAuth();
-  return { hasAccess: canManageSystemSettings, isLoading };
+  const { hasPermission } = useJWTAuth();
+  return useCallback(() => hasPermission('has_system_settings_access'), [hasPermission]);
 }
 
 /**
- * Hook for permission-based route guards
+ * Hook for checking route-based permissions
  */
-export function useRoutePermissions() {
-  const { canAccessRoute, getAccessibleRoutes, getDashboardPath } = useJWTAuth();
+export function useRoutePermissions(routePath: string) {
+  const { hasPermission, jwtPayload } = useJWTAuth();
   
-  return {
-    canAccessRoute,
-    getAccessibleRoutes,
-    getDashboardPath,
-  };
+  return useCallback(() => {
+    if (!jwtPayload) return false;
+    
+    // Define route permission mappings
+    if (routePath.startsWith('/admin')) {
+      return hasPermission('has_admin_access');
+    }
+    
+    if (routePath.startsWith('/audit')) {
+      return hasPermission('has_audit_access');
+    }
+    
+    if (routePath.startsWith('/compliance')) {
+      return hasPermission('has_compliance_access');
+    }
+    
+    if (routePath.startsWith('/users')) {
+      return hasPermission('has_user_management_access');
+    }
+    
+    if (routePath.startsWith('/settings')) {
+      return hasPermission('has_system_settings_access');
+    }
+    
+    // Default: allow access for authenticated users
+    return true;
+  }, [routePath, hasPermission, jwtPayload]);
 }
 
 /**
- * Hook for token monitoring and refresh logic
+ * Hook for monitoring token expiration
  */
 export function useTokenMonitoring() {
-  const { 
-    tokenNeedsRefresh, 
-    timeToExpiration, 
-    formatTimeToExpiration, 
-    isTokenExpiringSoon,
-    refreshToken 
-  } = useJWTAuth();
+  const { timeToExpiration, tokenNeedsRefresh, refreshToken } = useJWTAuth();
+  
+  const formatTimeRemaining = useCallback((seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
+  }, []);
+  
+  const isExpiringSoon = useCallback((thresholdMinutes: number = 5): boolean => {
+    return timeToExpiration !== null && timeToExpiration < (thresholdMinutes * 60);
+  }, [timeToExpiration]);
   
   return {
-    tokenNeedsRefresh,
     timeToExpiration,
-    formatTimeToExpiration,
-    isTokenExpiringSoon,
+    tokenNeedsRefresh,
     refreshToken,
+    formatTimeRemaining: timeToExpiration ? formatTimeRemaining(timeToExpiration) : null,
+    isExpiringSoon: isExpiringSoon(),
   };
 }
 

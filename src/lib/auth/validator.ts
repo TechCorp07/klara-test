@@ -31,11 +31,27 @@ export interface JWTPayload {
     has_admin_access?: boolean;
     has_user_management_access?: boolean;
     has_system_settings_access?: boolean;
+    has_dashboard_access?: boolean;
+    has_compliance_reports_access?: boolean;
+    has_approval_permissions?: boolean;
     
     // Audit and compliance permissions
     has_audit_access?: boolean;
     has_compliance_access?: boolean;
     has_export_access?: boolean;
+    
+    // Healthcare permissions
+    has_patient_data_access?: boolean;
+    has_medical_records_access?: boolean;
+    can_manage_appointments?: boolean;
+    can_access_telemedicine?: boolean;
+    can_manage_medications?: boolean;
+    can_view_research_data?: boolean;
+    can_access_clinical_trials?: boolean;
+    
+    // User permissions
+    can_view_own_data?: boolean;
+    can_edit_own_profile?: boolean;
     
     // Special access levels
     is_superadmin?: boolean;
@@ -45,6 +61,9 @@ export interface JWTPayload {
     can_approve_users?: boolean;
     can_view_phi?: boolean;
     can_manage_emergencies?: boolean;
+    
+    // Profile verification
+    identity_verified?: boolean;
   };
   
   // Emergency access tracking
@@ -190,39 +209,24 @@ export class JWTValidator {
     const requiredFields = ['user_id', 'email', 'role', 'exp', 'iat', 'jti'];
     
     for (const field of requiredFields) {
-      if (!(field in payload) || payload[field as keyof JWTPayload] === null) {
+      if (!(field in payload) || payload[field as keyof JWTPayload] === undefined) {
         return {
           isValid: false,
-          error: `${JWTValidationError.MISSING_REQUIRED_FIELDS}: Missing ${field}`,
+          error: `${JWTValidationError.MISSING_REQUIRED_FIELDS}: Missing required field '${field}'`,
         };
       }
-    }
-
-    // Validate field types
-    if (typeof payload.user_id !== 'number' || payload.user_id <= 0) {
-      return {
-        isValid: false,
-        error: `${JWTValidationError.MISSING_REQUIRED_FIELDS}: Invalid user_id`,
-      };
-    }
-
-    if (typeof payload.email !== 'string' || !payload.email.includes('@')) {
-      return {
-        isValid: false,
-        error: `${JWTValidationError.MISSING_REQUIRED_FIELDS}: Invalid email format`,
-      };
     }
 
     return { isValid: true };
   }
 
   /**
-   * Validate JWT timestamps (expiration, issued at)
+   * Validate timestamp fields (expiration and issued at)
    */
   private static validateTimestamps(payload: JWTPayload): JWTValidationResult {
     const currentTime = Math.floor(Date.now() / 1000);
 
-    // Check if token has expired
+    // Check if token is expired
     if (payload.exp <= currentTime) {
       return {
         isValid: false,
@@ -230,9 +234,8 @@ export class JWTValidator {
       };
     }
 
-    // Check if token was issued in the future (with small tolerance for clock skew)
-    const clockSkewToleranceSeconds = 60; // 1 minute tolerance
-    if (payload.iat > currentTime + clockSkewToleranceSeconds) {
+    // Check if token was issued in the future (clock skew protection)
+    if (payload.iat > currentTime + 60) { // Allow 60 seconds of clock skew
       return {
         isValid: false,
         error: JWTValidationError.FUTURE_TOKEN,
@@ -243,20 +246,33 @@ export class JWTValidator {
   }
 
   /**
-   * Extract user permissions from JWT payload
-   */
-  static extractPermissions(payload: JWTPayload): JWTPayload['permissions'] {
-    return payload.permissions || {};
-  }
-
-  /**
-   * Check if user has a specific permission
+   * Check if user has specific permission
    */
   static hasPermission(
     payload: JWTPayload, 
     permission: keyof NonNullable<JWTPayload['permissions']>
   ): boolean {
-    return Boolean(payload.permissions?.[permission]);
+    return payload.permissions?.[permission] === true;
+  }
+
+  /**
+   * Check if user has any of the specified permissions
+   */
+  static hasAnyPermission(
+    payload: JWTPayload,
+    permissions: Array<keyof NonNullable<JWTPayload['permissions']>>
+  ): boolean {
+    return permissions.some(permission => this.hasPermission(payload, permission));
+  }
+
+  /**
+   * Check if user has all of the specified permissions
+   */
+  static hasAllPermissions(
+    payload: JWTPayload,
+    permissions: Array<keyof NonNullable<JWTPayload['permissions']>>
+  ): boolean {
+    return permissions.every(permission => this.hasPermission(payload, permission));
   }
 
   /**
@@ -308,7 +324,7 @@ export class JWTValidator {
 }
 
 /**
- * FIXED: Added missing convenience functions that were causing import errors
+ * Convenience functions for easier usage
  */
 
 export function validateJWT(token: string): JWTValidationResult {

@@ -1,4 +1,5 @@
 // src/components/permissions/PermissionGate.tsx
+
 'use client';
 
 import React, { ReactNode } from 'react';
@@ -6,351 +7,170 @@ import { useJWTAuth } from '@/lib/auth/use-auth';
 import { JWTPayload } from '@/lib/auth/validator';
 import { UserRole } from '@/types/auth.types';
 
-/**
- * Permission Gate Component
- */
 interface PermissionGateProps {
   children: ReactNode;
-  
-  // Permission-based access control
   requiredPermission?: keyof NonNullable<JWTPayload['permissions']>;
-  anyOfPermissions?: Array<keyof NonNullable<JWTPayload['permissions']>>;
-  allOfPermissions?: Array<keyof NonNullable<JWTPayload['permissions']>>;
-  
-  // Role-based access control (for backward compatibility)
+  requiredPermissions?: Array<keyof NonNullable<JWTPayload['permissions']>>;
+  requireAll?: boolean; // If true, user must have ALL permissions. If false, ANY permission
   requiredRole?: UserRole;
-  anyOfRoles?: UserRole[];
-  
-  // Custom permission logic
-  customCheck?: (user: unknown, jwtPayload: JWTPayload | null) => boolean;
-  
-  // Fallback content and behavior
+  requiredRoles?: UserRole[];
   fallback?: ReactNode;
-  redirectTo?: string;
-  showAccessDenied?: boolean;
-  
-  // Loading state handling
-  showLoadingSpinner?: boolean;
-  loadingComponent?: ReactNode;
+  className?: string;
 }
 
-export function PermissionGate({
-  children,
+/**
+ * Generic permission gate component
+ */
+export function PermissionGate({ 
+  children, 
   requiredPermission,
-  anyOfPermissions,
-  allOfPermissions,
+  requiredPermissions,
+  requireAll = false,
   requiredRole,
-  anyOfRoles,
-  customCheck,
-  fallback,
-  redirectTo,
-  showAccessDenied = false,
-  showLoadingSpinner = true,
-  loadingComponent,
+  requiredRoles,
+  fallback = null,
+  className 
 }: PermissionGateProps) {
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    isInitialized,
-    user, 
-    jwtPayload,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    getUserRole
-  } = useJWTAuth();
-
-  // Show loading state while authentication is being initialized
-  if (!isInitialized || isLoading) {
-    if (loadingComponent) {
-      return <>{loadingComponent}</>;
-    }
-    
-    if (showLoadingSpinner) {
-      return (
-        <div className="flex items-center justify-center p-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Checking permissions...</span>
-        </div>
-      );
-    }
-    
-    return null;
-  }
-
-  // If user is not authenticated, handle appropriately
-  if (!isAuthenticated || !jwtPayload) {
-    if (redirectTo && typeof window !== 'undefined') {
-      window.location.href = redirectTo;
-      return null;
-    }
-    
-    if (showAccessDenied) {
-      return <AccessDeniedMessage message="Please log in to access this content." />;
-    }
-    
-    return fallback ? <>{fallback}</> : null;
-  }
-
-  // Check permissions using instant, synchronous methods
-  let hasAccess = true;
-
-  // Check required permission
+  const { hasPermission, hasAnyPermission, hasAllPermissions, getUserRole } = useJWTAuth();
+  
+  // Check single permission
   if (requiredPermission && !hasPermission(requiredPermission)) {
-    hasAccess = false;
+    return <>{fallback}</>;
   }
-
-  // Check any of permissions (user needs at least one)
-  if (anyOfPermissions && !hasAnyPermission(anyOfPermissions)) {
-    hasAccess = false;
-  }
-
-  // Check all of permissions (user needs all)
-  if (allOfPermissions && !hasAllPermissions(allOfPermissions)) {
-    hasAccess = false;
-  }
-
-  // Check required role
-  if (requiredRole && getUserRole() !== requiredRole) {
-    hasAccess = false;
-  }
-
-  // Check any of roles
-  if (anyOfRoles && !anyOfRoles.includes(getUserRole() as UserRole)) {
-    hasAccess = false;
-  }
-
-  // Check custom permission logic
-  if (customCheck && !customCheck(user, jwtPayload)) {
-    hasAccess = false;
-  }
-
-  // If user doesn't have access, handle appropriately
-  if (!hasAccess) {
-    if (redirectTo && typeof window !== 'undefined') {
-      window.location.href = redirectTo;
-      return null;
+  
+  // Check multiple permissions
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    const hasRequiredPermissions = requireAll 
+      ? hasAllPermissions(requiredPermissions)
+      : hasAnyPermission(requiredPermissions);
+      
+    if (!hasRequiredPermissions) {
+      return <>{fallback}</>;
     }
-    
-    if (showAccessDenied) {
-      return <AccessDeniedMessage message="You don't have permission to access this content." />;
-    }
-    
-    return fallback ? <>{fallback}</> : null;
   }
+  
+  // Check single role
+  if (requiredRole) {
+    const userRole = getUserRole();
+    if (userRole !== requiredRole) {
+      return <>{fallback}</>;
+    }
+  }
+  
+  // Check multiple roles
+  if (requiredRoles && requiredRoles.length > 0) {
+    const userRole = getUserRole();
+    if (!userRole || !requiredRoles.includes(userRole)) {
+      return <>{fallback}</>;
+    }
+  }
+  
+  return <div className={className}>{children}</div>;
+}
 
-  // User has access - render children
+/**
+ * Admin-specific permission gate
+ */
+export function AdminGate({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGate requiredPermission="has_admin_access" fallback={fallback}>
+      {children}
+    </PermissionGate>
+  );
+}
+
+/**
+ * User management permission gate
+ */
+export function UserManagementGate({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGate requiredPermission="has_user_management_access" fallback={fallback}>
+      {children}
+    </PermissionGate>
+  );
+}
+
+/**
+ * Audit access permission gate
+ */
+export function AuditGate({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGate requiredPermission="has_audit_access" fallback={fallback}>
+      {children}
+    </PermissionGate>
+  );
+}
+
+/**
+ * Role-based rendering component
+ */
+interface RoleBasedRenderProps {
+  children: ReactNode;
+  allowedRoles: UserRole[];
+  fallback?: ReactNode;
+}
+
+export function RoleBasedRender({ children, allowedRoles, fallback = null }: RoleBasedRenderProps) {
+  return (
+    <PermissionGate requiredRoles={allowedRoles} fallback={fallback}>
+      {children}
+    </PermissionGate>
+  );
+}
+
+/**
+ * Feature flag component (for future feature toggling)
+ */
+interface FeatureFlagProps {
+  children: ReactNode;
+  feature: string;
+  enabled?: boolean;
+  fallback?: ReactNode;
+}
+
+export function FeatureFlag({ children, feature, enabled = false, fallback = null }: FeatureFlagProps) {
+  // For now, just use the enabled prop
+  // Later this can be extended to check feature flags from backend
+  if (!enabled) {
+    return <>{fallback}</>;
+  }
+  
   return <>{children}</>;
 }
 
 /**
- * Admin Permission Gate
- */
-interface AdminGateProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  showAccessDenied?: boolean;
-}
-
-export function AdminGate({ children, fallback, showAccessDenied = true }: AdminGateProps) {
-  return (
-    <PermissionGate
-      requiredPermission="has_admin_access"
-      fallback={fallback}
-      showAccessDenied={showAccessDenied}
-    >
-      {children}
-    </PermissionGate>
-  );
-}
-
-/**
- * User Management Permission Gate
- */
-interface UserManagementGateProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-export function UserManagementGate({ children, fallback }: UserManagementGateProps) {
-  return (
-    <PermissionGate
-      requiredPermission="has_user_management_access"
-      fallback={fallback}
-      showAccessDenied={true}
-    >
-      {children}
-    </PermissionGate>
-  );
-}
-
-/**
- * Audit Access Permission Gate
- */
-interface AuditGateProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-export function AuditGate({ children, fallback }: AuditGateProps) {
-  return (
-    <PermissionGate
-      requiredPermission="has_audit_access"
-      fallback={fallback}
-      showAccessDenied={true}
-    >
-      {children}
-    </PermissionGate>
-  );
-}
-
-/**
- * Role-Based Render Component
- */
-interface RoleBasedRenderProps {
-  allowedRoles: UserRole[];
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-export function RoleBasedRender({ allowedRoles, children, fallback }: RoleBasedRenderProps) {
-  return (
-    <PermissionGate
-      anyOfRoles={allowedRoles}
-      fallback={fallback}
-    >
-      {children}
-    </PermissionGate>
-  );
-}
-
-/**
- * Feature Flag Component
- */
-interface FeatureFlagProps {
-  feature: string;
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-export function FeatureFlag({ feature, children, fallback }: FeatureFlagProps) {
-  const { jwtPayload } = useJWTAuth();
-  
-  // For now, we'll use permission-based feature flags
-  const hasFeatureAccess = () => {
-    if (!jwtPayload) return false;
-    
-    // Map feature names to permissions
-    switch (feature) {
-      case 'advanced_analytics':
-        return jwtPayload.permissions?.has_admin_access || false;
-      case 'bulk_operations':
-        return jwtPayload.permissions?.has_user_management_access || false;
-      case 'data_export':
-        return jwtPayload.permissions?.has_export_access || false;
-      case 'emergency_access':
-        return jwtPayload.permissions?.can_manage_emergencies || false;
-      default:
-        return false;
-    }
-  };
-
-  return hasFeatureAccess() ? <>{children}</> : <>{fallback}</>;
-}
-
-/**
- * Conditional Render Component
+ * Conditional render utility
  */
 interface ConditionalRenderProps {
-  condition: (user: unknown, jwtPayload: JWTPayload | null) => boolean;
   children: ReactNode;
+  condition: boolean;
   fallback?: ReactNode;
 }
 
-export function ConditionalRender({ condition, children, fallback }: ConditionalRenderProps) {
-  return (
-    <PermissionGate
-      customCheck={condition}
-      fallback={fallback}
-    >
-      {children}
-    </PermissionGate>
-  );
+export function ConditionalRender({ children, condition, fallback = null }: ConditionalRenderProps) {
+  return condition ? <>{children}</> : <>{fallback}</>;
 }
 
 /**
- * Access Denied Message Component
- */
-interface AccessDeniedMessageProps {
-  message?: string;
-  showContactInfo?: boolean;
-}
-
-function AccessDeniedMessage({ 
-  message = "You don't have permission to access this content.",
-  showContactInfo = true 
-}: AccessDeniedMessageProps) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-        <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
-          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        </div>
-        
-        <h3 className="text-lg font-semibold text-red-900 mb-2">Access Denied</h3>
-        <p className="text-red-700 mb-4">{message}</p>
-        
-        {showContactInfo && (
-          <p className="text-sm text-red-600">
-            If you believe this is an error, please contact your system administrator.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Permission Debug Component
+ * Permission debug component (development only)
  */
 export function PermissionDebug() {
-  const { jwtPayload, getUserRole, isAuthenticated } = useJWTAuth();
+  const { user, jwtPayload } = useJWTAuth();
   
   if (process.env.NODE_ENV !== 'development') {
     return null;
   }
-
-  if (!isAuthenticated || !jwtPayload) {
-    return (
-      <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg text-xs">
-        <div className="font-bold mb-2">Permission Debug</div>
-        <div>Status: Not authenticated</div>
-      </div>
-    );
-  }
-
+  
   return (
-    <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg text-xs max-w-sm">
-      <div className="font-bold mb-2">Permission Debug</div>
-      <div><strong>Role:</strong> {getUserRole()}</div>
-      <div><strong>User ID:</strong> {jwtPayload.user_id}</div>
-      <div><strong>Email:</strong> {jwtPayload.email}</div>
-      
-      {jwtPayload.permissions && (
-        <div className="mt-2">
-          <div className="font-semibold">Permissions:</div>
-          {Object.entries(jwtPayload.permissions).map(([key, value]) => (
-            <div key={key} className="text-xs">
-              {key}: {value ? '✅' : '❌'}
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="fixed bottom-4 right-4 bg-black text-white p-4 rounded text-xs max-w-xs">
+      <h4 className="font-bold mb-2">🔐 Auth Debug</h4>
+      <div className="space-y-1">
+        <div>Role: {user?.role}</div>
+        <div>Admin: {jwtPayload?.permissions?.has_admin_access ? '✅' : '❌'}</div>
+        <div>Users: {jwtPayload?.permissions?.has_user_management_access ? '✅' : '❌'}</div>
+        <div>Audit: {jwtPayload?.permissions?.has_audit_access ? '✅' : '❌'}</div>
+        <div>SuperAdmin: {jwtPayload?.permissions?.is_superadmin ? '✅' : '❌'}</div>
+      </div>
     </div>
   );
 }
-
-// Export all components
-export default PermissionGate;

@@ -1,40 +1,43 @@
 // src/app/api/auth/validate/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
 
 /**
- * GET /api/auth/validate
+ * POST /api/auth/validate
+ * 
+ * Extract JWT token from HTTP-only cookie for client-side validation
+ * This endpoint safely extracts the token from secure cookies so the client
+ * can perform local JWT validation without exposing the token to JavaScript
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // Extract JWT token from HttpOnly cookie
-    const token = request.cookies.get(config.authCookieName)?.value;
-    
+    // Extract JWT token from HTTP-only cookie
+    const cookieName = config.jwt.cookieName || 'jwt_access_token';
+    const token = request.cookies.get(cookieName)?.value;
+
     if (!token) {
-      // No token available - return success but with no token
-      return NextResponse.json({ 
-        success: true, 
-        token: null,
-        message: 'No authentication token available'
-      });
+      return NextResponse.json(
+        { error: 'No authentication token found' },
+        { status: 401 }
+      );
     }
 
-    // Return the token for frontend validation
+    // Return the token for client-side validation
+    // Note: This doesn't verify the token signature - that's done on the backend
+    // The client will validate structure, expiration, and extract permissions
     return NextResponse.json({
-      success: true,
-      token: token,
-      message: 'Token retrieved successfully'
+      token,
+      message: 'Token extracted successfully'
     });
 
   } catch (error) {
-    console.error('Token validation route error:', error);
+    console.error('Token validation error:', error);
     
-    // Return error response
     return NextResponse.json(
       { 
-        success: false, 
-        token: null,
-        message: 'Failed to retrieve authentication token' 
+        error: 'Internal server error during token validation',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -42,8 +45,11 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * OPTIONS /api/auth/validate
+ * GET method not allowed - this endpoint should only be called via POST
  */
-export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
 }

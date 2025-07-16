@@ -1,27 +1,26 @@
 // src/lib/auth/auth-provider.tsx
-/**
- * JWT Authentication Provider - Race Condition Free Implementation
- * 
- * FIXED: Updated import paths and added missing functionality
- */
-
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { JWTValidator, JWTPayload } from './validator';
 import { config } from '@/lib/config';
 import { 
   User, 
+  UserRole,
   LoginCredentials,
   LoginResponse, 
   RegisterRequest, 
   RegisterResponse,
-  } from '@/types/auth.types';
+  AdminPermissions,
+  PatientProfile,
+  ProviderProfile,
+  PharmcoProfile,
+  CaregiverProfile,
+  ResearcherProfile,
+  ComplianceProfile,
+} from '@/types/auth.types';
 
-/**
- * FIXED: Corrected the interface name and exports
- */
 export interface JWTAuthContextType {
   // Core authentication state
   user: User | null;
@@ -54,7 +53,7 @@ export interface JWTAuthContextType {
   
   // Utility methods
   getUserId: () => number | null;
-  getUserRole: () => string | null;
+  getUserRole: () => UserRole | null;
   getSessionId: () => string | null;
 }
 
@@ -80,171 +79,178 @@ const PUBLIC_ROUTES = [
   '/about',
   '/help',
   '/support',
-  '/faq',
 ];
 
 /**
  * Convert JWT payload to User object
+ * FIXED: Handle undefined values properly for profile types
  */
 function jwtPayloadToUser(payload: JWTPayload): User {
+  // Create complete AdminPermissions object with all required fields
+  const permissions: AdminPermissions = {
+    // Core admin permissions
+    has_admin_access: payload.permissions?.has_admin_access ?? false,
+    has_user_management_access: payload.permissions?.has_user_management_access ?? false,
+    has_system_settings_access: payload.permissions?.has_system_settings_access ?? false,
+    has_audit_access: payload.permissions?.has_audit_access ?? false,
+    has_compliance_access: payload.permissions?.has_compliance_access ?? false,
+    has_export_access: payload.permissions?.has_export_access ?? false,
+    has_dashboard_access: payload.permissions?.has_dashboard_access ?? false,
+    has_compliance_reports_access: payload.permissions?.has_compliance_reports_access ?? false,
+    has_approval_permissions: payload.permissions?.has_approval_permissions ?? false,
+    
+    // Healthcare permissions
+    has_patient_data_access: payload.permissions?.has_patient_data_access ?? false,
+    has_medical_records_access: payload.permissions?.has_medical_records_access ?? false,
+    can_manage_appointments: payload.permissions?.can_manage_appointments ?? false,
+    can_access_telemedicine: payload.permissions?.can_access_telemedicine ?? false,
+    can_manage_medications: payload.permissions?.can_manage_medications ?? false,
+    can_view_research_data: payload.permissions?.can_view_research_data ?? false,
+    can_access_clinical_trials: payload.permissions?.can_access_clinical_trials ?? false,
+    
+    // User permissions
+    can_view_own_data: payload.permissions?.can_view_own_data ?? true,
+    can_edit_own_profile: payload.permissions?.can_edit_own_profile ?? true,
+    
+    // Role info
+    user_role: payload.role,
+    is_superadmin: payload.permissions?.is_superadmin ?? false,
+    
+    // Optional profile-specific fields
+    identity_verified: payload.permissions?.identity_verified,
+  };
+
   return {
     id: payload.user_id,
+    username: payload.email.split('@')[0], // Generate username from email if not provided
     email: payload.email,
+    first_name: '', // Will be populated from backend when needed
+    last_name: '',
     role: payload.role,
+    is_active: true,
+    is_approved: true,
+    is_staff: payload.permissions?.has_admin_access ?? false,
+    is_superuser: payload.permissions?.is_superadmin ?? false,
+    email_verified: true, // Assume verified if JWT is valid
+    two_factor_enabled: false, // Will be updated from backend
+    date_joined: new Date(payload.iat * 1000).toISOString(),
+    last_login: new Date().toISOString(),
+    phone_verified: false,
+    permissions,
     
-    // These fields would come from the JWT payload if your backend includes them
-    first_name: '', // Could be extracted from JWT if backend includes it
-    last_name: '',  // Could be extracted from JWT if backend includes it
-    is_active: true, // If JWT is valid, user is active
-    is_approved: true, // If JWT is valid, user is approved
-    email_verified: true, // If JWT is valid, email was verified
-    phone_verified: false, // Would need to be in JWT payload
-    two_factor_enabled: false, // Would need to be in JWT payload
-    
-    // Profile data - these could be included in JWT or fetched separately
-    patient_profile: null,
-    provider_profile: null,
-    admin_profile: null,
-    pharmco_profile: null,
-    caregiver_profile: null,
-    researcher_profile: null,
-    compliance_profile: null,
-    
-    // Permissions extracted from JWT
-    permissions: payload.permissions || {},
-    
-    // Metadata
-    date_joined: '', // Would need to be in JWT payload
-    last_login: '', // Would need to be in JWT payload
+    // Profile fields - set to undefined instead of null to match type definition
+    patient_profile: undefined,
+    provider_profile: undefined,
+    pharmco_profile: undefined,
+    caregiver_profile: undefined,
+    researcher_profile: undefined,
+    compliance_profile: undefined,
   };
 }
 
-/**
- * JWT Authentication Provider Component
- */
 interface JWTAuthProviderProps {
   children: ReactNode;
 }
 
-export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) => {
-  // Core authentication state
+export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [jwtPayload, setJwtPayload] = useState<JWTPayload | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const [tokenNeedsRefresh, setTokenNeedsRefresh] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [tokenNeedsRefresh, setTokenNeedsRefresh] = useState(false);
   const [timeToExpiration, setTimeToExpiration] = useState<number | null>(null);
   
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Check if current route is public
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || 
+    pathname.startsWith('/verify-email/') || 
+    pathname.startsWith('/reset-password/');
 
   /**
    * Initialize authentication state from JWT cookie
    */
-  const initializeAuth = useCallback(async () => {
-    try {
-      // Check if we're on a public route - no need to validate auth
-      const isPublicRoute = PUBLIC_ROUTES.some(route => 
-        pathname === route || pathname.startsWith(route + '/')
-      );
-
-      if (isPublicRoute) {
-        setIsLoading(false);
-        setIsInitialized(true);
-        return;
-      }
-
-      // Try to get JWT token from cookie via our API route
-      const response = await fetch('/api/auth/validate', {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const { token } = await response.json();
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        setIsLoading(true);
         
-        if (token) {
-          // Validate the JWT token locally
-          const validationResult = JWTValidator.validateToken(token);
+        // Try to extract token from HTTP-only cookie via API
+        const response = await fetch('/api/auth/validate', {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const { token } = await response.json();
           
-          if (validationResult.isValid && validationResult.payload) {
-            // Extract user information from JWT payload
-            const userFromJWT = jwtPayloadToUser(validationResult.payload);
+          if (token) {
+            const validationResult = JWTValidator.validateToken(token);
             
-            setUser(userFromJWT);
-            setJwtPayload(validationResult.payload);
-            setTokenNeedsRefresh(validationResult.needsRefresh || false);
-            setTimeToExpiration(validationResult.expiresIn || null);
-            
-            console.log('✅ JWT authentication initialized successfully');
-          } else {
-            console.log('❌ Invalid JWT token during initialization');
-            setUser(null);
-            setJwtPayload(null);
+            if (validationResult.isValid && validationResult.payload) {
+              const userFromJWT = jwtPayloadToUser(validationResult.payload);
+              
+              setUser(userFromJWT);
+              setJwtPayload(validationResult.payload);
+              setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
+              setTimeToExpiration(validationResult.expiresIn ?? null);
+              
+              console.log('✅ JWT authentication initialized');
+            }
           }
         }
-      } else {
-        // No valid token available
-        console.log('ℹ️ No JWT token available during initialization');
-        setUser(null);
-        setJwtPayload(null);
-      }
-    } catch (error) {
-      console.error('JWT initialization error:', error);
-      setUser(null);
-      setJwtPayload(null);
-    } finally {
-      setIsLoading(false);
-      setIsInitialized(true);
-    }
-  }, [pathname]);
-
-  // Initialize auth when component mounts
-  useEffect(() => {
-    if (!isInitialized) {
-      initializeAuth();
-    }
-  }, [isInitialized, initializeAuth]);
-
-  // Set up token expiration monitoring
-  useEffect(() => {
-    if (!jwtPayload) return;
-
-    const updateExpirationTimer = () => {
-      const remaining = JWTValidator.getTimeToExpiration(jwtPayload);
-      setTimeToExpiration(remaining);
-      setTokenNeedsRefresh(JWTValidator.needsRefresh(jwtPayload));
-      
-      // If token expired, clear auth state
-      if (remaining <= 0) {
-        setUser(null);
-        setJwtPayload(null);
-        setTimeToExpiration(null);
-        setTokenNeedsRefresh(false);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
       }
     };
 
-    // Update immediately
-    updateExpirationTimer();
-
-    // Set up interval to update every minute
-    const interval = setInterval(updateExpirationTimer, 60000);
-
-    return () => clearInterval(interval);
-  }, [jwtPayload]);
+    initializeAuth();
+  }, []);
 
   /**
-   * Login method - simplified for JWT
+   * Set up token expiration monitoring
+   */
+  useEffect(() => {
+    if (!jwtPayload) return;
+
+    const interval = setInterval(() => {
+      const timeLeft = JWTValidator.getTimeToExpiration(jwtPayload);
+      setTimeToExpiration(timeLeft);
+      
+      if (timeLeft <= 0) {
+        // Token expired, clear auth state
+        setUser(null);
+        setJwtPayload(null);
+        setTokenNeedsRefresh(false);
+        setTimeToExpiration(null);
+        
+        if (!isPublicRoute) {
+          router.push('/login');
+        }
+      } else if (timeLeft < 5 * 60) { // 5 minutes
+        setTokenNeedsRefresh(true);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [jwtPayload, isPublicRoute, router]);
+
+  /**
+   * Login method
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
     
     try {
-      // Step 1: Authenticate with backend via our API client
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
         credentials: 'include',
+        body: JSON.stringify(credentials),
       });
 
       if (!response.ok) {
@@ -252,29 +258,26 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
         throw new Error(errorData.message || 'Login failed');
       }
 
-      const loginData: LoginResponse = await response.json();
-
-      // Step 2: If we have a token in the response, validate it locally
-      if (loginData.token) {
-        const validationResult = JWTValidator.validateToken(loginData.token);
+      const loginResponse: LoginResponse = await response.json();
+      
+      if (loginResponse.token) {
+        const validationResult = JWTValidator.validateToken(loginResponse.token);
         
         if (validationResult.isValid && validationResult.payload) {
           const userFromJWT = jwtPayloadToUser(validationResult.payload);
           
           setUser(userFromJWT);
           setJwtPayload(validationResult.payload);
-          setTokenNeedsRefresh(validationResult.needsRefresh || false);
-          setTimeToExpiration(validationResult.expiresIn || null);
+          setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
+          setTimeToExpiration(validationResult.expiresIn ?? null);
           
-          console.log('✅ Login successful with JWT validation');
+          console.log('✅ Login successful');
         }
       }
 
-      return loginData;
+      return loginResponse;
     } catch (error) {
       console.error('Login error:', error);
-      setUser(null);
-      setJwtPayload(null);
       throw error;
     } finally {
       setIsLoading(false);
@@ -282,19 +285,18 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
   };
 
   /**
-   * Logout method - simplified for JWT
+   * Logout method
    */
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     
     try {
-      // Call logout endpoint to clear HttpOnly cookies
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
       
-      // Clear local state immediately
+      // Clear auth state
       setUser(null);
       setJwtPayload(null);
       setTokenNeedsRefresh(false);
@@ -362,7 +364,7 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
             setUser(userFromJWT);
             setJwtPayload(validationResult.payload);
             setTokenNeedsRefresh(false);
-            setTimeToExpiration(validationResult.expiresIn || null);
+            setTimeToExpiration(validationResult.expiresIn ?? null);
             
             console.log('✅ Token refreshed successfully');
           }
@@ -397,15 +399,15 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
 
   // Utility methods
   const getUserId = useCallback((): number | null => {
-    return jwtPayload?.user_id || null;
+    return jwtPayload?.user_id ?? null;
   }, [jwtPayload]);
 
-  const getUserRole = useCallback((): string | null => {
-    return jwtPayload?.role || null;
+  const getUserRole = useCallback((): UserRole | null => {
+    return jwtPayload?.role ?? null;
   }, [jwtPayload]);
 
   const getSessionId = useCallback((): string | null => {
-    return jwtPayload?.session_id || null;
+    return jwtPayload?.session_id ?? null;
   }, [jwtPayload]);
 
   // Build context value
@@ -450,6 +452,6 @@ export const JWTAuthProvider: React.FC<JWTAuthProviderProps> = ({ children }) =>
       {children}
     </JWTAuthContext.Provider>
   );
-};
+}
 
 export default JWTAuthProvider;
