@@ -24,6 +24,7 @@ export { JWTAuthProvider as AuthProvider } from './auth-provider';
 
 /**
  * Permission checking utilities
+ * Updated to handle string permissions
  */
 export const PermissionUtils = {
   /**
@@ -31,7 +32,7 @@ export const PermissionUtils = {
    */
   hasPermission: (
     jwtPayload: JWTPayload | null,
-    permission: keyof NonNullable<JWTPayload['permissions']>
+    permission: string
   ): boolean => {
     return jwtPayload ? JWTValidator.hasPermission(jwtPayload, permission) : false;
   },
@@ -41,7 +42,7 @@ export const PermissionUtils = {
    */
   hasAnyPermission: (
     jwtPayload: JWTPayload | null,
-    permissions: Array<keyof NonNullable<JWTPayload['permissions']>>
+    permissions: string[]
   ): boolean => {
     return permissions.some(permission => 
       PermissionUtils.hasPermission(jwtPayload, permission)
@@ -53,7 +54,7 @@ export const PermissionUtils = {
    */
   hasAllPermissions: (
     jwtPayload: JWTPayload | null,
-    permissions: Array<keyof NonNullable<JWTPayload['permissions']>>
+    permissions: string[]
   ): boolean => {
     return permissions.every(permission => 
       PermissionUtils.hasPermission(jwtPayload, permission)
@@ -232,7 +233,7 @@ export const DevUtils = {
     if (!jwtPayload || typeof jwtPayload !== 'object') return false;
     
     const payload = jwtPayload as Record<string, unknown>;
-    const requiredFields = ['user_id', 'email', 'role', 'exp', 'iat'];
+    const requiredFields = ['user_id', 'username', 'email', 'role', 'exp', 'iat'];
     
     return requiredFields.every(field => field in payload);
   },
@@ -268,7 +269,7 @@ export const MigrationUtils = {
         'Local permission checking',
         'Race condition elimination',
         'Permission-based routing',
-        'Automatic token refresh',
+        'Backend JWT integration',
       ],
       deprecated: [
         'HTTP-based token validation',

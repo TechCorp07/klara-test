@@ -2,12 +2,13 @@
 import { UserRole } from '@/types/auth.types';
 
 /**
- * JWT Payload Interface
+ * JWT Payload Interface - Updated to match backend structure
  */
 export interface JWTPayload {
   // Core user identity
   user_id: number;
-  email: string;
+  username: string;    // Backend uses username as primary identifier
+  email: string;       // Email is separate field
   role: UserRole;
   
   // JWT standard fields
@@ -15,6 +16,12 @@ export interface JWTPayload {
   iat: number;           // Issued at timestamp
   jti: string;           // JWT ID for token tracking
   sub: string;           // Subject (usually user ID as string)
+  iss: string;           // Issuer
+  
+  // Backend-specific fields
+  is_approved: boolean;
+  email_verified: boolean;
+  two_factor_enabled: boolean;
   
   // Session and security tracking
   session_id: string;
@@ -23,53 +30,52 @@ export interface JWTPayload {
   
   // Multi-tenant support
   primary_tenant_id?: number;
-  pharmaceutical_tenant_id?: number;
+  tenant_ids?: number[];
+  
+  // Research participant
+  research_participant_id?: number;
+  
+  // Emergency access
+  emergency_access_enabled?: boolean;
+  is_emergency_session?: boolean;
+  
+  // Device tracking
+  device_fingerprint?: string;
   
   // Permission flags (embedded from backend for fast access)
+  // Updated to match backend permission structure
   permissions?: {
-    // Administrative permissions
-    has_admin_access?: boolean;
-    has_user_management_access?: boolean;
-    has_system_settings_access?: boolean;
-    has_dashboard_access?: boolean;
-    has_compliance_reports_access?: boolean;
-    has_approval_permissions?: boolean;
+    role: string;
+    is_admin: boolean;
+    is_superadmin: boolean;
+    is_staff: boolean;
+    can_access_admin: boolean;
+    can_manage_users: boolean;
+    can_access_patient_data: boolean;
+    can_access_research_data: boolean;
+    can_emergency_access: boolean;
+    pharmaceutical_tenants: any[];
     
-    // Audit and compliance permissions
+    // Additional permissions that might be added
     has_audit_access?: boolean;
     has_compliance_access?: boolean;
     has_export_access?: boolean;
-    
-    // Healthcare permissions
-    has_patient_data_access?: boolean;
+    has_dashboard_access?: boolean;
+    has_compliance_reports_access?: boolean;
+    has_approval_permissions?: boolean;
     has_medical_records_access?: boolean;
     can_manage_appointments?: boolean;
     can_access_telemedicine?: boolean;
     can_manage_medications?: boolean;
     can_view_research_data?: boolean;
     can_access_clinical_trials?: boolean;
-    
-    // User permissions
     can_view_own_data?: boolean;
     can_edit_own_profile?: boolean;
-    
-    // Special access levels
-    is_superadmin?: boolean;
-    emergency_access?: boolean;
-    
-    // Feature-specific permissions (extensible)
     can_approve_users?: boolean;
     can_view_phi?: boolean;
     can_manage_emergencies?: boolean;
-    
-    // Profile verification
     identity_verified?: boolean;
   };
-  
-  // Emergency access tracking
-  emergency_access?: boolean;
-  emergency_reason?: string;
-  emergency_expires?: number;
 }
 
 /**
@@ -206,7 +212,7 @@ export class JWTValidator {
    * Validate that all required fields are present in the JWT payload
    */
   private static validateRequiredFields(payload: JWTPayload): JWTValidationResult {
-    const requiredFields = ['user_id', 'email', 'role', 'exp', 'iat', 'jti'];
+    const requiredFields = ['user_id', 'username', 'email', 'role', 'exp', 'iat', 'jti'];
     
     for (const field of requiredFields) {
       if (!(field in payload) || payload[field as keyof JWTPayload] === undefined) {
@@ -247,12 +253,39 @@ export class JWTValidator {
 
   /**
    * Check if user has specific permission
+   * Updated to handle both backend permission names and frontend permission names
    */
   static hasPermission(
     payload: JWTPayload, 
-    permission: keyof NonNullable<JWTPayload['permissions']>
+    permission: string
   ): boolean {
-    return payload.permissions?.[permission] === true;
+    if (!payload.permissions) return false;
+
+    // Direct permission check
+    if (payload.permissions[permission as keyof typeof payload.permissions] === true) {
+      return true;
+    }
+
+    // Map frontend permission names to backend permission names
+    const permissionMap: Record<string, string> = {
+      'has_admin_access': 'can_access_admin',
+      'has_user_management_access': 'can_manage_users',
+      'has_audit_access': 'has_audit_access',
+      'has_compliance_access': 'has_compliance_access',
+      'has_system_settings_access': 'can_access_admin',
+      'has_export_access': 'has_export_access',
+      'is_superadmin': 'is_superadmin',
+      'has_patient_data_access': 'can_access_patient_data',
+      'has_research_data_access': 'can_access_research_data',
+      'can_emergency_access': 'can_emergency_access',
+    };
+
+    const backendPermission = permissionMap[permission];
+    if (backendPermission) {
+      return payload.permissions[backendPermission as keyof typeof payload.permissions] === true;
+    }
+
+    return false;
   }
 
   /**
@@ -260,7 +293,7 @@ export class JWTValidator {
    */
   static hasAnyPermission(
     payload: JWTPayload,
-    permissions: Array<keyof NonNullable<JWTPayload['permissions']>>
+    permissions: string[]
   ): boolean {
     return permissions.some(permission => this.hasPermission(payload, permission));
   }
@@ -270,7 +303,7 @@ export class JWTValidator {
    */
   static hasAllPermissions(
     payload: JWTPayload,
-    permissions: Array<keyof NonNullable<JWTPayload['permissions']>>
+    permissions: string[]
   ): boolean {
     return permissions.every(permission => this.hasPermission(payload, permission));
   }
@@ -312,7 +345,7 @@ export class JWTValidator {
     const { payload } = validationResult;
 
     // Add route-specific permission checks here
-    if (routePath.startsWith('/admin') && !payload.permissions?.has_admin_access) {
+    if (routePath.startsWith('/admin') && !this.hasPermission(payload, 'has_admin_access')) {
       return {
         isValid: false,
         error: 'Insufficient permissions for admin access',
@@ -338,7 +371,7 @@ export function extractJWTPayload(token: string): JWTPayload | null {
 
 export function checkJWTPermission(
   token: string, 
-  permission: keyof NonNullable<JWTPayload['permissions']>
+  permission: string
 ): boolean {
   const payload = extractJWTPayload(token);
   return payload ? JWTValidator.hasPermission(payload, permission) : false;

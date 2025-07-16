@@ -40,9 +40,9 @@ export interface JWTAuthContextType {
   refreshToken: () => Promise<void>;
   
   // Permission checking methods (extracted from JWT)
-  hasPermission: (permission: keyof NonNullable<JWTPayload['permissions']>) => boolean;
-  hasAnyPermission: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
-  hasAllPermissions: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
   
   // Role-based access methods
   isAdmin: boolean;
@@ -83,28 +83,29 @@ const PUBLIC_ROUTES = [
 
 /**
  * Convert JWT payload to User object
+ * Updated to handle backend JWT structure
  */
 function jwtPayloadToUser(payload: JWTPayload): User {
-  // Create complete AdminPermissions object with all required fields
+  // Map backend permissions to frontend AdminPermissions structure
   const permissions: AdminPermissions = {
-    // Core admin permissions
-    has_admin_access: payload.permissions?.has_admin_access ?? false,
-    has_user_management_access: payload.permissions?.has_user_management_access ?? false,
-    has_system_settings_access: payload.permissions?.has_system_settings_access ?? false,
+    // Core admin permissions - using backend permission names
+    has_admin_access: payload.permissions?.can_access_admin ?? false,
+    has_user_management_access: payload.permissions?.can_manage_users ?? false,
+    has_system_settings_access: payload.permissions?.can_access_admin ?? false,
     has_audit_access: payload.permissions?.has_audit_access ?? false,
     has_compliance_access: payload.permissions?.has_compliance_access ?? false,
     has_export_access: payload.permissions?.has_export_access ?? false,
-    has_dashboard_access: payload.permissions?.has_dashboard_access ?? false,
+    has_dashboard_access: payload.permissions?.can_access_admin ?? true,
     has_compliance_reports_access: payload.permissions?.has_compliance_reports_access ?? false,
     has_approval_permissions: payload.permissions?.has_approval_permissions ?? false,
     
     // Healthcare permissions
-    has_patient_data_access: payload.permissions?.has_patient_data_access ?? false,
+    has_patient_data_access: payload.permissions?.can_access_patient_data ?? false,
     has_medical_records_access: payload.permissions?.has_medical_records_access ?? false,
     can_manage_appointments: payload.permissions?.can_manage_appointments ?? false,
     can_access_telemedicine: payload.permissions?.can_access_telemedicine ?? false,
     can_manage_medications: payload.permissions?.can_manage_medications ?? false,
-    can_view_research_data: payload.permissions?.can_view_research_data ?? false,
+    can_view_research_data: payload.permissions?.can_access_research_data ?? false,
     can_access_clinical_trials: payload.permissions?.can_access_clinical_trials ?? false,
     
     // User permissions
@@ -121,17 +122,17 @@ function jwtPayloadToUser(payload: JWTPayload): User {
 
   return {
     id: payload.user_id,
-    username: payload.email.split('@')[0], // Generate username from email if not provided
+    username: payload.username,
     email: payload.email,
     first_name: '', // Will be populated from backend when needed
     last_name: '',
     role: payload.role,
     is_active: true,
-    is_approved: true,
-    is_staff: payload.permissions?.has_admin_access ?? false,
+    is_approved: payload.is_approved ?? true,
+    is_staff: payload.permissions?.is_staff ?? false,
     is_superuser: payload.permissions?.is_superadmin ?? false,
-    email_verified: true, // Assume verified if JWT is valid
-    two_factor_enabled: false, // Will be updated from backend
+    email_verified: payload.email_verified ?? false,
+    two_factor_enabled: payload.two_factor_enabled ?? false,
     date_joined: new Date(payload.iat * 1000).toISOString(),
     last_login: new Date().toISOString(),
     phone_verified: false,
@@ -169,7 +170,6 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
 
   /**
    * Initialize authentication state from JWT cookie
-   * FIXED: Better error handling for 401 responses
    */
   useEffect(() => {
     const initializeAuth = async () => {
@@ -262,7 +262,7 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
+        throw new Error(errorData.error || 'Login failed');
       }
 
       const loginResponse: LoginResponse = await response.json();
@@ -384,16 +384,17 @@ export function JWTAuthProvider({ children }: JWTAuthProviderProps) {
 
   /**
    * Permission checking methods
+   * Updated to handle string permissions
    */
-  const hasPermission = useCallback((permission: keyof NonNullable<JWTPayload['permissions']>): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     return jwtPayload ? JWTValidator.hasPermission(jwtPayload, permission) : false;
   }, [jwtPayload]);
 
-  const hasAnyPermission = useCallback((permissions: Array<keyof NonNullable<JWTPayload['permissions']>>): boolean => {
+  const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     return permissions.some(permission => hasPermission(permission));
   }, [hasPermission]);
 
-  const hasAllPermissions = useCallback((permissions: Array<keyof NonNullable<JWTPayload['permissions']>>): boolean => {
+  const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     return permissions.every(permission => hasPermission(permission));
   }, [hasPermission]);
 

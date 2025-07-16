@@ -3,62 +3,62 @@ import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
 
 /**
- * Server-side API route for handling logout and clearing secure HttpOnly cookies
+ * POST /api/auth/logout
  * 
- * This route clears all authentication-related cookies to ensure complete logout
+ * Handles user logout by clearing JWT cookies and optionally notifying backend
  */
-
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚪 Logout API route called');
+    // Optionally notify backend about logout
+    // You can add backend logout logic here if needed
     
-    // Create the response - always return success for logout
-    const response = NextResponse.json({ 
+    const response = NextResponse.json({
       success: true,
-      message: 'Logged out successfully'
+      message: 'Logout successful'
     });
-    
-    // Clear the main auth token (HttpOnly) - this is the critical part
+
+    // Clear JWT cookies
     response.cookies.set({
       name: config.authCookieName,
       value: '',
       httpOnly: true,
       secure: config.secureCookies,
-      sameSite: 'strict' as const,
+      sameSite: 'strict',
       path: '/',
       expires: new Date(0), // Expire immediately
-      ...(config.cookieDomain && { domain: config.cookieDomain })
     });
-    
-    console.log('✅ Authentication cookies cleared');
-    
+
+    // Clear refresh token cookie if it exists
+    response.cookies.set({
+      name: config.refreshCookieName,
+      value: '',
+      httpOnly: true,
+      secure: config.secureCookies,
+      sameSite: 'strict',
+      path: '/',
+      expires: new Date(0), // Expire immediately
+    });
+
     return response;
+
   } catch (error) {
-    console.error('Error in logout API route:', error);
-    
-    // 🔧 CRITICAL: Even if there's an error, return success for logout
-    // We don't want logout to fail and trap users
-    const response = NextResponse.json({ 
-      success: true,
-      message: 'Logged out (with errors but cookies cleared)' 
-    });
-    
-    // Still try to clear the cookie even if there was an error
-    try {
-      response.cookies.set({
-        name: config.authCookieName,
-        value: '',
-        httpOnly: true,
-        secure: config.secureCookies,
-        sameSite: 'strict' as const,
-        path: '/',
-        expires: new Date(0),
-        ...(config.cookieDomain && { domain: config.cookieDomain })
-      });
-    } catch {
-      // Ignore cookie clearing errors
-    }
-    
-    return response;
+    console.error('Logout API error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Internal server error during logout',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
+}
+
+/**
+ * GET method not allowed - this endpoint should only be called via POST
+ */
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
 }

@@ -1,5 +1,4 @@
 // src/lib/auth/use-auth.ts
-
 'use client';
 
 import { useContext, useCallback } from 'react';
@@ -25,16 +24,16 @@ export interface UseJWTAuthReturn {
   tokenNeedsRefresh: boolean;
   timeToExpiration: number | null;
   
-  // Authentication methods - Fixed types to match backend expectations
+  // Authentication methods
   login: (credentials: LoginCredentials) => Promise<LoginResponse>;
   register: (userData: RegisterRequest) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   
-  // Permission checking methods
-  hasPermission: (permission: keyof NonNullable<JWTPayload['permissions']>) => boolean;
-  hasAnyPermission: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
-  hasAllPermissions: (permissions: Array<keyof NonNullable<JWTPayload['permissions']>>) => boolean;
+  // Permission checking methods - Updated to handle string permissions
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
   
   // Role-based access methods
   isAdmin: boolean;
@@ -43,7 +42,7 @@ export interface UseJWTAuthReturn {
   canAccessAudit: boolean;
   canManageSystemSettings: boolean;
   
-  // Utility methods - Fixed return type
+  // Utility methods
   getUserId: () => number | null;
   getUserRole: () => UserRole | null;
   getSessionId: () => string | null;
@@ -78,7 +77,7 @@ export function useJWTAuth(): UseJWTAuthReturn {
     logout: context.logout,
     refreshToken: context.refreshToken,
     
-    // Permission methods
+    // Permission methods - now handle string permissions
     hasPermission: context.hasPermission,
     hasAnyPermission: context.hasAnyPermission,
     hasAllPermissions: context.hasAllPermissions,

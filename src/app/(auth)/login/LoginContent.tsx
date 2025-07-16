@@ -10,12 +10,12 @@ import { useAuth } from '@/lib/auth';
  * Sequential login flow that waits for auth to be fully ready before redirecting
  */
 export default function LoginContent() {
-  const { isAuthenticated, isInitialized, isAuthReady } = useAuth();
+  const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasRedirectedRef = useRef(false);
   
-  // 🔧 IMPROVED: Much more conservative returnUrl handling
+  // Get clean and safe return URL
   const getCleanReturnUrl = () => {
     const returnUrl = searchParams.get('returnUrl');
     
@@ -23,7 +23,7 @@ export default function LoginContent() {
       return '/dashboard';
     }
     
-    // 🔧 CRITICAL: Be very strict about what we allow
+    // Be very strict about what we allow
     const dangerousPatterns = [
       '/login',
       '/auth',
@@ -71,30 +71,26 @@ export default function LoginContent() {
     console.log('🔄 Auth state check:', { 
       isAuthenticated, 
       isInitialized, 
-      isAuthReady,
       hasRedirected: hasRedirectedRef.current 
     });
     
-    // CRITICAL: Only redirect when ALL conditions are met and we haven't redirected yet
+    // Redirect when user is authenticated and we haven't redirected yet
     const shouldRedirect = (
       isInitialized &&        // Auth system initialized
       isAuthenticated &&      // User is authenticated  
-      isAuthReady &&          // Auth cookies are ready for API calls
       !hasRedirectedRef.current // Haven't redirected yet
     );
     
     if (shouldRedirect) {
-      console.log('✅ All auth conditions met, executing redirect to:', sanitizedReturnUrl);
+      console.log('✅ User authenticated, executing redirect to:', sanitizedReturnUrl);
       hasRedirectedRef.current = true;
       
       // Use push instead of replace to avoid potential navigation issues
       router.push(sanitizedReturnUrl);
-    } else if (isInitialized && isAuthenticated && !isAuthReady) {
-      console.log('⏳ User authenticated but auth system not ready yet, waiting...');
     } else if (isInitialized && !isAuthenticated) {
       console.log('🔑 User not authenticated, showing login form');
     }
-  }, [isInitialized, isAuthenticated, isAuthReady, sanitizedReturnUrl, router]);
+  }, [isInitialized, isAuthenticated, sanitizedReturnUrl, router]);
   
   // Show different loading states based on auth progress
   if (!isInitialized) {
@@ -108,19 +104,7 @@ export default function LoginContent() {
     );
   }
   
-  if (isInitialized && isAuthenticated && !isAuthReady) {
-    return (
-      <div className="text-center">
-        <div className="animate-pulse">
-          <div className="h-4 w-4 bg-blue-400 rounded-full mx-auto mb-4"></div>
-        </div>
-        <p className="text-gray-600">Verifying your session...</p>
-        <p className="text-sm text-gray-500 mt-2">Please wait while we confirm your authentication.</p>
-      </div>
-    );
-  }
-  
-  if (isInitialized && isAuthenticated && isAuthReady) {
+  if (isInitialized && isAuthenticated) {
     return (
       <div className="text-center">
         <div className="animate-pulse">

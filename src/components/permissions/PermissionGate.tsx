@@ -4,13 +4,12 @@
 
 import React, { ReactNode } from 'react';
 import { useJWTAuth } from '@/lib/auth/use-auth';
-import { JWTPayload } from '@/lib/auth/validator';
 import { UserRole } from '@/types/auth.types';
 
 interface PermissionGateProps {
   children: ReactNode;
-  requiredPermission?: keyof NonNullable<JWTPayload['permissions']>;
-  requiredPermissions?: Array<keyof NonNullable<JWTPayload['permissions']>>;
+  requiredPermission?: string;
+  requiredPermissions?: string[];
   requireAll?: boolean; // If true, user must have ALL permissions. If false, ANY permission
   requiredRole?: UserRole;
   requiredRoles?: UserRole[];
@@ -20,6 +19,7 @@ interface PermissionGateProps {
 
 /**
  * Generic permission gate component
+ * Updated to handle string permissions
  */
 export function PermissionGate({ 
   children, 
@@ -166,10 +166,10 @@ export function PermissionDebug() {
       <h4 className="font-bold mb-2">🔐 Auth Debug</h4>
       <div className="space-y-1">
         <div>Role: {user?.role}</div>
-        <div>Admin: {jwtPayload?.permissions?.has_admin_access ? '✅' : '❌'}</div>
-        <div>Users: {jwtPayload?.permissions?.has_user_management_access ? '✅' : '❌'}</div>
-        <div>Audit: {jwtPayload?.permissions?.has_audit_access ? '✅' : '❌'}</div>
+        <div>Admin: {jwtPayload?.permissions?.can_access_admin ? '✅' : '❌'}</div>
+        <div>Users: {jwtPayload?.permissions?.can_manage_users ? '✅' : '❌'}</div>
         <div>SuperAdmin: {jwtPayload?.permissions?.is_superadmin ? '✅' : '❌'}</div>
+        <div>Staff: {jwtPayload?.permissions?.is_staff ? '✅' : '❌'}</div>
       </div>
     </div>
   );
