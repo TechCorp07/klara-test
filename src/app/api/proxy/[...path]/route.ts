@@ -2,8 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
 
-// Define allowed API path prefixes for security
-// Using prefixes to cover all sub-paths
 const ALLOWED_PATH_PREFIXES = [
   'users/',
   'patient/',
@@ -27,8 +25,8 @@ function isPathAllowed(path: string): boolean {
 }
 
 /**
- * Proxy API requests to Django backend with proper authentication
- * This route reads the HttpOnly cookie and adds the Authorization header
+ * Proxy API requests to Django backend with tab-specific authentication
+ * Now uses Authorization header instead of cookies
  */
 async function handler(request: NextRequest) {
   try {
@@ -47,8 +45,9 @@ async function handler(request: NextRequest) {
       );
     }
     
-    // Get the authentication token from HttpOnly cookie
-    const token = request.cookies.get(config.authCookieName)?.value;
+    // Get the authentication token from Authorization header (tab-specific auth)
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
     
     if (!token) {
       console.log('❌ No authentication token found in proxy');
@@ -61,7 +60,7 @@ async function handler(request: NextRequest) {
     // Prepare headers for the backend request
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'Authorization': `Token ${token}`, // Django expects this format
+      'Authorization': `Bearer ${token}`, // Use Bearer token format
       'X-Requested-With': 'XMLHttpRequest',
     };
     
@@ -69,6 +68,12 @@ async function handler(request: NextRequest) {
     const contentType = request.headers.get('content-type');
     if (contentType && contentType !== 'application/json') {
       headers['Content-Type'] = contentType;
+    }
+    
+    // Forward tab-specific headers
+    const tabId = request.headers.get('x-tab-id');
+    if (tabId) {
+      headers['X-Tab-ID'] = tabId;
     }
     
     // Build the full backend URL
@@ -88,39 +93,47 @@ async function handler(request: NextRequest) {
     // Make the request to the Django backend
     const backendResponse = await fetch(backendUrl, requestOptions);
     
-    // Log the response status
-    console.log(`📥 Backend response: ${backendResponse.status}`);
-    
     // Get response body
-    const contentTypeHeader = backendResponse.headers.get('content-type');
-    let responseBody;
+    const responseBody = await backendResponse.text();
     
-    if (contentTypeHeader?.includes('application/json')) {
-      responseBody = await backendResponse.json();
-    } else {
-      responseBody = await backendResponse.text();
-    }
+    console.log(`📨 Backend response: ${backendResponse.status}`);
     
-    // Create the response with the same status code
-    const response = NextResponse.json(
-      responseBody,
-      { status: backendResponse.status }
-    );
+    // Create Next.js response with same status and headers
+    const response = new NextResponse(responseBody, {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
+    });
     
-    // Forward any important headers from the backend
-    const headersToForward = ['x-request-id', 'x-response-time'];
-    headersToForward.forEach(header => {
-      const value = backendResponse.headers.get(header);
-      if (value) {
-        response.headers.set(header, value);
+    // Copy relevant headers from backend response
+    const headersToPreserve = [
+      'content-type',
+      'cache-control',
+      'x-ratelimit-limit',
+      'x-ratelimit-remaining',
+      'x-ratelimit-reset',
+    ];
+    
+    headersToPreserve.forEach(headerName => {
+      const headerValue = backendResponse.headers.get(headerName);
+      if (headerValue) {
+        response.headers.set(headerName, headerValue);
       }
     });
     
+    // Add CORS headers for frontend
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tab-ID');
+    
     return response;
+    
   } catch (error) {
     console.error('❌ Proxy error:', error);
     return NextResponse.json(
-      { error: 'Internal proxy error' },
+      { 
+        error: 'Proxy request failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
@@ -132,3 +145,4 @@ export const POST = handler;
 export const PUT = handler;
 export const PATCH = handler;
 export const DELETE = handler;
+export const OPTIONS = handler;
