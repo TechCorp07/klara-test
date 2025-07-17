@@ -76,9 +76,6 @@ export interface User {
   profile?: string | null; 
 }
 
-/**
- * Login request - matches backend expectations
- */
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -86,13 +83,40 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   token: string;
+  refresh_token?: string;
   user: User;
-  requires_2fa?: boolean;
-  user_id?: number;
-  verification_warning?: {
-    days_remaining: number;
-    message: string;
+  requires_2fa: boolean;
+  session?: {
+    id: string;
+    expires_at: string;
+    created_at: string;
   };
+  permissions?: Record<string, boolean>;
+  tab_id?: string;
+}
+
+export interface RefreshTokenRequest {
+  refresh_token: string;
+  tabId?: string;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
+  tab_id?: string;
+}
+
+export interface TabLogoutRequest {
+  tabId?: string;
+  logout_type?: 'tab_specific' | 'global';
+}
+
+export interface LogoutResponse {
+  success: boolean;
+  message: string;
+  tab_id?: string;
 }
 
 export interface RegisterRequest {

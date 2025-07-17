@@ -8,6 +8,12 @@ interface TabAPIRequestConfig extends AxiosRequestConfig {
   skipAuth?: boolean; 
 }
 
+interface ExtendedInternalAxiosRequestConfig extends InternalAxiosRequestConfig {
+  skipAuthRefresh?: boolean;
+  skipAuth?: boolean;
+  metadata?: { startTime: number };
+}
+
 export interface APIResponse<T = unknown> {
   data: T;
   success: boolean;
@@ -33,11 +39,10 @@ class TabAPIClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      // NO withCredentials - we don't use cookies
+
       withCredentials: false,
       
       validateStatus: (status) => {
-        // Accept any status code - we'll handle errors explicitly
         return status >= 200 && status < 500;
       },
     });
@@ -46,9 +51,11 @@ class TabAPIClient {
   private setupInterceptors(): void {
     // Request interceptor - Add Authorization header
     this.client.interceptors.request.use(
-      (config) => {
+      (config: InternalAxiosRequestConfig) => {
+        const extendedConfig = config as ExtendedInternalAxiosRequestConfig;
+        
         // Skip auth for specific requests (like login)
-        if ((config as TabAPIRequestConfig).skipAuth) {
+        if (extendedConfig.skipAuth) {
           return config;
         }
 
@@ -64,7 +71,7 @@ class TabAPIClient {
         }
         
         // Add request timestamp for debugging
-        (config as InternalAxiosRequestConfig & { metadata: { startTime: number } }).metadata = { startTime: Date.now() };
+        extendedConfig.metadata = { startTime: Date.now() };
         
         // Log outgoing requests in development
         if (process.env.NODE_ENV === 'development') {
@@ -81,12 +88,12 @@ class TabAPIClient {
 
     // Response interceptor - Handle auth errors
     this.client.interceptors.response.use(
-      (response) => {
+      (response: AxiosResponse) => {
         // Log response timing in development
         if (process.env.NODE_ENV === 'development') {
-          const metadata = (response.config as InternalAxiosRequestConfig & { metadata?: { startTime: number } }).metadata;
-          if (metadata) {
-            const duration = Date.now() - metadata.startTime;
+          const extendedConfig = response.config as ExtendedInternalAxiosRequestConfig;
+          if (extendedConfig.metadata) {
+            const duration = Date.now() - extendedConfig.metadata.startTime;
             console.log(`✅ API Response: ${response.status} in ${duration}ms`);
           }
         }
@@ -94,13 +101,12 @@ class TabAPIClient {
         return response;
       },
       async (error: AxiosError) => {
-        const originalRequest = error.config as TabAPIRequestConfig;
+        const originalRequest = error.config as ExtendedInternalAxiosRequestConfig;
         
         // Handle authentication errors
-        if (error.response?.status === 401 && !originalRequest.skipAuthRefresh) {
+        if (error.response?.status === 401 && !originalRequest?.skipAuthRefresh) {
           console.log('🔐 Authentication error, clearing tab session');
           
-          // Clear tab session and redirect to login
           TabAuthManager.clearTabSession();
           
           // Only redirect if we're in the browser
@@ -111,7 +117,6 @@ class TabAPIClient {
           return Promise.reject(error);
         }
         
-        // Log API errors in development
         if (process.env.NODE_ENV === 'development') {
           console.error(`❌ API Error: ${error.response?.status} ${error.message}`);
         }
@@ -144,7 +149,7 @@ class TabAPIClient {
 
   // Convenience method for API calls without auth (like login)
   async postWithoutAuth<T = unknown>(url: string, data?: unknown): Promise<AxiosResponse<T>> {
-    return this.client.post<T>(url, data, { skipAuth: true });
+    return this.client.post<T>(url, data, { skipAuth: true } as TabAPIRequestConfig);
   }
 
   // Get current tab session info

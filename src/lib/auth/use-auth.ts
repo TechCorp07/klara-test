@@ -24,19 +24,23 @@ export interface UseJWTAuthReturn {
   tokenNeedsRefresh: boolean;
   timeToExpiration: number | null;
   
+  // Tab-specific state
+  tabId: string;
+  isTabAuthenticated: boolean;
+
   // Authentication methods
   login: (credentials: LoginCredentials) => Promise<LoginResponse>;
   register: (userData: RegisterRequest) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
+  logoutAllTabs: () => Promise<void>;
   refreshToken: () => Promise<void>;
   
-  // Additional auth methods that components might expect
   requestPasswordReset?: (email: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
   resetPassword?: (token: string, password: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
   verifyTwoFactor?: (userId: number, code: string) => Promise<LoginResponse>;
   verifyEmail?: (token: string) => Promise<{ success: boolean; message: string }>;
   
-  // Permission checking methods - Updated to handle string permissions
+  // Permission methods
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
@@ -64,7 +68,6 @@ export function useJWTAuth(): UseJWTAuthReturn {
     throw new Error('useJWTAuth must be used within a JWTAuthProvider');
   }
 
-  // Fallback implementations for methods that components might expect
   const requestPasswordReset = useCallback(async (email: string) => {
     try {
       const response = await fetch('/api/auth/forgot-password', {
@@ -139,7 +142,7 @@ export function useJWTAuth(): UseJWTAuthReturn {
     }
   }, []);
 
-  // Return all context methods and properties with proper typing
+  // Return all properties from context, ensuring we match the interface
   return {
     // Core state
     user: context.user,
@@ -147,36 +150,35 @@ export function useJWTAuth(): UseJWTAuthReturn {
     isLoading: context.isLoading,
     isInitialized: context.isInitialized,
     
-    // JWT-specific state
+    // JWT state
     jwtPayload: context.jwtPayload,
     tokenNeedsRefresh: context.tokenNeedsRefresh,
     timeToExpiration: context.timeToExpiration,
     
-    // Authentication methods - already properly typed in context
+    // Tab state
+    tabId: context.tabId,
+    isTabAuthenticated: context.isTabAuthenticated,
+    
+    // Methods
     login: context.login,
     register: context.register,
     logout: context.logout,
+    logoutAllTabs: context.logoutAllTabs, // Now properly included
     refreshToken: context.refreshToken,
     
-    // Additional methods for backward compatibility
-    requestPasswordReset,
-    resetPassword,
-    verifyTwoFactor,
-    verifyEmail,
-    
-    // Permission methods - now handle string permissions
+    // Permission methods
     hasPermission: context.hasPermission,
     hasAnyPermission: context.hasAnyPermission,
     hasAllPermissions: context.hasAllPermissions,
     
-    // Computed permissions
+    // Role methods
     isAdmin: context.isAdmin,
     isSuperAdmin: context.isSuperAdmin,
     canManageUsers: context.canManageUsers,
     canAccessAudit: context.canAccessAudit,
     canManageSystemSettings: context.canManageSystemSettings,
     
-    // Utility methods
+    // Utilities
     getUserId: context.getUserId,
     getUserRole: context.getUserRole,
     getSessionId: context.getSessionId,
@@ -211,8 +213,44 @@ export function useSystemSettingsAccess() {
   return useCallback(() => hasPermission('has_system_settings_access'), [hasPermission]);
 }
 
-// Export default and compatibility exports
-export default useJWTAuth;
+/**
+ * Hook to check if user has specific permission
+ */
+export function usePermission(permission: string): boolean {
+  const { hasPermission } = useJWTAuth();
+  return hasPermission(permission);
+}
 
-// For backward compatibility, export as useAuth as well
-export { useJWTAuth as useAuth };
+/**
+ * Hook to check if user has any of the specified permissions
+ */
+export function useAnyPermission(permissions: string[]): boolean {
+  const { hasAnyPermission } = useJWTAuth();
+  return hasAnyPermission(permissions);
+}
+
+/**
+ * Hook to check if user has all specified permissions
+ */
+export function useAllPermissions(permissions: string[]): boolean {
+  const { hasAllPermissions } = useJWTAuth();
+  return hasAllPermissions(permissions);
+}
+
+/**
+ * Hook to check if user has specific role
+ */
+export function useRole(role: string): boolean {
+  const { user } = useJWTAuth();
+  return user?.role === role;
+}
+
+/**
+ * Hook to check if user has any of the specified roles
+ */
+export function useAnyRole(roles: string[]): boolean {
+  const { user } = useJWTAuth();
+  return user ? roles.includes(user.role) : false;
+}
+
+export default useJWTAuth;

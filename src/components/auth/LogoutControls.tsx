@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useJWTAuth } from '@/lib/auth/use-auth';
 
 interface LogoutControlsProps {
   variant?: 'dropdown' | 'buttons' | 'simple';
@@ -15,7 +15,7 @@ export default function LogoutControls({
   className = '',
   showUserInfo = true 
 }: LogoutControlsProps) {
-  const { logout, logoutAllTabs, user, tabId, isAuthenticated } = useAuth();
+  const { logout, logoutAllTabs, user, tabId, isAuthenticated } = useJWTAuth();
   const [showDropdown, setShowDropdown] = useState(false);
 
   if (!isAuthenticated || !user) {

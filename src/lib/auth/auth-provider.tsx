@@ -278,7 +278,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const loginResponse: LoginResponse = await response.json();
       
       if (loginResponse.token) {
-        // Store authentication in tab-specific storage
         TabAuthManager.setTabSession({
           jwtToken: loginResponse.token,
           refreshToken: loginResponse.refresh_token,
@@ -287,7 +286,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           role: loginResponse.user.role,
         });
         
-        // Validate and set local state
         const validationResult = JWTValidator.validateToken(loginResponse.token);
         
         if (validationResult.isValid && validationResult.payload) {
@@ -302,9 +300,9 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           console.log(`✅ Tab login successful for: ${userFromJWT.email} on tab: ${tabId}`);
         }
       }
-      
+
       return loginResponse;
-      
+
     } catch (error) {
       console.error('❌ Tab login error:', error);
       throw error;
