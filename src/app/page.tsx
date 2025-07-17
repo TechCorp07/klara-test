@@ -16,11 +16,11 @@ export default function Home() {
       hasUser: !!user, 
       userRole: user?.role 
     });
-
+  
     if (isInitialized) {
       if (isAuthenticated && user) {
-        console.log(`✅ User authenticated as ${user.role}, redirecting to /${user.role}`);
-        router.push(`/${user.role}`);
+        console.log(`✅ User authenticated as ${user.role}, redirecting to dashboard`);
+        router.push('/dashboard');
       } else {
         console.log('❌ User not authenticated, redirecting to login');
         router.push('/login');

@@ -84,9 +84,12 @@ export default function LoginContent() {
     if (shouldRedirect) {
       console.log('✅ User authenticated, executing redirect to:', sanitizedReturnUrl);
       hasRedirectedRef.current = true;
-      
-      // Use push instead of replace to avoid potential navigation issues
-      router.push(sanitizedReturnUrl);
+
+      setTimeout(() => {
+        router.push(sanitizedReturnUrl);
+      }, 100);
+
+      return;
     } else if (isInitialized && !isAuthenticated) {
       console.log('🔑 User not authenticated, showing login form');
     }

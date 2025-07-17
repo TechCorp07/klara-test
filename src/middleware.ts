@@ -199,62 +199,39 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 /**
- * Main middleware function - TAB-SPECIFIC AUTHENTICATION ONLY
+ * Main middleware function
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for excluded paths
   if (shouldExcludePath(pathname)) {
     return NextResponse.next();
   }
 
-  // Allow public routes to proceed without authentication
   if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // Extract JWT token from Authorization header ONLY
-  const token = getAuthToken(request);
-  
-  if (!token) {
-    console.log(`🔐 No authentication token found for ${pathname}`);
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
+    const token = getAuthToken(request);
     
-    // Store the attempted URL for post-login redirect
-    const loginUrl = new URL('/login', request.url);
-    if (pathname !== '/login') {
-      loginUrl.searchParams.set('returnUrl', pathname);
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
     }
 
-    return NextResponse.redirect(loginUrl);
+    const validationResult = validateJWTStructure(token);
+    if (!validationResult.isValid || !validationResult.payload) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
   }
 
-  // Validate JWT token structure and expiration locally
-  const validationResult = validateJWTStructure(token);
-  
-  if (!validationResult.isValid || !validationResult.payload) {
-    console.log(`🔐 Invalid JWT token for ${pathname}: ${validationResult.error}`);
-    
-    // Redirect to login (NO COOKIE CLEARING)
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  const { payload } = validationResult;
-
-  // Check if user has access to the requested route
-  if (!hasRouteAccess(payload.role, pathname, payload.permissions)) {
-    console.log(`🚫 Access denied for role ${payload.role} to ${pathname}`);
-    return NextResponse.redirect(new URL('/unauthorized', request.url));
-  }
-
-  // Add user context to request headers for downstream processing
-  const response = NextResponse.next();
-  response.headers.set('X-User-ID', payload.user_id.toString());
-  response.headers.set('X-User-Role', payload.role);
-  response.headers.set('X-Session-ID', payload.session_id || '');
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
