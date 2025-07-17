@@ -7,16 +7,10 @@ interface AppConfig {
   // API Configuration
   apiBaseUrl: string;
   
-
-  authCookieName?: string; 
-  refreshCookieName?: string; 
-  secureCookies: boolean;
-  cookieDomain?: string;
-  
-  // New tab-specific authentication
+  // Tab-specific authentication (NO COOKIES)
   tabAuthEnabled: boolean;
   tabSessionTimeout: number; // milliseconds
-  maxConcurrentTabs?: number;
+  maxConcurrentTabs: number;
   
   // Session Configuration
   sessionTimeoutMinutes: number;
@@ -41,11 +35,10 @@ interface AppConfig {
 }
 
 /**
- * Environment-based configuration
+ * Environment-based configuration for tab-specific authentication
  */
 function createConfig(): AppConfig {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const isProduction = process.env.NODE_ENV === 'production';
   
   return {
     // Application Identity
@@ -55,12 +48,9 @@ function createConfig(): AppConfig {
     // API Configuration
     apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
     
-    // Authentication Configuration
-    secureCookies: isProduction,
-    cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
-    
+    // Tab-specific authentication ONLY
     tabAuthEnabled: true,
-    tabSessionTimeout: 30 * 60 * 1000, // 30 minutes in milliseconds
+    tabSessionTimeout: parseInt(process.env.NEXT_PUBLIC_TAB_SESSION_TIMEOUT || '1800000'), // 30 minutes
     maxConcurrentTabs: parseInt(process.env.NEXT_PUBLIC_MAX_TABS || '10'),
     
     // Session Configuration
@@ -79,9 +69,9 @@ function createConfig(): AppConfig {
     // Feature Flags
     features: {
       enableTokenRefresh: true,
-      enablePermissionCaching: false, 
+      enablePermissionCaching: false, // Keep disabled to prevent race conditions
       enableSecurityLogging: isDevelopment,
-      enableTabIsolation: true, 
+      enableTabIsolation: true, // Always enabled
     },
   };
 }
@@ -107,14 +97,16 @@ export function validateConfig(): { isValid: boolean; errors: string[] } {
   }
   
   // Validate tab-specific auth configuration
-  if (config.tabAuthEnabled) {
-    if (!config.tabSessionTimeout || config.tabSessionTimeout < 60000) { // Minimum 1 minute
-      errors.push('Tab session timeout must be at least 60000ms (1 minute)');
-    }
-    
-    if (config.maxConcurrentTabs && (config.maxConcurrentTabs < 1 || config.maxConcurrentTabs > 50)) {
-      errors.push('Max concurrent tabs must be between 1 and 50');
-    }
+  if (!config.tabAuthEnabled) {
+    errors.push('Tab authentication must be enabled');
+  }
+  
+  if (config.tabSessionTimeout < 60000) { // Minimum 1 minute
+    errors.push('Tab session timeout must be at least 60000ms (1 minute)');
+  }
+  
+  if (config.maxConcurrentTabs < 1 || config.maxConcurrentTabs > 50) {
+    errors.push('Max concurrent tabs must be between 1 and 50');
   }
   
   // Validate reasonable values
@@ -186,7 +178,7 @@ export const configUtils = {
   },
   
   /**
-   * Check if tab-specific authentication is enabled
+   * Check if tab-specific authentication is enabled (always true now)
    */
   isTabAuthEnabled: (): boolean => {
     return config.tabAuthEnabled;
@@ -200,26 +192,15 @@ export const configUtils = {
   },
   
   /**
-   * Check if we're in transition mode (both cookie and tab auth supported)
+   * Get authentication mode (always 'tab' now)
    */
-  isTransitionMode: (): boolean => {
-    return config.tabAuthEnabled && !!(config.authCookieName || config.refreshCookieName);
-  },
-  
-  /**
-   * Get authentication mode
-   */
-  getAuthMode: (): 'cookie' | 'tab' | 'hybrid' => {
-    if (config.tabAuthEnabled && !config.authCookieName) {
-      return 'tab';
-    }
-    if (!config.tabAuthEnabled && config.authCookieName) {
-      return 'cookie';
-    }
-    return 'hybrid';
+  getAuthMode: (): 'tab' => {
+    return 'tab';
   },
 };
 
+// Export types for use throughout the application
 export type { AppConfig };
 
+// Default export
 export default config;

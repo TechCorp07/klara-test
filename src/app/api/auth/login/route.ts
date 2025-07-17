@@ -5,8 +5,7 @@ import { config } from '@/lib/config';
 /**
  * POST /api/auth/login
  * 
- * Updated to support both cookie-based and tab-specific authentication
- * Automatically detects the authentication type from request headers
+ * Tab-specific authentication only - NO cookies
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,37 +19,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Detect authentication type
-    const authType = request.headers.get('X-Auth-Type') || 'cookie';
+    // Get tab ID (required for tab-specific auth)
     const tabId = body.tabId || request.headers.get('X-Tab-ID');
-    const isTabSpecific = authType === 'tab-specific' || !!tabId;
+    
+    if (!tabId) {
+      return NextResponse.json(
+        { error: 'Tab ID is required for authentication' },
+        { status: 400 }
+      );
+    }
 
     // Forward request to backend
     const backendUrl = `${config.apiBaseUrl}/users/auth/login/`;
-    console.log(`🔗 Forwarding ${isTabSpecific ? 'tab-specific' : 'cookie-based'} login to:`, backendUrl);
-    
-    const backendHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    const backendBody: Record<string, unknown> = {
-      username: body.username,
-      password: body.password,
-    };
-
-    // Add tab-specific headers and data if needed
-    if (isTabSpecific && tabId) {
-      backendHeaders['X-Tab-ID'] = tabId;
-      backendHeaders['X-Auth-Type'] = 'tab-specific';
-      backendBody.tab_id = tabId;
-      backendBody.auth_type = 'tab_specific';
-    }
+    console.log('🔗 Forwarding tab-specific login to:', backendUrl);
     
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
-      headers: backendHeaders,
-      body: JSON.stringify(backendBody),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Tab-ID': tabId,
+        'X-Auth-Type': 'tab-specific',
+      },
+      body: JSON.stringify({
+        username: body.username,
+        password: body.password,
+        tab_id: tabId,
+        auth_type: 'tab_specific',
+      }),
     });
 
     const responseData = await backendResponse.json();
@@ -66,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`✅ Backend login successful (${isTabSpecific ? 'tab-specific' : 'cookie-based'})`);
+    console.log('✅ Backend tab-specific login successful');
 
     // Extract JWT token
     const jwtToken = responseData.access_token;
@@ -78,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create response with user data
+    // Create response with user data (NO COOKIES SET)
     const loginResponse = {
       token: jwtToken,
       refresh_token: responseData.refresh_token,
@@ -86,38 +82,12 @@ export async function POST(request: NextRequest) {
       requires_2fa: responseData.requires_2fa || false,
       session: responseData.session,
       permissions: responseData.permissions,
-      ...(tabId && { tab_id: tabId }),
+      tab_id: tabId,
     };
 
     const response = NextResponse.json(loginResponse);
     
-    // Set cookies only for non-tab-specific authentication
-    if (!isTabSpecific) {
-      response.cookies.set({
-        name: config.authCookieName,
-        value: jwtToken,
-        httpOnly: true,
-        secure: config.secureCookies,
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 60 * 60 * 24, // 24 hours
-      });
-
-      // Set refresh token cookie if provided
-      if (responseData.refresh_token) {
-        response.cookies.set({
-          name: config.refreshCookieName,
-          value: responseData.refresh_token,
-          httpOnly: true,
-          secure: config.secureCookies,
-          sameSite: 'strict',
-          path: '/',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-        });
-      }
-    }
-
-    // Add security headers
+    // Add security headers (NO COOKIES)
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set('X-XSS-Protection', '1; mode=block');

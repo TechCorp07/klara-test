@@ -257,13 +257,16 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log(`🔑 Starting tab-specific login for tab: ${tabId}`);
       
-      // Call the modified login API that doesn't set cookies
-      const response = await fetch('/api/auth/tab-login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Auth-Type': 'tab-specific',
+          'X-Tab-ID': tabId,
+        },
         body: JSON.stringify({
           ...credentials,
-          tabId, // Include tab ID in request
+          tabId,
         }),
       });
 

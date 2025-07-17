@@ -1,6 +1,5 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { config as appConfig } from './lib/config';
 import { UserRole } from './types/auth.types';
 
 // Public routes that don't require authentication
@@ -78,15 +77,21 @@ interface JWTPayload {
   last_password_change?: number;
 }
 
-function getTabSpecificToken(request: NextRequest): string | null {
+/**
+ * Get JWT token from Authorization header ONLY (no cookie fallback)
+ */
+function getAuthToken(request: NextRequest): string | null {
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
   
-  return request.cookies.get(appConfig.authCookieName)?.value || null;
+  return null; // NO COOKIE FALLBACK
 }
 
+/**
+ * Validate JWT token structure and expiration locally
+ */
 function validateJWTStructure(token: string): { isValid: boolean; payload?: JWTPayload; error?: string } {
   try {
     // Basic format validation
@@ -194,7 +199,7 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 /**
- * Main middleware function
+ * Main middleware function - TAB-SPECIFIC AUTHENTICATION ONLY
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -209,8 +214,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract JWT token from HTTP-only cookie
-  const token = getTabSpecificToken(request);
+  // Extract JWT token from Authorization header ONLY
+  const token = getAuthToken(request);
   
   if (!token) {
     console.log(`🔐 No authentication token found for ${pathname}`);
@@ -230,57 +235,28 @@ export function middleware(request: NextRequest) {
   if (!validationResult.isValid || !validationResult.payload) {
     console.log(`🔐 Invalid JWT token for ${pathname}: ${validationResult.error}`);
     
-    // Clear invalid cookie and redirect to login
+    // Redirect to login (NO COOKIE CLEARING)
     const loginUrl = new URL('/login', request.url);
-    const response = NextResponse.redirect(loginUrl);
-    
-    // Clear the invalid cookie
-    response.cookies.set({
-      name: appConfig.authCookieName,
-      value: '',
-      httpOnly: true,
-      secure: appConfig.secureCookies,
-      sameSite: 'strict',
-      path: '/',
-      expires: new Date(0), // Expire immediately
-    });
-    
-    return response;
+    return NextResponse.redirect(loginUrl);
   }
 
   const { payload } = validationResult;
 
   // Check if user has access to the requested route
   if (!hasRouteAccess(payload.role, pathname, payload.permissions)) {
-    console.log(`🔐 Access denied for ${payload.role} to ${pathname}`);
-    
-    // Redirect to appropriate dashboard based on role
-    const dashboardPath = `/${payload.role}`;
-    const unauthorizedUrl = new URL(dashboardPath, request.url);
-    
-    return NextResponse.redirect(unauthorizedUrl);
+    console.log(`🚫 Access denied for role ${payload.role} to ${pathname}`);
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
-  // User is authenticated and authorized - allow request to proceed
-  console.log(`✅ Access granted for ${payload.role} to ${pathname}`);
-  
-  // Add user context to request headers for downstream use
+  // Add user context to request headers for downstream processing
   const response = NextResponse.next();
-  response.headers.set('x-user-id', payload.user_id.toString());
-  response.headers.set('x-user-role', payload.role);
-  response.headers.set('x-user-email', payload.email);
-  response.headers.set('x-session-id', payload.session_id);
-  
-  if (payload.permissions) {
-    response.headers.set('x-user-permissions', JSON.stringify(payload.permissions));
-  }
+  response.headers.set('X-User-ID', payload.user_id.toString());
+  response.headers.set('X-User-Role', payload.role);
+  response.headers.set('X-Session-ID', payload.session_id || '');
 
   return response;
 }
 
-/**
- * Middleware Configuration
- */
 export const config = {
   matcher: [
     /*
@@ -289,8 +265,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - Any file with an extension (images, css, js, etc.)
+     * - public assets
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|assets|images|fonts).*)',
   ],
 };
