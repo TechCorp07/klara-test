@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { JWTValidator, JWTPayload } from './validator';
-import { config } from '@/lib/config';
+import { TabAuthManager } from './tab-auth-utils';
 import { 
   User, 
   UserRole,
@@ -27,10 +27,15 @@ export interface JWTAuthContextType {
   tokenNeedsRefresh: boolean;
   timeToExpiration: number | null;
   
+  // Tab-specific state
+  tabId: string;
+  isTabAuthenticated: boolean;
+  
   // Authentication methods
   login: (credentials: LoginCredentials) => Promise<LoginResponse>;
   register: (userData: RegisterRequest) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
+  logoutAllTabs: () => Promise<void>;
   refreshToken: () => Promise<void>;
   
   // Permission checking methods (extracted from JWT)
@@ -77,7 +82,6 @@ const PUBLIC_ROUTES = [
 
 /**
  * Convert JWT payload to User object
- * Updated to handle backend JWT structure properly
  */
 function jwtPayloadToUser(payload: JWTPayload): User {
   const permissions: AdminPermissions = {
@@ -114,24 +118,23 @@ function jwtPayloadToUser(payload: JWTPayload): User {
     id: payload.user_id,
     username: payload.username || payload.email,
     email: payload.email,
-    first_name: '', // Will be populated from actual user data
-    last_name: '', // Will be populated from actual user data
+    first_name: '', 
+    last_name: '',
     role: payload.role,
-    is_approved: true, // JWT tokens are only issued for approved users
+    is_approved: true,
     is_active: true,
     is_staff: payload.role === 'admin' || payload.role === 'superadmin',
     is_superuser: payload.role === 'superadmin',
-    email_verified: true, // Assume verified if JWT issued
-    two_factor_enabled: false, // Will be updated from actual user data
-    date_joined: new Date().toISOString(), // Placeholder
+    email_verified: true,
+    two_factor_enabled: false,
+    date_joined: new Date().toISOString(),
     phone_verified: false,
     permissions,
-    //profiles: {}, // Will be populated with actual profile data
   };
 }
 
 /**
- * JWT Authentication Provider
+ * JWT Authentication Provider with Tab Isolation
  */
 export function JWTAuthProvider({ children }: { children: ReactNode }) {
   // Core state
@@ -144,49 +147,51 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const [tokenNeedsRefresh, setTokenNeedsRefresh] = useState(false);
   const [timeToExpiration, setTimeToExpiration] = useState<number | null>(null);
   
-  // Navigation
-  const pathname = usePathname();
-  const router = useRouter();
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  
-  /**
-   * Initialize authentication state on app load
-   */
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        console.log('🔄 Initializing JWT authentication...');
-        
-        const response = await fetch('/api/auth/validate', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
+  // Tab-specific state
+  const [tabId] = useState(TabAuthManager.getTabId());
+  const [isTabAuthenticated, setIsTabAuthenticated] = useState(false);
 
-        if (response.ok) {
-          const data = await response.json();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Initialize authentication state from tab-specific storage
+  useEffect(() => {
+    const initializeAuth = () => {
+      console.log(`🔐 Initializing tab authentication for tab: ${tabId}`);
+      
+      try {
+        // Check if current tab has authentication
+        const tabSession = TabAuthManager.getTabSession();
+        
+        if (tabSession && tabSession.jwtToken) {
+          console.log(`✅ Found tab session for user: ${tabSession.userEmail}`);
           
-          if (data.token) {
-            const validationResult = JWTValidator.validateToken(data.token);
+          // Validate the JWT token
+          const validationResult = JWTValidator.validateToken(tabSession.jwtToken);
+          
+          if (validationResult.isValid && validationResult.payload) {
+            const userFromJWT = jwtPayloadToUser(validationResult.payload);
             
-            if (validationResult.isValid && validationResult.payload) {
-              const userFromJWT = jwtPayloadToUser(validationResult.payload);
-              
-              setUser(userFromJWT);
-              setJwtPayload(validationResult.payload);
-              setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
-              setTimeToExpiration(validationResult.expiresIn ?? null);
-              
-              console.log('✅ JWT authentication initialized');
-            }
+            setUser(userFromJWT);
+            setJwtPayload(validationResult.payload);
+            setIsTabAuthenticated(true);
+            setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
+            setTimeToExpiration(validationResult.expiresIn ?? null);
+            
+            console.log(`✅ Tab authentication successful for: ${userFromJWT.email}`);
+          } else {
+            console.log('❌ Invalid JWT token in tab session, clearing...');
+            TabAuthManager.clearTabSession();
+            setIsTabAuthenticated(false);
           }
-        } else if (response.status === 401) {
-          console.log('ℹ️ No JWT token found - user not authenticated');
         } else {
-          console.warn(`⚠️ Auth validation returned ${response.status}: ${response.statusText}`);
+          console.log('ℹ️ No tab session found - tab requires login');
+          setIsTabAuthenticated(false);
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('❌ Error initializing tab authentication:', error);
+        TabAuthManager.clearTabSession();
+        setIsTabAuthenticated(false);
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
@@ -194,48 +199,72 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     };
 
     initializeAuth();
-  }, []);
+  }, [tabId]);
 
-  /**
-   * Set up token expiration monitoring
-   */
+  // Update activity timestamp on user interaction
   useEffect(() => {
-    if (!jwtPayload) return;
-
-    const interval = setInterval(() => {
-      const timeLeft = JWTValidator.getTimeToExpiration(jwtPayload);
-      setTimeToExpiration(timeLeft);
-      
-      if (timeLeft <= 0) {
-        // Token expired, clear auth state
-        setUser(null);
-        setJwtPayload(null);
-        setTokenNeedsRefresh(false);
-        setTimeToExpiration(null);
-        
-        if (!isPublicRoute) {
-          router.push('/login');
-        }
-      } else if (timeLeft < 5 * 60) { // 5 minutes
-        setTokenNeedsRefresh(true);
+    const updateActivity = () => {
+      if (isTabAuthenticated) {
+        TabAuthManager.updateActivity();
       }
-    }, 1000);
+    };
 
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, updateActivity);
+      });
+    };
+  }, [isTabAuthenticated]);
+
+  // Token refresh monitoring
+  useEffect(() => {
+    if (!jwtPayload || !isTabAuthenticated) return;
+
+    const checkTokenExpiration = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const timeToExp = jwtPayload.exp - now;
+      
+      setTimeToExpiration(timeToExp);
+      
+      // Auto-refresh if token expires in 5 minutes
+      if (timeToExp < 5 * 60 && timeToExp > 0) {
+        setTokenNeedsRefresh(true);
+        refreshToken();
+      }
+      
+      // Auto-logout if token is expired
+      if (timeToExp <= 0) {
+        console.log('🕐 JWT token expired, logging out tab...');
+        logout();
+      }
+    };
+
+    const interval = setInterval(checkTokenExpiration, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
-  }, [jwtPayload, isPublicRoute, router]);
+  }, [jwtPayload, isTabAuthenticated]);
 
   /**
-   * Login method
+   * Enhanced login with tab-specific storage
    */
   const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/auth/login', {
+      console.log(`🔑 Starting tab-specific login for tab: ${tabId}`);
+      
+      // Call the modified login API that doesn't set cookies
+      const response = await fetch('/api/auth/tab-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({
+          ...credentials,
+          tabId, // Include tab ID in request
+        }),
       });
 
       if (!response.ok) {
@@ -246,6 +275,16 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const loginResponse: LoginResponse = await response.json();
       
       if (loginResponse.token) {
+        // Store authentication in tab-specific storage
+        TabAuthManager.setTabSession({
+          jwtToken: loginResponse.token,
+          refreshToken: loginResponse.refresh_token,
+          userEmail: loginResponse.user.email,
+          userId: loginResponse.user.id,
+          role: loginResponse.user.role,
+        });
+        
+        // Validate and set local state
         const validationResult = JWTValidator.validateToken(loginResponse.token);
         
         if (validationResult.isValid && validationResult.payload) {
@@ -253,15 +292,18 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           
           setUser(userFromJWT);
           setJwtPayload(validationResult.payload);
+          setIsTabAuthenticated(true);
           setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
           setTimeToExpiration(validationResult.expiresIn ?? null);
+          
+          console.log(`✅ Tab login successful for: ${userFromJWT.email} on tab: ${tabId}`);
         }
       }
       
       return loginResponse;
       
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Tab login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -269,7 +311,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Register method
+   * Register method (unchanged)
    */
   const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
@@ -278,7 +320,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(userData),
       });
 
@@ -287,8 +328,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.error || 'Registration failed');
       }
 
-      const registerResponse = await response.json();
-      return registerResponse;
+      return await response.json();
       
     } catch (error) {
       console.error('Registration error:', error);
@@ -298,36 +338,89 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Logout current tab only
+   */
   const logout = async (): Promise<void> => {
     try {
-      console.log('🚪 Starting logout process...');
+      console.log(`🚪 Starting tab logout for tab: ${tabId}`);
       
-      // Call the frontend logout API which handles both frontend and backend logout
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-  
-      if (response.ok) {
-        console.log('✅ Logout API successful');
-      } else {
-        console.warn('⚠️ Logout API returned non-success status, but continuing with cleanup');
+      const tabSession = TabAuthManager.getTabSession();
+      
+      // Notify backend about logout if we have a session
+      if (tabSession?.jwtToken) {
+        try {
+          await fetch('/api/auth/tab-logout', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tabSession.jwtToken}`,
+            },
+            body: JSON.stringify({ tabId }),
+          });
+        } catch (error) {
+          console.warn('⚠️ Backend logout notification failed:', error);
+        }
       }
       
     } catch (error) {
-      console.error('❌ Logout API error:', error);
-      // Don't throw - logout should always succeed on client side
+      console.error('❌ Logout error:', error);
     } finally {
-      // Always clear local state regardless of API success
+      // Always clear local state
+      TabAuthManager.clearTabSession();
       setUser(null);
       setJwtPayload(null);
+      setIsTabAuthenticated(false);
       setTokenNeedsRefresh(false);
       setTimeToExpiration(null);
       
-      console.log('✅ Local logout state cleared');
+      console.log(`✅ Tab logout completed for tab: ${tabId}`);
       
-      // Redirect to login page
+      // Redirect to login
+      router.push('/login');
+    }
+  };
+
+  /**
+   * Logout all tabs
+   */
+  const logoutAllTabs = async (): Promise<void> => {
+    try {
+      console.log('🚪 Starting global logout for all tabs...');
+      
+      const tabSession = TabAuthManager.getTabSession();
+      
+      // Notify backend about global logout
+      if (tabSession?.jwtToken) {
+        try {
+          await fetch('/api/auth/logout-all', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tabSession.jwtToken}`,
+            },
+          });
+        } catch (error) {
+          console.warn('⚠️ Backend global logout failed:', error);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Global logout error:', error);
+    } finally {
+      // Clear all tab sessions
+      TabAuthManager.clearAllTabSessions();
+      
+      // Clear current tab state
+      setUser(null);
+      setJwtPayload(null);
+      setIsTabAuthenticated(false);
+      setTokenNeedsRefresh(false);
+      setTimeToExpiration(null);
+      
+      console.log('✅ Global logout completed');
+      
+      // Redirect to login
       router.push('/login');
     }
   };
@@ -337,16 +430,33 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
    */
   const refreshToken = async (): Promise<void> => {
     try {
+      const tabSession = TabAuthManager.getTabSession();
+      if (!tabSession?.refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          refresh_token: tabSession.refreshToken,
+          tabId,
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
         
         if (data.token) {
+          // Update tab session with new token
+          TabAuthManager.setTabSession({
+            jwtToken: data.token,
+            refreshToken: data.refresh_token || tabSession.refreshToken,
+            userEmail: tabSession.userEmail,
+            userId: tabSession.userId,
+            role: tabSession.role,
+          });
+          
           const validationResult = JWTValidator.validateToken(data.token);
           
           if (validationResult.isValid && validationResult.payload) {
@@ -356,14 +466,16 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
             setJwtPayload(validationResult.payload);
             setTokenNeedsRefresh(false);
             setTimeToExpiration(validationResult.expiresIn ?? null);
+            
+            console.log('✅ Token refresh successful for tab:', tabId);
           }
         }
       } else {
-        // Refresh failed, clear auth state
+        // Refresh failed, logout this tab
         await logout();
       }
     } catch (error) {
-      console.error('Token refresh error:', error);
+      console.error('❌ Token refresh error:', error);
       await logout();
     }
   };
@@ -397,7 +509,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const contextValue: JWTAuthContextType = {
     // Core state
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: isTabAuthenticated && !!user,
     isLoading,
     isInitialized,
     
@@ -406,10 +518,15 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     tokenNeedsRefresh,
     timeToExpiration,
     
+    // Tab state
+    tabId,
+    isTabAuthenticated,
+    
     // Methods
     login,
     register,
     logout,
+    logoutAllTabs,
     refreshToken,
     hasPermission,
     hasAnyPermission,

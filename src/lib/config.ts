@@ -7,11 +7,16 @@ interface AppConfig {
   // API Configuration
   apiBaseUrl: string;
   
-  // JWT Authentication Configuration
-  authCookieName: string;
-  refreshCookieName: string;
+
+  authCookieName?: string; 
+  refreshCookieName?: string; 
   secureCookies: boolean;
   cookieDomain?: string;
+  
+  // New tab-specific authentication
+  tabAuthEnabled: boolean;
+  tabSessionTimeout: number; // milliseconds
+  maxConcurrentTabs?: number;
   
   // Session Configuration
   sessionTimeoutMinutes: number;
@@ -23,7 +28,7 @@ interface AppConfig {
   // External Links
   termsUrl: string;
   privacyUrl: string;
-  hipaaNoticeUrl: string; // FIXED: Added missing HIPAA URL
+  hipaaNoticeUrl: string;
   supportUrl: string;
   
   // Feature Flags
@@ -31,6 +36,7 @@ interface AppConfig {
     enableTokenRefresh: boolean;
     enablePermissionCaching: boolean;
     enableSecurityLogging: boolean;
+    enableTabIsolation: boolean;
   };
 }
 
@@ -49,11 +55,13 @@ function createConfig(): AppConfig {
     // API Configuration
     apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
     
-    // JWT Authentication Configuration
-    authCookieName: 'jwt_access_token', // Matches backend JWT_COOKIE_NAME
-    refreshCookieName: 'jwt_refresh_token',
+    // Authentication Configuration
     secureCookies: isProduction,
     cookieDomain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
+    
+    tabAuthEnabled: true,
+    tabSessionTimeout: 30 * 60 * 1000, // 30 minutes in milliseconds
+    maxConcurrentTabs: parseInt(process.env.NEXT_PUBLIC_MAX_TABS || '10'),
     
     // Session Configuration
     sessionTimeoutMinutes: parseInt(process.env.NEXT_PUBLIC_SESSION_TIMEOUT || '30'),
@@ -65,14 +73,15 @@ function createConfig(): AppConfig {
     // External Links
     termsUrl: process.env.NEXT_PUBLIC_TERMS_URL || '/terms-of-service',
     privacyUrl: process.env.NEXT_PUBLIC_PRIVACY_URL || '/privacy-policy',
-    hipaaNoticeUrl: process.env.NEXT_PUBLIC_HIPAA_URL || '/hipaa-notice', // FIXED: Added HIPAA URL
+    hipaaNoticeUrl: process.env.NEXT_PUBLIC_HIPAA_URL || '/hipaa-notice',
     supportUrl: process.env.NEXT_PUBLIC_SUPPORT_URL || '/support',
     
     // Feature Flags
     features: {
       enableTokenRefresh: true,
-      enablePermissionCaching: false, // Disable to prevent race conditions
+      enablePermissionCaching: false, 
       enableSecurityLogging: isDevelopment,
+      enableTabIsolation: true, 
     },
   };
 }
@@ -83,7 +92,7 @@ function createConfig(): AppConfig {
 export const config = createConfig();
 
 /**
- * Configuration validation
+ * Configuration validation for tab-specific auth
  */
 export function validateConfig(): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -97,8 +106,15 @@ export function validateConfig(): { isValid: boolean; errors: string[] } {
     errors.push('API base URL is required');
   }
   
-  if (!config.authCookieName) {
-    errors.push('Auth cookie name is required');
+  // Validate tab-specific auth configuration
+  if (config.tabAuthEnabled) {
+    if (!config.tabSessionTimeout || config.tabSessionTimeout < 60000) { // Minimum 1 minute
+      errors.push('Tab session timeout must be at least 60000ms (1 minute)');
+    }
+    
+    if (config.maxConcurrentTabs && (config.maxConcurrentTabs < 1 || config.maxConcurrentTabs > 50)) {
+      errors.push('Max concurrent tabs must be between 1 and 50');
+    }
   }
   
   // Validate reasonable values
@@ -124,7 +140,7 @@ export function validateConfig(): { isValid: boolean; errors: string[] } {
 }
 
 /**
- * Configuration utilities
+ * Configuration utilities for tab-specific auth
  */
 export const configUtils = {
   /**
@@ -163,15 +179,47 @@ export const configUtils = {
   },
   
   /**
+   * Get tab session timeout in milliseconds
+   */
+  getTabSessionTimeoutMs: (): number => {
+    return config.tabSessionTimeout;
+  },
+  
+  /**
+   * Check if tab-specific authentication is enabled
+   */
+  isTabAuthEnabled: (): boolean => {
+    return config.tabAuthEnabled;
+  },
+  
+  /**
    * Check if a feature is enabled
    */
   isFeatureEnabled: (feature: keyof AppConfig['features']): boolean => {
     return config.features[feature];
   },
+  
+  /**
+   * Check if we're in transition mode (both cookie and tab auth supported)
+   */
+  isTransitionMode: (): boolean => {
+    return config.tabAuthEnabled && !!(config.authCookieName || config.refreshCookieName);
+  },
+  
+  /**
+   * Get authentication mode
+   */
+  getAuthMode: (): 'cookie' | 'tab' | 'hybrid' => {
+    if (config.tabAuthEnabled && !config.authCookieName) {
+      return 'tab';
+    }
+    if (!config.tabAuthEnabled && config.authCookieName) {
+      return 'cookie';
+    }
+    return 'hybrid';
+  },
 };
 
-// Export types for use throughout the application
 export type { AppConfig };
 
-// Default export
 export default config;

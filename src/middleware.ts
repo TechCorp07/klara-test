@@ -78,10 +78,15 @@ interface JWTPayload {
   last_password_change?: number;
 }
 
-/**
- * Validate JWT token structure and expiration locally
- * This does NOT verify the signature - that's done on the backend
- */
+function getTabSpecificToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  return request.cookies.get(appConfig.authCookieName)?.value || null;
+}
+
 function validateJWTStructure(token: string): { isValid: boolean; payload?: JWTPayload; error?: string } {
   try {
     // Basic format validation
@@ -205,7 +210,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Extract JWT token from HTTP-only cookie
-  const token = request.cookies.get(appConfig.authCookieName)?.value;
+  const token = getTabSpecificToken(request);
   
   if (!token) {
     console.log(`🔐 No authentication token found for ${pathname}`);
