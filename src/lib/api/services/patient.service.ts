@@ -1,491 +1,557 @@
 // src/lib/api/services/patient.service.ts
 
-import { DashboardResponse, HealthRecord } from '@/hooks/patient/types';
 import { apiClient } from '@/lib/api/client';
-import type {
-  PatientProfile,
-  VitalSigns,
-  MedicalCondition,
-  Prescription,
-  MedicationAdherence,
-  Appointment,
-  LabResult,
-  HealthInsurance,
-  CareTeamMember,
-  PatientDocument,
-  EmergencyContact,
-  PatientDashboardStats,
-  HealthAlert,
-  PatientPreferences,
-  ResearchParticipation,
-  PaginatedResponse,
-  Message,
-  SendMessageResponse,
-  Study,
-  LogMedicationTakenPayload,
-  ConnectedDevice,
-  BillingStatement,
-  AutoPayResponse,
-} from '@/types/patient.types';
+import { ENDPOINTS } from '@/lib/api/endpoints';
 
-class PatientService {
-  // Dashboard Overview
-  async getDashboardData(): Promise<DashboardResponse> {
-    const response = await apiClient.get('/patient/dashboard/');
-    return response.data;
-  }
-
-  async getDashboardStats(): Promise<PatientDashboardStats> {
-    const response = await apiClient.get('/patient/dashboard/stats/');
-    return response.data;
-  }
-
-  // Profile Management
-  async getProfile(): Promise<PatientProfile> {
-    const response = await apiClient.get('/patient/profile/');
-    return response.data;
-  }
-
-  async updateProfile(profileData: Partial<PatientProfile>): Promise<PatientProfile> {
-    const response = await apiClient.patch('/patient/profile/', profileData);
-    return response.data;
-  }
-
-  async updatePreferences(preferences: Partial<PatientPreferences>): Promise<PatientPreferences> {
-    const response = await apiClient.patch('/patient/preferences/', preferences);
-    return response.data;
-  }
-
-  // Vital Signs
-  async getVitalSigns(params?: {
-    start_date?: string;
-    end_date?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<VitalSigns>> {
-    const response = await apiClient.get('/patient/vitals/', { params });
-    return response.data;
-  }
-
-  async addVitalSigns(vitals: Omit<VitalSigns, 'id' | 'patient' | 'recorded_by'>): Promise<VitalSigns> {
-    const response = await apiClient.post('/patient/vitals/', vitals);
-    return response.data;
-  }
-
-  async getLatestVitals(): Promise<VitalSigns | null> {
-    const response = await apiClient.get('/patient/vitals/latest/');
-    return response.data;
-  }
-
-  // Medical Conditions
-  async getMedicalConditions(params?: {
-    status?: string;
-    severity?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<MedicalCondition>> {
-    const response = await apiClient.get('/patient/conditions/', { params });
-    return response.data;
-  }
-
-  async getMedicalCondition(id: number): Promise<MedicalCondition> {
-    const response = await apiClient.get(`/patient/conditions/${id}/`);
-    return response.data;
-  }
-
-  // Medications & Prescriptions
-  async getPrescriptions(params?: {
-    status?: string;
-    prescribed_by?: number;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<Prescription>> {
-    const response = await apiClient.get('/patient/prescriptions/', { params });
-    return response.data;
-  }
-
-  async getPrescription(id: number): Promise<Prescription> {
-    const response = await apiClient.get(`/patient/prescriptions/${id}/`);
-    return response.data;
-  }
-
-  async getMedicationAdherence(params?: {
-    prescription?: number;
-    start_date?: string;
-    end_date?: string;
-  }): Promise<PaginatedResponse<MedicationAdherence>> {
-    const response = await apiClient.get('/patient/medication-adherence/', { params });
-    return response.data;
-  }
-
-  async logMedicationTaken(payload: LogMedicationTakenPayload): Promise<MedicationAdherence> {
-    const response = await apiClient.post('/patient/medication-adherence/', payload);
-    return response.data;
-  }
-
-  async getMedicationSchedule(date: string): Promise<Array<{
-    prescription: Prescription;
-    scheduled_times: string[];
-    adherence_data: MedicationAdherence[];
-  }>> {
-    const response = await apiClient.get(`/patient/medication-schedule/?date=${date}`);
-    return response.data;
-  }
-
-  // Appointments
-  async getAppointments(params?: {
-    start_date?: string;
-    end_date?: string;
-    status?: string;
-    provider?: number;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<Appointment>> {
-    const response = await apiClient.get('/patient/appointments/', { params });
-    return response.data;
-  }
-
-  async getAppointment(id: number): Promise<Appointment> {
-    const response = await apiClient.get(`/patient/appointments/${id}/`);
-    return response.data;
-  }
-
-  async scheduleAppointment(appointmentData: {
-    provider: number;
-    appointment_type: string;
-    visit_type: string;
-    preferred_datetime: string;
-    reason_for_visit: string;
-    symptoms?: string;
-    urgency: string;
-  }): Promise<Appointment> {
-    const response = await apiClient.post('/patient/appointments/', appointmentData);
-    return response.data;
-  }
-
-  async cancelAppointment(id: number, reason?: string): Promise<void> {
-    await apiClient.patch(`/patient/appointments/${id}/`, {
-      status: 'cancelled',
-      cancellation_reason: reason,
-    });
-  }
-
-  async rescheduleAppointment(id: number, newDateTime: string): Promise<Appointment> {
-    const response = await apiClient.patch(`/patient/appointments/${id}/reschedule/`, {
-      new_datetime: newDateTime,
-    });
-    return response.data;
-  }
-
-  // Lab Results
-  async getLabResults(params?: {
-    start_date?: string;
-    end_date?: string;
-    test_type?: string;
-    status?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<LabResult>> {
-    const response = await apiClient.get('/patient/lab-results/', { params });
-    return response.data;
-  }
-
-  async getLabResult(id: number): Promise<LabResult> {
-    const response = await apiClient.get(`/patient/lab-results/${id}/`);
-    return response.data;
-  }
-
-  async downloadLabResult(id: number): Promise<Blob> {
-    const response = await apiClient.get(`/patient/lab-results/${id}/download/`, {
-      responseType: 'blob',
-    });
-    return response.data;
-  }
-
-  // Health Records
-  async getHealthRecords(params?: {
-    record_type?: string;
-    start_date?: string;
-    end_date?: string;
-    provider?: number;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<HealthRecord>> {
-    const response = await apiClient.get('/patient/health-records/', { params });
-    return response.data;
-  }
-
-  async getHealthRecord(id: number): Promise<HealthRecord> {
-    const response = await apiClient.get(`/patient/health-records/${id}/`);
-    return response.data;
-  }
-
-  async requestHealthRecords(data: {
-    record_types: string[];
-    date_range?: {
-      start_date: string;
-      end_date: string;
+export interface PatientDashboardData {
+  patient_info: {
+    name: string;
+    email: string;
+    has_rare_condition: boolean;
+    rare_conditions: Array<{
+      name: string;
+      diagnosed_date: string;
+      severity: 'mild' | 'moderate' | 'severe';
+      specialist_provider?: string;
+    }>;
+  };
+  health_summary: {
+    overall_status: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+    last_checkup: string;
+    next_appointment: string | null;
+    identity_verified: boolean;
+    days_until_verification_required: number | null;
+  };
+  medications: {
+    active_medications: Array<{
+      id: number;
+      name: string;
+      dosage: string;
+      frequency: string;
+      next_dose_time: string;
+      adherence_rate: number;
+      supply_days_left: number;
+    }>;
+    adherence_summary: {
+      overall_rate: number;
+      last_7_days: number;
+      missed_doses_today: number;
+      on_time_rate: number;
     };
-    delivery_method: 'email' | 'mail' | 'pickup';
-    purpose: string;
-  }): Promise<{ request_id: string; estimated_completion: string }> {
-    const response = await apiClient.post('/patient/health-records/request/', data);
-    return response.data;
-  }
-
-  // Insurance
-  async getInsuranceInfo(): Promise<HealthInsurance[]> {
-    const response = await apiClient.get('/patient/insurance/');
-    return response.data;
-  }
-
-  async addInsurance(insuranceData: Omit<HealthInsurance, 'id' | 'patient'>): Promise<HealthInsurance> {
-    const response = await apiClient.post('/patient/insurance/', insuranceData);
-    return response.data;
-  }
-
-  async updateInsurance(id: number, insuranceData: Partial<HealthInsurance>): Promise<HealthInsurance> {
-    const response = await apiClient.patch(`/patient/insurance/${id}/`, insuranceData);
-    return response.data;
-  }
-
-  // Care Team
-  async getCareTeam(): Promise<CareTeamMember[]> {
-    const response = await apiClient.get('/patient/care-team/');
-    return response.data;
-  }
-
-  async addCareTeamMember(memberData: Omit<CareTeamMember, 'id' | 'patient'>): Promise<CareTeamMember> {
-    const response = await apiClient.post('/patient/care-team/', memberData);
-    return response.data;
-  }
-
-  async removeCareTeamMember(id: number): Promise<void> {
-    await apiClient.delete(`/patient/care-team/${id}/`);
-  }
-
-  // Documents
-  async getDocuments(params?: {
-    document_type?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<PatientDocument>> {
-    const response = await apiClient.get('/patient/documents/', { params });
-    return response.data;
-  }
-
-  async uploadDocument(file: File, data: {
-    document_type: string;
+    upcoming_refills: Array<{
+      medication: string;
+      days_remaining: number;
+      auto_refill_enabled: boolean;
+    }>;
+  };
+  vitals: {
+    current: {
+      blood_pressure?: string;
+      heart_rate?: number;
+      temperature?: number;
+      weight?: number;
+      oxygen_saturation?: number;
+      pain_level?: number;
+    };
+    trends: {
+      improving: string[];
+      stable: string[];
+      concerning: string[];
+    };
+    last_recorded: string;
+  };
+  wearable_data: {
+    connected_devices: Array<{
+      id: number;
+      type: 'fitbit' | 'apple_watch' | 'garmin' | 'other';
+      name: string;
+      last_sync: string;
+      battery_level?: number;
+    }>;
+    today_summary: {
+      steps: number;
+      heart_rate_avg: number;
+      sleep_hours: number;
+      active_minutes: number;
+    };
+    medication_reminders_sent: number;
+  };
+  appointments: {
+    upcoming: Array<{
+      id: number;
+      date: string;
+      time: string;
+      provider_name: string;
+      appointment_type: string;
+      location: string;
+      is_telemedicine: boolean;
+      preparation_notes?: string;
+    }>;
+    recent: Array<{
+      date: string;
+      provider: string;
+      summary: string;
+      follow_up_required: boolean;
+    }>;
+  };
+  care_team: Array<{
+    id: number;
+    name: string;
+    role: string;
+    specialty?: string;
+    contact_method: string;
+    last_contact: string;
+    next_scheduled_contact?: string;
+  }>;
+  research_participation: {
+    enrolled_studies: Array<{
+      id: number;
+      title: string;
+      phase: string;
+      enrollment_date: string;
+      next_visit_date?: string;
+      compensation_earned: number;
+    }>;
+    available_studies: Array<{
+      id: number;
+      title: string;
+      description: string;
+      estimated_time_commitment: string;
+      compensation: string;
+      eligibility_match: number;
+    }>;
+    data_contributions: {
+      total_surveys_completed: number;
+      wearable_data_shared_days: number;
+      clinical_visits_completed: number;
+    };
+  };
+  alerts: Array<{
+    id: number;
+    type: 'medication' | 'appointment' | 'health' | 'research' | 'system';
+    severity: 'low' | 'medium' | 'high' | 'critical';
     title: string;
-    description?: string;
-  }): Promise<PatientDocument> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('document_type', data.document_type);
-    formData.append('title', data.title);
-    if (data.description) {
-      formData.append('description', data.description);
-    }
-
-    const response = await apiClient.post('/patient/documents/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  }
-
-  async deleteDocument(id: number): Promise<void> {
-    await apiClient.delete(`/patient/documents/${id}/`);
-  }
-
-  // Emergency Contacts
-  async getEmergencyContacts(): Promise<EmergencyContact[]> {
-    const response = await apiClient.get('/patient/emergency-contacts/');
-    return response.data;
-  }
-
-  async addEmergencyContact(contactData: Omit<EmergencyContact, 'id' | 'patient'>): Promise<EmergencyContact> {
-    const response = await apiClient.post('/patient/emergency-contacts/', contactData);
-    return response.data;
-  }
-
-  async updateEmergencyContact(id: number, contactData: Partial<EmergencyContact>): Promise<EmergencyContact> {
-    const response = await apiClient.patch(`/patient/emergency-contacts/${id}/`, contactData);
-    return response.data;
-  }
-
-  async deleteEmergencyContact(id: number): Promise<void> {
-    await apiClient.delete(`/patient/emergency-contacts/${id}/`);
-  }
-
-  // Health Alerts
-  async getHealthAlerts(params?: {
-    alert_type?: string;
-    severity?: string;
-    acknowledged?: boolean;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<HealthAlert>> {
-    const response = await apiClient.get('/patient/health-alerts/', { params });
-    return response.data;
-  }
-
-  async acknowledgeAlert(id: number): Promise<HealthAlert> {
-    const response = await apiClient.patch(`/patient/health-alerts/${id}/acknowledge/`);
-    return response.data;
-  }
-
-  async dismissAlert(id: number): Promise<void> {
-    await apiClient.delete(`/patient/health-alerts/${id}/`);
-  }
-
-  // Telemedicine
-  async getTelemedicineAppointments(params?: {
-    status?: string;
-    start_date?: string;
-    end_date?: string;
-  }): Promise<PaginatedResponse<Appointment>> {
-    const response = await apiClient.get('/patient/telemedicine/appointments/', { params });
-    return response.data;
-  }
-
-  async joinTelemedicineSession(appointmentId: number): Promise<{
-    join_url: string;
-    meeting_id: string;
-    passcode?: string;
-  }> {
-    const response = await apiClient.post(`/patient/telemedicine/appointments/${appointmentId}/join/`);
-    return response.data;
-  }
-
-  async getTelemedicineSessionStatus(appointmentId: number): Promise<{
-    status: 'waiting' | 'active' | 'ended';
-    can_join: boolean;
-    provider_joined: boolean;
-    session_duration?: number;
-  }> {
-    const response = await apiClient.get(`/patient/telemedicine/appointments/${appointmentId}/status/`);
-    return response.data;
-  }
-
-  // Communication
-  async getMessages(params?: {
-    thread_id?: number;
-    provider?: number;
-    unread?: boolean;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<Message>> {
-    const response = await apiClient.get('/patient/messages/', { params });
-    return response.data;
-  }
-
-  async sendMessage(data: {
-    recipient: number;
-    subject: string;
     message: string;
-    priority?: 'low' | 'normal' | 'high';
-    attachments?: File[];
-  }): Promise<SendMessageResponse> {
-    const formData = new FormData();
-    formData.append('recipient', data.recipient.toString());
-    formData.append('subject', data.subject);
-    formData.append('message', data.message);
-    if (data.priority) {
-      formData.append('priority', data.priority);
+    created_at: string;
+    acknowledged: boolean;
+    action_required?: boolean;
+    action_url?: string;
+  }>;
+  quick_actions: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    href: string;
+    priority: 'high' | 'medium' | 'low';
+    requires_verification?: boolean;
+  }>;
+}
+
+export interface MedicationLogEntry {
+  medication_id: number;
+  taken: boolean;
+  taken_at: string;
+  notes?: string;
+}
+
+export interface VitalSignsEntry {
+  blood_pressure_systolic?: number;
+  blood_pressure_diastolic?: number;
+  heart_rate?: number;
+  temperature?: number;
+  weight?: number;
+  oxygen_saturation?: number;
+  pain_level?: number;
+  notes?: string;
+}
+
+export interface WearableDevice {
+  id: number;
+  type: 'fitbit' | 'apple_watch' | 'garmin' | 'other';
+  name: string;
+  is_connected: boolean;
+  last_sync?: string;
+  authorization_url?: string;
+}
+
+export interface AppointmentRequest {
+  provider_id?: number;
+  appointment_type: string;
+  preferred_date: string;
+  preferred_time?: string;
+  reason: string;
+  is_urgent: boolean;
+  is_telemedicine_preferred: boolean;
+  notes?: string;
+}
+
+export interface ResearchStudy {
+  id: number;
+  title: string;
+  description: string;
+  phase: string;
+  estimated_duration: string;
+  compensation: string;
+  eligibility_criteria: string[];
+  time_commitment: string;
+  location: string;
+  is_remote: boolean;
+  enrollment_status: 'open' | 'closed' | 'full';
+  eligibility_match?: number;
+}
+
+export interface FHIRDataRequest {
+  resource_type: 'Patient' | 'Observation' | 'MedicationStatement' | 'Condition' | 'Appointment';
+  date_range?: {
+    start: string;
+    end: string;
+  };
+  include_external: boolean;
+}
+
+class EnhancedPatientService {
+  /**
+   * Get comprehensive patient dashboard data
+   */
+  async getDashboardData(): Promise<PatientDashboardData> {
+    try {
+      const response = await apiClient.get(ENDPOINTS.PATIENT.DASHBOARD);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch patient dashboard data:', error);
+      throw new Error('Failed to load dashboard data');
     }
-    if (data.attachments) {
-      data.attachments.forEach((file, index) => {
-        formData.append(`attachment_${index}`, file);
+  }
+
+  /**
+   * Log medication taken
+   */
+  async logMedicationTaken(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
+    try {
+      await apiClient.post(`/patient/medications/${medicationId}/log/`, logEntry);
+    } catch (error) {
+      console.error('Failed to log medication:', error);
+      throw new Error('Failed to log medication');
+    }
+  }
+
+  /**
+   * Record vital signs
+   */
+  async recordVitalSigns(vitals: VitalSignsEntry): Promise<void> {
+    try {
+      await apiClient.post('/patient/vitals/', vitals);
+    } catch (error) {
+      console.error('Failed to record vital signs:', error);
+      throw new Error('Failed to record vital signs');
+    }
+  }
+
+  /**
+   * Acknowledge health alert
+   */
+  async acknowledgeAlert(alertId: number): Promise<void> {
+    try {
+      await apiClient.post(`/patient/alerts/${alertId}/acknowledge/`);
+    } catch (error) {
+      console.error('Failed to acknowledge alert:', error);
+      throw new Error('Failed to acknowledge alert');
+    }
+  }
+
+  /**
+   * Get connected wearable devices
+   */
+  async getWearableDevices(): Promise<WearableDevice[]> {
+    try {
+      const response = await apiClient.get('/patient/wearable-devices/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch wearable devices:', error);
+      throw new Error('Failed to load wearable devices');
+    }
+  }
+
+  /**
+   * Connect a new wearable device
+   */
+  async connectWearableDevice(deviceType: string): Promise<{ authorization_url: string }> {
+    try {
+      const response = await apiClient.post('/patient/wearable-devices/connect/', {
+        device_type: deviceType
       });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to connect wearable device:', error);
+      throw new Error('Failed to connect device');
     }
-
-    const response = await apiClient.post('/patient/messages/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
   }
 
-  async markMessageAsRead(id: number): Promise<void> {
-    await apiClient.patch(`/patient/messages/${id}/read/`);
+  /**
+   * Disconnect a wearable device
+   */
+  async disconnectWearableDevice(deviceId: number): Promise<void> {
+    try {
+      await apiClient.post(`/patient/wearable-devices/${deviceId}/disconnect/`);
+    } catch (error) {
+      console.error('Failed to disconnect wearable device:', error);
+      throw new Error('Failed to disconnect device');
+    }
   }
 
-  // Research & Clinical Trials
-  async getAvailableStudies(params?: {
-    condition?: string;
-    phase?: string;
-    location?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<Study>> {
-    const response = await apiClient.get('/patient/research/studies/', { params });
-    return response.data;
+  /**
+   * Request appointment scheduling
+   */
+  async requestAppointment(appointmentData: AppointmentRequest): Promise<{ id: number; status: string }> {
+    try {
+      const response = await apiClient.post('/patient/appointments/request/', appointmentData);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to request appointment:', error);
+      throw new Error('Failed to request appointment');
+    }
   }
 
-  async expressClinicalTrialInterest(studyId: number, notes?: string): Promise<void> {
-    await apiClient.post(`/patient/research/studies/${studyId}/interest/`, { notes });
+  /**
+   * Cancel an appointment
+   */
+  async cancelAppointment(appointmentId: number, reason: string): Promise<void> {
+    try {
+      await apiClient.post(`/patient/appointments/${appointmentId}/cancel/`, { reason });
+    } catch (error) {
+      console.error('Failed to cancel appointment:', error);
+      throw new Error('Failed to cancel appointment');
+    }
   }
 
-  async getResearchParticipation(): Promise<ResearchParticipation[]> {
-    const response = await apiClient.get('/patient/research/participation/');
-    return response.data;
+  /**
+   * Get available research studies
+   */
+  async getAvailableResearchStudies(): Promise<ResearchStudy[]> {
+    try {
+      const response = await apiClient.get('/patient/research/available-studies/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch research studies:', error);
+      throw new Error('Failed to load research studies');
+    }
   }
 
-  // Wearable Device Integration
-  async getConnectedDevices(): Promise<ConnectedDevice[]> {
-    const response = await apiClient.get('/patient/devices/');
-    return response.data;
+  /**
+   * Express interest in a research study
+   */
+  async expressResearchInterest(studyId: number, message?: string): Promise<void> {
+    try {
+      await apiClient.post(`/patient/research/studies/${studyId}/interest/`, {
+        message: message || ''
+      });
+    } catch (error) {
+      console.error('Failed to express research interest:', error);
+      throw new Error('Failed to express interest');
+    }
   }
 
-  async connectDevice(data: {
-    device_type: string;
-    device_id: string;
-    manufacturer: string;
-    model: string;
-  }): Promise<ConnectedDevice> {
-    const response = await apiClient.post('/patient/devices/', data);
-    return response.data;
+  /**
+   * Get patient FHIR data
+   */
+  async getFHIRData(request: FHIRDataRequest): Promise<object> {
+    try {
+      const response = await apiClient.post('/patient/fhir/export/', request);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch FHIR data:', error);
+      throw new Error('Failed to fetch FHIR data');
+    }
   }
 
-  async syncDeviceData(deviceId: number): Promise<void> {
-    await apiClient.post(`/patient/devices/${deviceId}/sync/`);
+  /**
+   * Request external health records import
+   */
+  async requestExternalRecordsImport(
+    providerName: string, 
+    providerAddress: string,
+    dateRange?: { start: string; end: string }
+  ): Promise<{ request_id: string; status: string }> {
+    try {
+      const response = await apiClient.post('/patient/fhir/import-request/', {
+        provider_name: providerName,
+        provider_address: providerAddress,
+        date_range: dateRange
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to request external records import:', error);
+      throw new Error('Failed to request records import');
+    }
   }
 
-  async disconnectDevice(deviceId: number): Promise<void> {
-    await apiClient.delete(`/patient/devices/${deviceId}/`);
-  }
-
-  // Billing & Payments
-  async getBillingStatements(params?: {
-    start_date?: string;
-    end_date?: string;
-    status?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<PaginatedResponse<BillingStatement>> {
-    const response = await apiClient.get('/patient/billing/', { params });
-    return response.data;
-  }
-
-  async makePayment(data: {
-    statement_id: number;
-    amount: number;
-    payment_method: string;
-  }): Promise<PaymentResponse> {
-    const response = await apiClient.post('/patient/billing/payments/', data);
-    return response.data;
-  }
-
-  async setupAutoPay(data: {
-    payment_method: string;
+  /**
+   * Update medication reminder preferences
+   */
+  async updateMedicationReminders(preferences: {
     enabled: boolean;
-  }): Promise<AutoPayResponse> {
-    const response = await apiClient.post('/patient/billing/autopay/', data);
-    return response.data;
+    methods: ('email' | 'sms' | 'push' | 'smartwatch')[];
+    frequency: 'immediate' | '15min' | '30min' | '1hour';
+    quiet_hours?: { start: string; end: string };
+  }): Promise<void> {
+    try {
+      await apiClient.patch('/patient/profile/medication-reminders/', preferences);
+    } catch (error) {
+      console.error('Failed to update medication reminders:', error);
+      throw new Error('Failed to update reminder preferences');
+    }
+  }
+
+  /**
+   * Get family medical history for genetic conditions
+   */
+  async getFamilyMedicalHistory(): Promise<{
+    immediate_family: Array<{
+      relationship: string;
+      conditions: string[];
+      age_of_onset?: number;
+      notes?: string;
+    }>;
+    extended_family: Array<{
+      relationship: string;
+      conditions: string[];
+      age_of_onset?: number;
+      notes?: string;
+    }>;
+  }> {
+    try {
+      const response = await apiClient.get('/patient/family-history/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch family medical history:', error);
+      throw new Error('Failed to load family medical history');
+    }
+  }
+
+  /**
+   * Update family medical history
+   */
+  async updateFamilyMedicalHistory(familyHistory: {
+    relationship: string;
+    conditions: string[];
+    age_of_onset?: number;
+    notes?: string;
+  }): Promise<void> {
+    try {
+      await apiClient.post('/patient/family-history/', familyHistory);
+    } catch (error) {
+      console.error('Failed to update family medical history:', error);
+      throw new Error('Failed to update family history');
+    }
+  }
+
+  /**
+   * Request telemedicine session
+   */
+  async requestTelemedicineSession(providerId: number, urgency: 'routine' | 'urgent' | 'emergency'): Promise<{
+    session_id: string;
+    join_url: string;
+    scheduled_time: string;
+  }> {
+    try {
+      const response = await apiClient.post('/patient/telemedicine/request/', {
+        provider_id: providerId,
+        urgency
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to request telemedicine session:', error);
+      throw new Error('Failed to request telemedicine session');
+    }
+  }
+
+  /**
+   * Join patient support chat groups
+   */
+  async getPatientChatGroups(): Promise<Array<{
+    id: number;
+    name: string;
+    description: string;
+    condition_focus: string;
+    member_count: number;
+    is_member: boolean;
+    last_activity: string;
+  }>> {
+    try {
+      const response = await apiClient.get('/patient/chat-groups/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch chat groups:', error);
+      throw new Error('Failed to load chat groups');
+    }
+  }
+
+  /**
+   * Join a patient chat group
+   */
+  async joinChatGroup(groupId: number): Promise<void> {
+    try {
+      await apiClient.post(`/patient/chat-groups/${groupId}/join/`);
+    } catch (error) {
+      console.error('Failed to join chat group:', error);
+      throw new Error('Failed to join chat group');
+    }
+  }
+
+  /**
+   * Get medication adherence analytics
+   */
+  async getMedicationAdherenceAnalytics(timeRange: '7d' | '30d' | '90d' | '1y'): Promise<{
+    overall_adherence: number;
+    adherence_by_medication: Array<{
+      medication: string;
+      adherence_rate: number;
+      missed_doses: number;
+      on_time_rate: number;
+    }>;
+    adherence_trends: Array<{
+      date: string;
+      adherence_rate: number;
+    }>;
+    factors_affecting_adherence: Array<{
+      factor: string;
+      impact_score: number;
+      description: string;
+    }>;
+  }> {
+    try {
+      const response = await apiClient.get(`/patient/medications/analytics/?range=${timeRange}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch medication adherence analytics:', error);
+      throw new Error('Failed to load adherence analytics');
+    }
+  }
+
+  /**
+   * Emergency contact notification
+   */
+  async triggerEmergencyNotification(emergencyType: 'medical' | 'medication' | 'mental_health', message: string): Promise<{
+    notification_id: string;
+    contacts_notified: string[];
+    emergency_services_contacted: boolean;
+  }> {
+    try {
+      const response = await apiClient.post('/patient/emergency/notify/', {
+        emergency_type: emergencyType,
+        message
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to trigger emergency notification:', error);
+      throw new Error('Failed to send emergency notification');
+    }
   }
 }
 
-export const patientService = new PatientService();
+// Export singleton instance
+export const enhancedPatientService = new EnhancedPatientService();
+
+// Also export the class for dependency injection
+export { EnhancedPatientService };
