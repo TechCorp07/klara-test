@@ -66,15 +66,18 @@ export async function POST(request: NextRequest) {
 
     if (!backendResponse.ok) {
       console.error('❌ Backend login failed:', responseData);
+      console.log('🔍 DEBUG - Full responseData:', JSON.stringify(responseData, null, 2)); // DEBUG
       
       // CHECK FOR APPROVAL PENDING - ADD THIS BLOCK
       if (responseData.requires_approval) {
+        console.log('🔍 DEBUG - Approval pending detected, returning structured response'); // DEBUG
         return NextResponse.json({
           requires_approval: true,
           role: responseData.role,
           submitted_at: responseData.submitted_at,
           message: responseData.message,
-          redirect_to: `/approval-pending?role=${responseData.role}&submitted=${encodeURIComponent(responseData.submitted_at)}`
+          error_type: 'APPROVAL_PENDING'
+          //redirect_to: `/approval-pending?role=${responseData.role}&submitted=${encodeURIComponent(responseData.submitted_at)}`
         }, { status: 403 }); // Use 403 instead of 400 for pending approval
       }
   
