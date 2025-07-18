@@ -1,4 +1,4 @@
-// src/app/(auth)/login/LoginContent.tsx
+// src/app/(auth)/login/LoginContent.tsx - Fixed version with proper user destructuring
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -10,7 +10,8 @@ import { useAuth } from '@/lib/auth';
  * Sequential login flow that waits for auth to be fully ready before redirecting
  */
 export default function LoginContent() {
-  const { isAuthenticated, isInitialized } = useAuth();
+  // FIXED: Added 'user' to the destructuring
+  const { isAuthenticated, isInitialized, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasRedirectedRef = useRef(false);
@@ -138,14 +139,16 @@ export default function LoginContent() {
     );
   }
   
-  if (isInitialized && isAuthenticated) {
+  if (isInitialized && isAuthenticated && user) {
     return (
       <div className="text-center">
         <div className="animate-pulse">
           <div className="h-4 w-4 bg-green-500 rounded-full mx-auto mb-4"></div>
         </div>
         <p className="text-gray-600">Redirecting...</p>
-        <p className="text-sm text-gray-500 mt-2">Taking you to your dashboard.</p>
+        <p className="text-sm text-gray-500 mt-2">
+          Taking you to your {user.role} dashboard...
+        </p>
       </div>
     );
   }
