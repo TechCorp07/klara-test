@@ -92,6 +92,28 @@ async function handler(request: NextRequest) {
     
     // Make the request to the Django backend
     const backendResponse = await fetch(backendUrl, requestOptions);
+    // Check content type before parsing
+    const contentType1 = backendResponse.headers.get('content-type');
+    let responseData;
+
+    if (contentType1 && contentType1.includes('application/json')) {
+      responseData = await backendResponse.json();
+    } else {
+      const textResponse = await backendResponse.text();
+      // For non-JSON responses, create a JSON structure
+      responseData = {
+        error: textResponse,
+        error_type: backendResponse.status === 403 ? 'BLOCKED' : 'ERROR',
+        status_code: backendResponse.status
+      };
+    }
+
+    // Return appropriate response
+    if (!backendResponse.ok) {
+      return NextResponse.json(responseData, { status: backendResponse.status });
+    }
+
+    return NextResponse.json(responseData);
     
     // Get response body
     const responseBody = await backendResponse.text();

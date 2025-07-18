@@ -65,13 +65,13 @@ const LoginForm = () => {
       // Clear any previous error/success messages
       setErrorMessage(null);
       setSuccessMessage(null);
-  
+
       // Submit login request - FIXED: Pass credentials as single object
       const response = await login({
         username: data.username,
         password: data.password
       });
-  
+
       if (response.requires_2fa) {
         setTemporaryUserId(response.user.id);
         setRequiresTwoFactor(true);
@@ -86,34 +86,62 @@ const LoginForm = () => {
         }, 500);
       }
     } catch (error: unknown) {
+      // Enhanced error handling for different scenarios
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
             data?: {
               detail?: string;
-              field_errors?: Record<string, string[]>;
-              non_field_errors?: string[];
+              error?: string;
+              error_type?: string;
             };
           };
           message?: string;
+          error?: string;
+          error_type?: string;
         };
-  
-        // Handle specific error messages from the backend
-        if (err.response?.data?.detail) {
-          setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.non_field_errors) {
-          setErrorMessage(err.response.data.non_field_errors.join(', '));
-        } else if (err.response?.data?.field_errors) {
-          // Handle field-specific errors
-          const fieldErrors = Object.values(err.response.data.field_errors).flat();
-          setErrorMessage(fieldErrors.join(', '));
-        } else if (err.message) {
-          setErrorMessage(err.message);
-        } else {
-          setErrorMessage('An error occurred during login. Please try again.');
+
+        let errorMessage = 'Login failed';
+        
+        // Check for direct error properties first (from our API route)
+        if (err.error_type || err.error) {
+          const errorType = err.error_type;
+          const errorMsg = err.error || err.message;
+
+          switch (errorType) {
+            case 'IP_BLACKLISTED':
+              setErrorMessage('🚫 Your IP address has been temporarily blocked due to security concerns. Please contact support if you believe this is an error.');
+              break;
+            case 'RATE_LIMITED':
+              setErrorMessage('⏰ Too many login attempts. Please wait a few minutes before trying again.');
+              break;
+            case 'ACCOUNT_LOCKED':
+              setErrorMessage('🔒 Your account has been temporarily locked. Please contact support or try again later.');
+              break;
+            default:
+              setErrorMessage(errorMsg || 'Login failed');
+          }
+        }
+        // Check response data (from backend)
+        else if (err.response?.data?.detail) {
+          const detail = err.response.data.detail.toLowerCase();
+          
+          if (detail.includes('ip address blacklisted') || detail.includes('blacklisted')) {
+            setErrorMessage('🚫 Your IP address has been temporarily blocked due to security concerns. Please contact support if you believe this is an error.');
+          } else if (detail.includes('rate limit') || detail.includes('too many requests')) {
+            setErrorMessage('⏰ Too many login attempts. Please wait a few minutes before trying again.');
+          } else if (detail.includes('account locked') || detail.includes('locked')) {
+            setErrorMessage('🔒 Your account has been temporarily locked. Please contact support or try again later.');
+          } else {
+            setErrorMessage(err.response.data.detail || err.response.data.error || 'Login failed');
+          }
+        }
+        // Fallback to message
+        else {
+          setErrorMessage(err.message || 'Login failed');
         }
       } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
+        setErrorMessage('Network error. Please check your connection and try again.');
       }
     }
   };
@@ -127,12 +155,20 @@ const LoginForm = () => {
       return;
     }
     
+    // Check if verifyTwoFactor function is available
+    if (!verifyTwoFactor) {
+      setErrorMessage('Two-factor verification is not available. Please try logging in again.');
+      setRequiresTwoFactor(false);
+      return;
+    }
+    
     try {
       // Clear any previous error/success messages
       setErrorMessage(null);
       setSuccessMessage(null);
-
-      await verifyTwoFactor(temporaryUserId.toString(), twoFactorCode);
+  
+      // Pass temporaryUserId as number (not string)
+      await verifyTwoFactor(temporaryUserId, twoFactorCode);
       
       // Successful 2FA verification - redirect to the return URL
       setSuccessMessage('Verification successful! Redirecting...');

@@ -49,13 +49,56 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const responseData = await backendResponse.json();
+    const contentType = backendResponse.headers.get('content-type');
+    let responseData;
+
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await backendResponse.json();
+    } else {
+      // Handle plain text responses (security blocks, etc.)
+      const textResponse = await backendResponse.text();
+      responseData = {
+        detail: textResponse,
+        error_type: backendResponse.status === 403 ? 'BLOCKED' : 'ERROR',
+        status_code: backendResponse.status
+      };
+    }
 
     if (!backendResponse.ok) {
       console.error('❌ Backend login failed:', responseData);
+      
+      // Enhanced error handling for different scenarios
+      let errorMessage = 'Login failed';
+      let errorType = 'GENERAL_ERROR';
+      
+      if (responseData.detail) {
+        const detail = responseData.detail.toLowerCase();
+        
+        // Check for IP blacklisting
+        if (detail.includes('ip address blacklisted') || detail.includes('blacklisted')) {
+          errorMessage = 'Your IP address has been temporarily blocked due to security concerns. Please contact support if you believe this is an error.';
+          errorType = 'IP_BLACKLISTED';
+        }
+        // Check for rate limiting
+        else if (detail.includes('rate limit') || detail.includes('too many requests')) {
+          errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+          errorType = 'RATE_LIMITED';
+        }
+        // Check for account lockout
+        else if (detail.includes('account locked') || detail.includes('locked')) {
+          errorMessage = 'Your account has been temporarily locked. Please contact support or try again later.';
+          errorType = 'ACCOUNT_LOCKED';
+        }
+        // Default to original message
+        else {
+          errorMessage = responseData.detail || responseData.message || 'Login failed';
+        }
+      }
+      
       return NextResponse.json(
         { 
-          error: responseData.detail || responseData.message || 'Login failed',
+          error: errorMessage,
+          error_type: errorType,
           details: responseData 
         },
         { status: backendResponse.status }
