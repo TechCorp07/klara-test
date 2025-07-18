@@ -2,6 +2,12 @@
 
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
+import { AxiosResponse } from 'axios';
+
+// Helper function to extract data from your existing Axios responses
+const extractData = <T>(response: AxiosResponse<T>): T => {
+  return response.data;
+};
 
 export interface PatientDashboardData {
   patient_info: {
@@ -216,8 +222,8 @@ class EnhancedPatientService {
    */
   async getDashboardData(): Promise<PatientDashboardData> {
     try {
-      const response = await apiClient.get(ENDPOINTS.PATIENT.DASHBOARD);
-      return response.data;
+      const response = await apiClient.get<PatientDashboardData>(ENDPOINTS.PATIENT.DASHBOARD);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch patient dashboard data:', error);
       throw new Error('Failed to load dashboard data');
@@ -229,7 +235,7 @@ class EnhancedPatientService {
    */
   async logMedicationTaken(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
     try {
-      await apiClient.post(`/patient/medications/${medicationId}/log/`, logEntry);
+      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(medicationId), logEntry);
     } catch (error) {
       console.error('Failed to log medication:', error);
       throw new Error('Failed to log medication');
@@ -241,7 +247,7 @@ class EnhancedPatientService {
    */
   async recordVitalSigns(vitals: VitalSignsEntry): Promise<void> {
     try {
-      await apiClient.post('/patient/vitals/', vitals);
+      await apiClient.post(ENDPOINTS.PATIENT.VITALS, vitals);
     } catch (error) {
       console.error('Failed to record vital signs:', error);
       throw new Error('Failed to record vital signs');
@@ -253,7 +259,7 @@ class EnhancedPatientService {
    */
   async acknowledgeAlert(alertId: number): Promise<void> {
     try {
-      await apiClient.post(`/patient/alerts/${alertId}/acknowledge/`);
+      await apiClient.post(ENDPOINTS.PATIENT.ACKNOWLEDGE_ALERT(alertId));
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
       throw new Error('Failed to acknowledge alert');
@@ -265,8 +271,8 @@ class EnhancedPatientService {
    */
   async getWearableDevices(): Promise<WearableDevice[]> {
     try {
-      const response = await apiClient.get('/patient/wearable-devices/');
-      return response.data;
+      const response = await apiClient.get<WearableDevice[]>(ENDPOINTS.PATIENT.WEARABLE_DEVICES);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch wearable devices:', error);
       throw new Error('Failed to load wearable devices');
@@ -278,10 +284,11 @@ class EnhancedPatientService {
    */
   async connectWearableDevice(deviceType: string): Promise<{ authorization_url: string }> {
     try {
-      const response = await apiClient.post('/patient/wearable-devices/connect/', {
-        device_type: deviceType
-      });
-      return response.data;
+      const response = await apiClient.post<{ authorization_url: string }>(
+        ENDPOINTS.PATIENT.CONNECT_DEVICE,
+        { device_type: deviceType }
+      );
+      return extractData(response);
     } catch (error) {
       console.error('Failed to connect wearable device:', error);
       throw new Error('Failed to connect device');
@@ -293,7 +300,7 @@ class EnhancedPatientService {
    */
   async disconnectWearableDevice(deviceId: number): Promise<void> {
     try {
-      await apiClient.post(`/patient/wearable-devices/${deviceId}/disconnect/`);
+      await apiClient.post(ENDPOINTS.PATIENT.DISCONNECT_DEVICE(deviceId));
     } catch (error) {
       console.error('Failed to disconnect wearable device:', error);
       throw new Error('Failed to disconnect device');
@@ -305,8 +312,11 @@ class EnhancedPatientService {
    */
   async requestAppointment(appointmentData: AppointmentRequest): Promise<{ id: number; status: string }> {
     try {
-      const response = await apiClient.post('/patient/appointments/request/', appointmentData);
-      return response.data;
+      const response = await apiClient.post<{ id: number; status: string }>(
+        ENDPOINTS.PATIENT.REQUEST_APPOINTMENT,
+        appointmentData
+      );
+      return extractData(response);
     } catch (error) {
       console.error('Failed to request appointment:', error);
       throw new Error('Failed to request appointment');
@@ -318,7 +328,7 @@ class EnhancedPatientService {
    */
   async cancelAppointment(appointmentId: number, reason: string): Promise<void> {
     try {
-      await apiClient.post(`/patient/appointments/${appointmentId}/cancel/`, { reason });
+      await apiClient.post(ENDPOINTS.PATIENT.CANCEL_APPOINTMENT(appointmentId), { reason });
     } catch (error) {
       console.error('Failed to cancel appointment:', error);
       throw new Error('Failed to cancel appointment');
@@ -330,8 +340,8 @@ class EnhancedPatientService {
    */
   async getAvailableResearchStudies(): Promise<ResearchStudy[]> {
     try {
-      const response = await apiClient.get('/patient/research/available-studies/');
-      return response.data;
+      const response = await apiClient.get<ResearchStudy[]>(ENDPOINTS.PATIENT.RESEARCH_STUDIES);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch research studies:', error);
       throw new Error('Failed to load research studies');
@@ -343,7 +353,7 @@ class EnhancedPatientService {
    */
   async expressResearchInterest(studyId: number, message?: string): Promise<void> {
     try {
-      await apiClient.post(`/patient/research/studies/${studyId}/interest/`, {
+      await apiClient.post(ENDPOINTS.PATIENT.EXPRESS_RESEARCH_INTEREST(studyId), {
         message: message || ''
       });
     } catch (error) {
@@ -357,8 +367,8 @@ class EnhancedPatientService {
    */
   async getFHIRData(request: FHIRDataRequest): Promise<object> {
     try {
-      const response = await apiClient.post('/patient/fhir/export/', request);
-      return response.data;
+      const response = await apiClient.post<object>(ENDPOINTS.PATIENT.FHIR_EXPORT, request);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch FHIR data:', error);
       throw new Error('Failed to fetch FHIR data');
@@ -374,12 +384,15 @@ class EnhancedPatientService {
     dateRange?: { start: string; end: string }
   ): Promise<{ request_id: string; status: string }> {
     try {
-      const response = await apiClient.post('/patient/fhir/import-request/', {
-        provider_name: providerName,
-        provider_address: providerAddress,
-        date_range: dateRange
-      });
-      return response.data;
+      const response = await apiClient.post<{ request_id: string; status: string }>(
+        ENDPOINTS.PATIENT.FHIR_IMPORT_REQUEST,
+        {
+          provider_name: providerName,
+          provider_address: providerAddress,
+          date_range: dateRange
+        }
+      );
+      return extractData(response);
     } catch (error) {
       console.error('Failed to request external records import:', error);
       throw new Error('Failed to request records import');
@@ -396,7 +409,7 @@ class EnhancedPatientService {
     quiet_hours?: { start: string; end: string };
   }): Promise<void> {
     try {
-      await apiClient.patch('/patient/profile/medication-reminders/', preferences);
+      await apiClient.patch(ENDPOINTS.PATIENT.MEDICATION_REMINDERS, preferences);
     } catch (error) {
       console.error('Failed to update medication reminders:', error);
       throw new Error('Failed to update reminder preferences');
@@ -421,8 +434,21 @@ class EnhancedPatientService {
     }>;
   }> {
     try {
-      const response = await apiClient.get('/patient/family-history/');
-      return response.data;
+      const response = await apiClient.get<{
+        immediate_family: Array<{
+          relationship: string;
+          conditions: string[];
+          age_of_onset?: number;
+          notes?: string;
+        }>;
+        extended_family: Array<{
+          relationship: string;
+          conditions: string[];
+          age_of_onset?: number;
+          notes?: string;
+        }>;
+      }>(ENDPOINTS.PATIENT.FAMILY_HISTORY);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch family medical history:', error);
       throw new Error('Failed to load family medical history');
@@ -439,7 +465,7 @@ class EnhancedPatientService {
     notes?: string;
   }): Promise<void> {
     try {
-      await apiClient.post('/patient/family-history/', familyHistory);
+      await apiClient.post(ENDPOINTS.PATIENT.FAMILY_HISTORY, familyHistory);
     } catch (error) {
       console.error('Failed to update family medical history:', error);
       throw new Error('Failed to update family history');
@@ -455,11 +481,15 @@ class EnhancedPatientService {
     scheduled_time: string;
   }> {
     try {
-      const response = await apiClient.post('/patient/telemedicine/request/', {
+      const response = await apiClient.post<{
+        session_id: string;
+        join_url: string;
+        scheduled_time: string;
+      }>(ENDPOINTS.PATIENT.TELEMEDICINE_REQUEST, {
         provider_id: providerId,
         urgency
       });
-      return response.data;
+      return extractData(response);
     } catch (error) {
       console.error('Failed to request telemedicine session:', error);
       throw new Error('Failed to request telemedicine session');
@@ -479,8 +509,16 @@ class EnhancedPatientService {
     last_activity: string;
   }>> {
     try {
-      const response = await apiClient.get('/patient/chat-groups/');
-      return response.data;
+      const response = await apiClient.get<Array<{
+        id: number;
+        name: string;
+        description: string;
+        condition_focus: string;
+        member_count: number;
+        is_member: boolean;
+        last_activity: string;
+      }>>(ENDPOINTS.PATIENT.CHAT_GROUPS);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch chat groups:', error);
       throw new Error('Failed to load chat groups');
@@ -492,7 +530,7 @@ class EnhancedPatientService {
    */
   async joinChatGroup(groupId: number): Promise<void> {
     try {
-      await apiClient.post(`/patient/chat-groups/${groupId}/join/`);
+      await apiClient.post(ENDPOINTS.PATIENT.JOIN_CHAT_GROUP(groupId));
     } catch (error) {
       console.error('Failed to join chat group:', error);
       throw new Error('Failed to join chat group');
@@ -521,8 +559,25 @@ class EnhancedPatientService {
     }>;
   }> {
     try {
-      const response = await apiClient.get(`/patient/medications/analytics/?range=${timeRange}`);
-      return response.data;
+      const response = await apiClient.get<{
+        overall_adherence: number;
+        adherence_by_medication: Array<{
+          medication: string;
+          adherence_rate: number;
+          missed_doses: number;
+          on_time_rate: number;
+        }>;
+        adherence_trends: Array<{
+          date: string;
+          adherence_rate: number;
+        }>;
+        factors_affecting_adherence: Array<{
+          factor: string;
+          impact_score: number;
+          description: string;
+        }>;
+      }>(`${ENDPOINTS.PATIENT.MEDICATION_ANALYTICS}?range=${timeRange}`);
+      return extractData(response);
     } catch (error) {
       console.error('Failed to fetch medication adherence analytics:', error);
       throw new Error('Failed to load adherence analytics');
@@ -538,11 +593,15 @@ class EnhancedPatientService {
     emergency_services_contacted: boolean;
   }> {
     try {
-      const response = await apiClient.post('/patient/emergency/notify/', {
+      const response = await apiClient.post<{
+        notification_id: string;
+        contacts_notified: string[];
+        emergency_services_contacted: boolean;
+      }>(ENDPOINTS.PATIENT.EMERGENCY_NOTIFICATION, {
         emergency_type: emergencyType,
         message
       });
-      return response.data;
+      return extractData(response);
     } catch (error) {
       console.error('Failed to trigger emergency notification:', error);
       throw new Error('Failed to send emergency notification');

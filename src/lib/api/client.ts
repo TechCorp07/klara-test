@@ -21,6 +21,15 @@ export interface APIResponse<T = unknown> {
   errors?: string[];
 }
 
+interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+  details?: any;
+}
+
+
+
 class TabAPIClient {
   private client: AxiosInstance;
   private baseURL: string;

@@ -65,6 +65,61 @@ export const ENDPOINTS = {
     COMPLETE_COMPLIANCE_PROFILE: (id: number) => `/users/compliance-profiles/${id}/complete/`,
   },
 
+  // Patient-specific endpoints
+  PATIENT: {
+    // Dashboard
+    DASHBOARD: '/users/patient/dashboard/',
+    
+    // Profile management
+    PROFILE: '/users/patient/profile/',
+    UPDATE_PROFILE: '/users/patient/profile/',
+    
+    // Medications
+    MEDICATIONS: '/users/patient/medications/',
+    LOG_MEDICATION: (id: number) => `/users/patient/medications/${id}/log/`,
+    MEDICATION_ANALYTICS: '/users/patient/medications/analytics/',
+    MEDICATION_REMINDERS: '/users/patient/profile/medication-reminders/',
+    
+    // Vital signs
+    VITALS: '/users/patient/vitals/',
+    VITALS_LATEST: '/users/patient/vitals/latest/',
+    
+    // Wearable devices
+    WEARABLE_DEVICES: '/users/patient/wearable-devices/',
+    CONNECT_DEVICE: '/users/patient/wearable-devices/connect/',
+    DISCONNECT_DEVICE: (id: number) => `/users/patient/wearable-devices/${id}/disconnect/`,
+    
+    // Appointments
+    APPOINTMENTS: '/users/patient/appointments/',
+    REQUEST_APPOINTMENT: '/users/patient/appointments/request/',
+    CANCEL_APPOINTMENT: (id: number) => `/users/patient/appointments/${id}/cancel/`,
+    
+    // Health alerts
+    ALERTS: '/users/patient/alerts/',
+    ACKNOWLEDGE_ALERT: (id: number) => `/users/patient/alerts/${id}/acknowledge/`,
+    
+    // Research participation
+    RESEARCH_STUDIES: '/users/patient/research/available-studies/',
+    EXPRESS_RESEARCH_INTEREST: (id: number) => `/users/patient/research/studies/${id}/interest/`,
+    
+    // FHIR data exchange
+    FHIR_EXPORT: '/users/patient/fhir/export/',
+    FHIR_IMPORT_REQUEST: '/users/patient/fhir/import-request/',
+    
+    // Family history
+    FAMILY_HISTORY: '/users/patient/family-history/',
+    
+    // Telemedicine
+    TELEMEDICINE_REQUEST: '/users/patient/telemedicine/request/',
+    
+    // Chat groups
+    CHAT_GROUPS: '/users/patient/chat-groups/',
+    JOIN_CHAT_GROUP: (id: number) => `/users/patient/chat-groups/${id}/join/`,
+    
+    // Emergency
+    EMERGENCY_NOTIFICATION: '/users/patient/emergency/notify/',
+  },
+  
   // Admin-specific endpoints
   ADMIN: {
     // Dashboard & Statistics
