@@ -68,32 +68,63 @@ export default function LoginContent() {
   const sanitizedReturnUrl = getCleanReturnUrl();
   
   useEffect(() => {
-    console.log('🔄 Auth state check:', { 
-      isAuthenticated, 
-      isInitialized, 
-      hasRedirected: hasRedirectedRef.current 
-    });
-    
-    // Redirect when user is authenticated and we haven't redirected yet
-    const shouldRedirect = (
-      isInitialized &&        // Auth system initialized
-      isAuthenticated &&      // User is authenticated  
-      !hasRedirectedRef.current // Haven't redirected yet
-    );
-    
-    if (shouldRedirect) {
-      console.log('✅ User authenticated, executing redirect to:', sanitizedReturnUrl);
+    // Only execute redirect logic if auth is initialized
+    if (!isInitialized) {
+      console.log('⏳ Auth not initialized yet, waiting...');
+      return;
+    }
+  
+    // Redirect authenticated users to their role-specific dashboard
+    if (isAuthenticated && user && !hasRedirectedRef.current) {
+      const userRole = user.role;
+      
+      // Determine role-specific redirect URL
+      let redirectUrl: string;
+      switch (userRole) {
+        case 'patient':
+          redirectUrl = '/dashboard/patient';
+          break;
+        case 'provider':
+          redirectUrl = '/dashboard/provider';
+          break;
+        case 'admin':
+          redirectUrl = '/dashboard/admin';
+          break;
+        case 'pharmco':
+          redirectUrl = '/dashboard/pharmco';
+          break;
+        case 'researcher':
+          redirectUrl = '/dashboard/researcher';
+          break;
+        case 'caregiver':
+          redirectUrl = '/dashboard/caregiver';
+          break;
+        case 'compliance':
+          redirectUrl = '/dashboard/compliance';
+          break;
+        default:
+          // Fallback to generic dashboard for unknown roles
+          redirectUrl = '/dashboard';
+          break;
+      }
+      
+      // Use sanitized return URL if it's role-appropriate, otherwise use role-specific URL
+      const finalRedirectUrl = sanitizedReturnUrl && sanitizedReturnUrl.startsWith(`/dashboard/${userRole}`) 
+        ? sanitizedReturnUrl 
+        : redirectUrl;
+  
+      console.log(`✅ User authenticated as ${userRole}, redirecting to:`, finalRedirectUrl);
       hasRedirectedRef.current = true;
-
+  
       setTimeout(() => {
-        router.push(sanitizedReturnUrl);
+        router.push(finalRedirectUrl);
       }, 100);
-
+  
       return;
     } else if (isInitialized && !isAuthenticated) {
       console.log('🔑 User not authenticated, showing login form');
     }
-  }, [isInitialized, isAuthenticated, sanitizedReturnUrl, router]);
+  }, [isInitialized, isAuthenticated, user, sanitizedReturnUrl, router]);
   
   // Show different loading states based on auth progress
   if (!isInitialized) {

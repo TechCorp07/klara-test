@@ -5,59 +5,70 @@ import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-export default function Dashboard() {
-  const { user, isAuthenticated, isInitialized } = useAuth();
+export default function DashboardRedirect() {
+  const { user, isAuthenticated, isInitialized, getUserRole } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.push('/login');
+    if (!isInitialized) {
+      // Still initializing, wait
+      return;
     }
-  }, [isInitialized, isAuthenticated, router]);
 
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+    if (!isAuthenticated || !user) {
+      // Not authenticated, redirect to login
+      console.log('❌ User not authenticated, redirecting to login');
+      router.push('/login');
+      return;
+    }
 
-  if (!isAuthenticated || !user) {
-    return null; // Will redirect in useEffect
-  }
+    // Get user role and redirect to appropriate dashboard
+    const userRole = getUserRole();
+    console.log(`🎯 Redirecting ${userRole} to role-specific dashboard`);
 
+    switch (userRole) {
+      case 'patient':
+        router.push('/dashboard/patient');
+        break;
+      case 'provider':
+        router.push('/dashboard/provider');
+        break;
+      case 'admin':
+        router.push('/dashboard/admin');
+        break;
+      case 'pharmco':
+        router.push('/dashboard/pharmco');
+        break;
+      case 'researcher':
+        router.push('/dashboard/researcher');
+        break;
+      case 'caregiver':
+        router.push('/dashboard/caregiver');
+        break;
+      case 'compliance':
+        router.push('/dashboard/compliance');
+        break;
+      default:
+        // Unknown role, redirect to a generic dashboard or login
+        console.warn(`❓ Unknown user role: ${userRole}, redirecting to login`);
+        router.push('/login');
+        break;
+    }
+  }, [isInitialized, isAuthenticated, user, getUserRole, router]);
+
+  // Show loading state while redirecting
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Welcome, {user.email}!
-              </h1>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-blue-900">Your Role</h3>
-                  <p className="text-blue-700 capitalize">{user.role}</p>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-green-900">Account Status</h3>
-                  <p className="text-green-700">
-                    {user.is_approved ? 'Approved' : 'Pending Approval'}
-                  </p>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-purple-900">Tab ID</h3>
-                  <p className="text-purple-700 text-xs">{user.id}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">
+          {!isInitialized ? 'Initializing...' : 'Redirecting to your dashboard...'}
+        </p>
+        {isAuthenticated && user && (
+          <p className="text-sm text-gray-500 mt-2">
+            Welcome back, {user.first_name || user.email}!
+          </p>
+        )}
       </div>
     </div>
   );
