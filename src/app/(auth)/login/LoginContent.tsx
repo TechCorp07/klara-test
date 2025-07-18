@@ -83,25 +83,25 @@ export default function LoginContent() {
       let redirectUrl: string;
       switch (userRole) {
         case 'patient':
-          redirectUrl = '/dashboard/patient';
+          redirectUrl = '/patient';
           break;
         case 'provider':
-          redirectUrl = '/dashboard/provider';
+          redirectUrl = '/provider';
           break;
         case 'admin':
-          redirectUrl = '/dashboard/admin';
+          redirectUrl = '/admin';
           break;
         case 'pharmco':
-          redirectUrl = '/dashboard/pharmco';
+          redirectUrl = '/pharmco';
           break;
         case 'researcher':
-          redirectUrl = '/dashboard/researcher';
+          redirectUrl = '/researcher';
           break;
         case 'caregiver':
-          redirectUrl = '/dashboard/caregiver';
+          redirectUrl = '/caregiver';
           break;
         case 'compliance':
-          redirectUrl = '/dashboard/compliance';
+          redirectUrl = '/compliance';
           break;
         default:
           // Fallback to generic dashboard for unknown roles
@@ -110,7 +110,7 @@ export default function LoginContent() {
       }
       
       // Use sanitized return URL if it's role-appropriate, otherwise use role-specific URL
-      const finalRedirectUrl = sanitizedReturnUrl && sanitizedReturnUrl.startsWith(`/dashboard/${userRole}`) 
+      const finalRedirectUrl = sanitizedReturnUrl && sanitizedReturnUrl.startsWith(`/${userRole}`)
         ? sanitizedReturnUrl 
         : redirectUrl;
   

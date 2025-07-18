@@ -28,25 +28,25 @@ export default function DashboardRedirect() {
 
     switch (userRole) {
       case 'patient':
-        router.push('/dashboard/patient');
+        router.push('/patient');
         break;
       case 'provider':
-        router.push('/dashboard/provider');
+        router.push('/provider');
         break;
       case 'admin':
-        router.push('/dashboard/admin');
+        router.push('/admin');
         break;
       case 'pharmco':
-        router.push('/dashboard/pharmco');
+        router.push('/pharmco');
         break;
       case 'researcher':
-        router.push('/dashboard/researcher');
+        router.push('/researcher');
         break;
       case 'caregiver':
-        router.push('/dashboard/caregiver');
+        router.push('/caregiver');
         break;
       case 'compliance':
-        router.push('/dashboard/compliance');
+        router.push('/compliance');
         break;
       default:
         // Unknown role, redirect to a generic dashboard or login
