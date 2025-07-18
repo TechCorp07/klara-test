@@ -3,18 +3,212 @@
 
 import React, { ReactNode, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { useDashboardPermissions } from '@/hooks/dashboard/useDashboardPermissions';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { Spinner } from '@/components/ui/spinner';
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+// Define navigation item interface
+interface NavigationItem {
+  id: string;
+  name: string;
+  href: string;
+  icon?: string;
+  permission?: string;
+  show: boolean;
+}
+
+// Define quick action interface
+interface QuickAction {
+  id: string;
+  name: string;
+  description: string;
+  href: string;
+  icon?: string;
+  permission?: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { isLoading, isAuthenticated, user, hasPermission, getUserRole } = useAuth();
-  const { navigation, quickActions, canViewDashboard, userRole } = useDashboardPermissions();
-  const { logout } = useAuth();
+  const { isLoading, isAuthenticated, user, hasPermission, getUserRole, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Get user role and check permissions
+  const userRole = getUserRole();
+  const canViewDashboard = isAuthenticated && user && userRole;
+
+  // Generate navigation based on user role and permissions
+  const getNavigation = (): NavigationItem[] => {
+    const navigation: NavigationItem[] = [];
+
+    // Common navigation items
+    navigation.push({
+      id: 'dashboard',
+      name: 'Dashboard',
+      href: `/dashboard/${userRole}`,
+      icon: 'home',
+      show: true
+    });
+
+    // Role-specific navigation
+    if (userRole === 'admin') {
+      navigation.push(
+        {
+          id: 'user-management',
+          name: 'User Management',
+          href: '/dashboard/admin/users',
+          icon: 'users',
+          permission: 'can_manage_users',
+          show: hasPermission('can_manage_users')
+        },
+        {
+          id: 'approvals',
+          name: 'Approvals',
+          href: '/dashboard/admin/approvals',
+          icon: 'check-circle',
+          permission: 'can_manage_users',
+          show: hasPermission('can_manage_users')
+        },
+        {
+          id: 'audit-logs',
+          name: 'Audit Logs',
+          href: '/dashboard/admin/audit-logs',
+          icon: 'file-text',
+          permission: 'can_access_audit_logs',
+          show: hasPermission('can_access_audit_logs')
+        }
+      );
+    }
+
+    if (userRole === 'patient') {
+      navigation.push(
+        {
+          id: 'health-records',
+          name: 'Health Records',
+          href: '/dashboard/patient/health-records',
+          icon: 'file-medical',
+          show: true
+        },
+        {
+          id: 'appointments',
+          name: 'Appointments',
+          href: '/dashboard/patient/appointments',
+          icon: 'calendar',
+          show: true
+        },
+        {
+          id: 'medications',
+          name: 'Medications',
+          href: '/dashboard/patient/medications',
+          icon: 'pill',
+          show: true
+        }
+      );
+    }
+
+    if (userRole === 'provider') {
+      navigation.push(
+        {
+          id: 'patients',
+          name: 'My Patients',
+          href: '/dashboard/provider/patients',
+          icon: 'users',
+          permission: 'can_access_patient_data',
+          show: hasPermission('can_access_patient_data')
+        },
+        {
+          id: 'appointments',
+          name: 'Appointments',
+          href: '/dashboard/provider/appointments',
+          icon: 'calendar',
+          show: true
+        }
+      );
+    }
+
+    return navigation.filter(item => item.show);
+  };
+
+  // Generate quick actions based on user role
+  const getQuickActions = (): QuickAction[] => {
+    const actions: QuickAction[] = [];
+
+    if (userRole === 'admin') {
+      actions.push(
+        {
+          id: 'approve-users',
+          name: 'Quick Approvals',
+          description: 'Review pending user registrations',
+          href: '/dashboard/admin/approvals',
+          icon: 'user-check',
+          permission: 'can_manage_users',
+          priority: 'high'
+        },
+        {
+          id: 'system-health',
+          name: 'System Health',
+          description: 'Monitor system performance',
+          href: '/dashboard/admin/monitoring',
+          icon: 'activity',
+          permission: 'can_access_admin',
+          priority: 'medium'
+        }
+      );
+    }
+
+    if (userRole === 'patient') {
+      actions.push(
+        {
+          id: 'book-appointment',
+          name: 'Book Appointment',
+          description: 'Schedule a visit with your provider',
+          href: '/dashboard/patient/appointments/new',
+          icon: 'calendar-plus',
+          priority: 'high'
+        },
+        {
+          id: 'log-medication',
+          name: 'Log Medication',
+          description: 'Record medication taken',
+          href: '/dashboard/patient/medications/log',
+          icon: 'pill',
+          priority: 'medium'
+        }
+      );
+    }
+
+    if (userRole === 'provider') {
+      actions.push(
+        {
+          id: 'patient-records',
+          name: 'Patient Records',
+          description: 'Access patient medical records',
+          href: '/dashboard/provider/patients',
+          icon: 'file-medical',
+          permission: 'can_access_patient_data',
+          priority: 'high'
+        },
+        {
+          id: 'emergency-access',
+          name: 'Emergency Access',
+          description: 'Request emergency patient access',
+          href: '/dashboard/provider/emergency-access',
+          icon: 'alert-triangle',
+          permission: 'can_emergency_access',
+          priority: 'high'
+        }
+      );
+    }
+
+    return actions.filter((action: QuickAction) => {
+      if (action.permission) {
+        return hasPermission(action.permission);
+      }
+      return true;
+    });
+  };
 
   const handleLogout = async () => {
     try {
@@ -37,7 +231,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
     );
   }
-``
+
   if (!canViewDashboard) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -55,7 +249,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               disabled={isLoggingOut}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </div>
         </div>
@@ -63,215 +257,80 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  const getIconComponent = (iconName: string) => {
-    const iconMap: Record<string, string> = {
-      'home': '🏠',
-      'users': '👥',
-      'check-circle': '✅',
-      'file-text': '📄',
-      'database': '💾',
-      'beaker': '🧪',
-      'activity': '📊',
-      'alert-triangle': '⚠️',
-      'user': '👤',
-      'settings': '⚙️',
-      'mail': '📧',
-      'calendar': '📅',
-      'file-medical': '🏥',
-      'pill': '💊',
-      'video': '📹',
-      'user-group': '👥',
-      'chart-line': '📈',
-      'bar-chart': '📊'
-    };
-    return iconMap[iconName] || '📄';
-  };
-
-  const getQuickActionClass = (variant: string) => {
-    const baseClass = 'px-3 py-2 rounded-md text-sm font-medium transition-colors';
-    switch (variant) {
-      case 'primary':
-        return `${baseClass} bg-blue-600 text-white hover:bg-blue-700`;
-      case 'success':
-        return `${baseClass} bg-green-600 text-white hover:bg-green-700`;
-      case 'danger':
-        return `${baseClass} bg-red-600 text-white hover:bg-red-700`;
-      case 'secondary':
-      default:
-        return `${baseClass} bg-gray-200 text-gray-900 hover:bg-gray-300`;
-    }
-  };
+  const navigation = getNavigation();
+  const quickActions = getQuickActions();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      {/* Navigation Header */}
+      <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            {/* Left side - Logo and Title */}
-            <div className="flex items-center space-x-4">
+          <div className="flex justify-between h-16">
+            <div className="flex">
               <div className="flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-xl font-semibold text-gray-900">
                   Klararety Healthcare
                 </h1>
               </div>
-              <div className="hidden md:block text-sm text-gray-500">
-                {userRole?.charAt(0).toUpperCase()}{userRole?.slice(1)} Dashboard
-              </div>
-            </div>
-
-            {/* Right side - User info and quick actions */}
-            <div className="flex items-center space-x-4">
-              {/* Quick Actions */}
-              {quickActions.length > 0 && (
-                <div className="hidden lg:flex items-center space-x-2">
-                  {quickActions.slice(0, 2).map((action) => (
-                    <PermissionGate
-                      key={action.id}
-                      requiredPermission={action.permission}
-                    >
-                      <a
-                        href={action.href}
-                        className={getQuickActionClass(action.variant)}
-                        title={action.name}
-                      >
-                        <span className="mr-1">{getIconComponent(action.icon)}</span>
-                        <span className="hidden xl:inline">{action.name}</span>
-                      </a>
-                    </PermissionGate>
-                  ))}
-                </div>
-              )}
-
-              {/* Notifications - Permission-aware */}
-              <PermissionGate requiredPermission="can_manage_users">
-                <div className="relative">
-                  <button className="p-2 text-gray-400 hover:text-gray-600">
-                    <span className="text-lg">🔔</span>
-                    {/* Notification badge */}
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      8
-                    </span>
-                  </button>
-                </div>
-              </PermissionGate>
-
-              {/* User Menu */}
-              <div className="flex items-center space-x-3">
-                <div className="text-sm text-right">
-                  <p className="font-medium text-gray-900">
-                    {user?.first_name} {user?.last_name}
-                  </p>
-                  <p className="text-gray-500">{user?.email}</p>
-                </div>
-                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-                  {user?.first_name?.[0] || user?.username?.[0] || '?'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      {navigation.length > 0 && (
-        <nav className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex space-x-8 overflow-x-auto">
-              {navigation.map((item) => (
-                <PermissionGate
-                  key={item.id}
-                  requiredPermission={item.permission}
-                  requiredRoles={item.roles}
-                >
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                {navigation.map((item: NavigationItem) => (
                   <a
+                    key={item.id}
                     href={item.href}
-                    className="flex items-center space-x-2 py-4 px-2 text-sm font-medium text-gray-700 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 whitespace-nowrap transition-colors"
+                    className="text-gray-900 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300 text-sm font-medium"
                   >
-                    <span>{getIconComponent(item.icon)}</span>
-                    <span>{item.name}</span>
-                    {item.badge && (
-                      <span className="ml-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                        {item.badge}
-                      </span>
-                    )}
+                    {item.name}
                   </a>
-                </PermissionGate>
-              ))}
-            </div>
-          </div>
-        </nav>
-      )}
-
-      {/* Main Content Area */}
-      <main className="flex-1">
-        {/* Permission-aware content rendering */}
-        <PermissionGate
-          requiredRoles={[userRole!]}
-          fallback={
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                <h3 className="text-lg font-medium text-yellow-800 mb-2">
-                  Role Access Warning
-                </h3>
-                <p className="text-yellow-700">
-                  You are accessing a dashboard that may not match your assigned role. 
-                  Some features may be limited or unavailable.
-                </p>
-                <p className="text-sm text-yellow-600 mt-2">
-                  Current role: {userRole} | Expected access level may differ
-                </p>
+                ))}
               </div>
-            </div>
-          }
-        >
-          {children}
-        </PermissionGate>
-      </main>
-
-      {/* Footer - Permission-aware */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              © 2025 Klararety Healthcare Platform
             </div>
             
-            <div className="flex items-center space-x-4 text-sm">
-              {/* System status - Admin only */}
-              <PermissionGate requiredPermission="can_access_admin">
-                <span className="flex items-center space-x-2">
-                  <span className="h-2 w-2 bg-green-500 rounded-full"></span>
-                  <span className="text-gray-600">System Healthy</span>
+            <div className="flex items-center">
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-700">
+                  {user?.first_name || user?.username} ({userRole})
                 </span>
-              </PermissionGate>
-              
-              {/* Emergency access indicator */}
-              <PermissionGate requiredPermission="can_emergency_access">
-                <span className="text-orange-600 font-medium">
-                  🚨 Emergency Access Available
-                </span>
-              </PermissionGate>
-              
-              {/* User session info */}
-              <span className="text-gray-500">
-                Last login: {new Date().toLocaleDateString()}
-              </span>
-              
-              {/* Logout link */}
-              <div className="mt-6">
                 <button
                   onClick={handleLogout}
                   disabled={isLoggingOut}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300 disabled:opacity-50"
                 >
-                  {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </footer>
+      </nav>
+
+      {/* Quick Actions Bar (if any) */}
+      {quickActions.length > 0 && (
+        <div className="bg-blue-50 border-b border-blue-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="py-3">
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium text-blue-800">Quick Actions:</span>
+                {quickActions.slice(0, 3).map((action: QuickAction) => (
+                  <a
+                    key={action.id}
+                    href={action.href}
+                    className="text-blue-700 hover:text-blue-900 text-sm font-medium hover:underline"
+                  >
+                    {action.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
