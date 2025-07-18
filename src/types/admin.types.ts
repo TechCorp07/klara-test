@@ -268,7 +268,7 @@ export interface AdminUserCreateData {
   username: string;
   email: string;
   password: string;
-  password_confirm: string;
+  confirm_password: string;
   role: 'admin' | 'superadmin';
   profile: {
     first_name: string;

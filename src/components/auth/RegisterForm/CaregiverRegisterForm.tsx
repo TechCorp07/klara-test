@@ -32,7 +32,7 @@ const caregiverRegisterSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
-  password_confirm: z
+  confirm_password: z
     .string()
     .min(1, 'Please confirm your password'),
   first_name: z
@@ -71,10 +71,10 @@ const caregiverRegisterSchema = z.object({
 
 // Match passwords
 const caregiverSchema = caregiverRegisterSchema.refine(
-  (data) => data.password === data.password_confirm,
+  (data) => data.password === data.confirm_password,
   {
     message: "Passwords don't match",
-    path: ['password_confirm'],
+    path: ['confirm_password'],
   }
 );
 
@@ -130,7 +130,7 @@ const CaregiverRegisterForm: React.FC = () => {
     defaultValues: {
       email: '',
       password: '',
-      password_confirm: '',
+      confirm_password: '',
       first_name: '',
       last_name: '',
       relationship_to_patient: '',
@@ -154,7 +154,7 @@ const onSubmit = async (data: CaregiverRegisterFormValues) => {
     await registerUser({
       email: data.email,
       password: data.password,
-      password_confirm: data.password_confirm,
+      confirm_password: data.confirm_password,
       first_name: data.first_name,
       last_name: data.last_name,
       role: 'caregiver',
@@ -163,7 +163,7 @@ const onSubmit = async (data: CaregiverRegisterFormValues) => {
       patient_email: data.patient_email,
       phone_number: data.phone_number,
       terms_accepted: data.terms_accepted,
-      hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
+      hipaa_privacy_acknowledged: data.hipaa_consent,
     });
 
     // Show success message and mark registration as complete
@@ -499,14 +499,14 @@ const onSubmit = async (data: CaregiverRegisterFormValues) => {
         />
 
         <FormInput
-          id="password_confirm"
+          id="confirm_password"
           label="Confirm Password"
           type="password"
-          error={errors.password_confirm}
+          error={errors.confirm_password}
           autoComplete="new-password"
           required
           disabled={isSubmitting}
-          {...register('password_confirm')}
+          {...register('confirm_password')}
         />
 
         <div className="mt-6 space-y-4">

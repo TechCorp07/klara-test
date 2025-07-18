@@ -33,17 +33,17 @@ const resetPasswordSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
-  password_confirm: z
+  confirm_password: z
     .string()
     .min(1, 'Please confirm your password'),
 });
 
 // Match passwords
 const resetSchema = resetPasswordSchema.refine(
-  (data) => data.password === data.password_confirm,
+  (data) => data.password === data.confirm_password,
   {
     message: "Passwords don't match",
-    path: ['password_confirm'],
+    path: ['confirm_password'],
   }
 );
 
@@ -78,7 +78,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token }) => {
     resolver: zodResolver(resetSchema),
     defaultValues: {
       password: '',
-      password_confirm: '',
+      confirm_password: '',
     },
   });
 
@@ -98,7 +98,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token }) => {
       const response = await resetPassword({
         token,
         password: data.password,
-        password_confirm: data.password_confirm,
+        confirm_password: data.confirm_password,
       });
       
       // Show success message and mark reset as complete
@@ -240,14 +240,14 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token }) => {
         />
 
         <FormInput
-          id="password_confirm"
+          id="confirm_password"
           label="Confirm New Password"
           type="password"
-          error={errors.password_confirm}
+          error={errors.confirm_password}
           autoComplete="new-password"
           required
           disabled={isSubmitting}
-          {...register('password_confirm')}
+          {...register('confirm_password')}
         />
 
         <div>

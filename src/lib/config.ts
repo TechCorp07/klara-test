@@ -16,6 +16,12 @@ interface AppConfig {
   sessionTimeoutMinutes: number;
   tokenRefreshThresholdMinutes: number;
   
+  // Password Configuration
+  passwordMinLength: number;
+  passwordRequiresUppercase: boolean;
+  passwordRequiresNumber: boolean;
+  passwordRequiresSpecialChar: boolean;
+
   // Security Configuration
   enablePermissionDebugging: boolean;
   
@@ -48,6 +54,12 @@ function createConfig(): AppConfig {
     // API Configuration
     apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
     
+    // Password Configuration
+    passwordMinLength: 12,
+    passwordRequiresUppercase: true,
+    passwordRequiresNumber: true,
+    passwordRequiresSpecialChar: true,
+
     // Tab-specific authentication ONLY
     tabAuthEnabled: true,
     tabSessionTimeout: parseInt(process.env.NEXT_PUBLIC_TAB_SESSION_TIMEOUT || '1800000'), // 30 minutes

@@ -32,7 +32,7 @@ const providerRegisterSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
-  password_confirm: z
+  confirm_password: z
     .string()
     .min(1, 'Please confirm your password'),
   first_name: z
@@ -43,7 +43,7 @@ const providerRegisterSchema = z.object({
     .string()
     .min(1, 'Last name is required')
     .max(50, 'Last name cannot exceed 50 characters'),
-  license_number: z
+  medical_license_number: z
     .string()
     .min(1, 'License number is required')
     .max(50, 'License number cannot exceed 50 characters'),
@@ -79,10 +79,10 @@ const providerRegisterSchema = z.object({
 
 // Match passwords
 const providerSchema = providerRegisterSchema.refine(
-  (data) => data.password === data.password_confirm,
+  (data) => data.password === data.confirm_password,
   {
     message: "Passwords don't match",
-    path: ['password_confirm'],
+    path: ['confirm_password'],
   }
 );
 
@@ -136,10 +136,10 @@ const ProviderRegisterForm: React.FC = () => {
     defaultValues: {
       email: '',
       password: '',
-      password_confirm: '',
+      confirm_password: '',
       first_name: '',
       last_name: '',
-      license_number: '',
+      medical_license_number: '',
       npi_number: '',
       specialty: '',
       practice_name: '',
@@ -162,11 +162,11 @@ const ProviderRegisterForm: React.FC = () => {
       await registerUser({
         email: data.email,
         password: data.password,
-        password_confirm: data.password_confirm,
+        confirm_password: data.confirm_password,
         first_name: data.first_name,
         last_name: data.last_name,
         role: 'provider',
-        license_number: data.license_number,
+        medical_license_number: data.medical_license_number,
         npi_number: data.npi_number,
         specialty: data.specialty,
         practice_name: data.practice_name,
@@ -199,7 +199,7 @@ const ProviderRegisterForm: React.FC = () => {
             };
             message?: string;
             email?: string[] | string;
-            license_number?: string[] | string;
+            medical_license_number?: string[] | string;
             npi_number?: string[] | string;
             specialty?: string[] | string;
             practice_name?: string[] | string;
@@ -244,8 +244,8 @@ const ProviderRegisterForm: React.FC = () => {
               }
             }
             // Handle medical license number errors (uniqueness critical for providers)
-            else if (fieldErrors.license_number) {
-              const licenseError = Array.isArray(fieldErrors.license_number) ? fieldErrors.license_number[0] : fieldErrors.license_number;
+            else if (fieldErrors.medical_license_number) {
+              const licenseError = Array.isArray(fieldErrors.medical_license_number) ? fieldErrors.medical_license_number[0] : fieldErrors.medical_license_number;
               if (licenseError.toLowerCase().includes('already exists') || licenseError.toLowerCase().includes('already taken') || licenseError.toLowerCase().includes('unique')) {
                 errorMsg = 'This medical license number is already registered with another provider account. Each license number can only be used once. Please verify your license number or contact support if you believe this is an error.';
               } else if (licenseError.toLowerCase().includes('invalid') || licenseError.toLowerCase().includes('format')) {
@@ -310,8 +310,8 @@ const ProviderRegisterForm: React.FC = () => {
               errorMsg = npiError;
             }
           }
-          else if (responseData.license_number) {
-            const licenseError = Array.isArray(responseData.license_number) ? responseData.license_number[0] : responseData.license_number;
+          else if (responseData.medical_license_number) {
+            const licenseError = Array.isArray(responseData.medical_license_number) ? responseData.medical_license_number[0] : responseData.medical_license_number;
             if (licenseError.toLowerCase().includes('already exists') || licenseError.toLowerCase().includes('unique')) {
               errorMsg = 'This medical license number is already registered with another provider account. Each license number can only be used once. Please verify your license number or contact support if you believe this is an error.';
             } else {
@@ -337,7 +337,7 @@ const ProviderRegisterForm: React.FC = () => {
                   } else {
                     errorMsg = npiError;
                   }
-                } else if (firstErrorField === 'license_number') {
+                } else if (firstErrorField === 'medical_license_number') {
                   const licenseError = String(fieldValue[0]);
                   if (licenseError.toLowerCase().includes('already exists') || licenseError.toLowerCase().includes('unique')) {
                     errorMsg = 'This medical license number is already registered with another provider account. Each license number can only be used once.';
@@ -482,12 +482,12 @@ const ProviderRegisterForm: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput
-            id="license_number"
+            id="medical_license_number"
             label="Medical License Number"
-            error={errors.license_number}
+            error={errors.medical_license_number}
             required
             disabled={isSubmitting}
-            {...register('license_number')}
+            {...register('medical_license_number')}
           />
 
           <FormInput
@@ -588,14 +588,14 @@ const ProviderRegisterForm: React.FC = () => {
         />
 
         <FormInput
-          id="password_confirm"
+          id="confirm_password"
           label="Confirm Password"
           type="password"
-          error={errors.password_confirm}
+          error={errors.confirm_password}
           autoComplete="new-password"
           required
           disabled={isSubmitting}
-          {...register('password_confirm')}
+          {...register('confirm_password')}
         />
 
         <div className="mt-6 space-y-4">

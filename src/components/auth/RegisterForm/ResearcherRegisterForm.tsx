@@ -32,7 +32,7 @@ const researcherRegisterSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
-  password_confirm: z
+  confirm_password: z
     .string()
     .min(1, 'Please confirm your password'),
   first_name: z
@@ -47,10 +47,10 @@ const researcherRegisterSchema = z.object({
     .string()
     .min(1, 'Institution is required')
     .max(100, 'Institution name cannot exceed 100 characters'),
-  research_area: z
+    primary_research_focus: z
     .string()
     .min(1, 'Research area is required'),
-  qualifications: z
+    qualifications_background: z
     .string()
     .min(1, 'Qualifications are required')
     .max(500, 'Qualifications cannot exceed 500 characters'),
@@ -75,10 +75,10 @@ const researcherRegisterSchema = z.object({
 
 // Match passwords
 const researcherSchema = researcherRegisterSchema.refine(
-  (data) => data.password === data.password_confirm,
+  (data) => data.password === data.confirm_password,
   {
     message: "Passwords don't match",
-    path: ['password_confirm'],
+    path: ['confirm_password'],
   }
 );
 
@@ -123,12 +123,12 @@ const ResearcherRegisterForm: React.FC = () => {
     defaultValues: {
       email: '',
       password: '',
-      password_confirm: '',
+      confirm_password: '',
       first_name: '',
       last_name: '',
       institution: '',
-      research_area: '',
-      qualifications: '',
+      primary_research_focus: '',
+      qualifications_background: '',
       phone_number: '',
       terms_accepted: false,
       hipaa_consent: false,
@@ -149,13 +149,13 @@ const ResearcherRegisterForm: React.FC = () => {
       await registerUser({
         email: data.email,
         password: data.password,
-        password_confirm: data.password_confirm,
+        confirm_password: data.confirm_password,
         first_name: data.first_name,
         last_name: data.last_name,
         role: 'researcher',
         institution: data.institution,
-        research_area: data.research_area,
-        qualifications: data.qualifications,
+        primary_research_focus: data.primary_research_focus,
+        qualifications_background: data.qualifications_background,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
         hipaa_privacy_acknowledged: data.hipaa_consent, 
@@ -494,12 +494,12 @@ const ResearcherRegisterForm: React.FC = () => {
             id="research_area"
             className={`
               block w-full px-4 py-2 rounded-md border 
-              ${errors.research_area 
+              ${errors.primary_research_focus 
                 ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
                 : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
             `}
             disabled={isSubmitting}
-            {...register('research_area')}
+            {...register('primary_research_focus')}
           >
             {researchAreas.map((area) => (
               <option key={area.value} value={area.value}>
@@ -507,8 +507,8 @@ const ResearcherRegisterForm: React.FC = () => {
               </option>
             ))}
           </select>
-          {errors.research_area && (
-            <p className="mt-1 text-sm text-red-600">{errors.research_area.message}</p>
+          {errors.primary_research_focus && (
+            <p className="mt-1 text-sm text-red-600">{errors.primary_research_focus.message}</p>
           )}
         </div>
 
@@ -521,16 +521,16 @@ const ResearcherRegisterForm: React.FC = () => {
             rows={4}
             className={`
               block w-full px-4 py-2 rounded-md border 
-              ${errors.qualifications 
+              ${errors.qualifications_background 
                 ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
                 : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
             `}
             placeholder="Describe your research experience, qualifications, current position, and any relevant publications or credentials"
             disabled={isSubmitting}
-            {...register('qualifications')}
+            {...register('qualifications_background')}
           />
-          {errors.qualifications && (
-            <p className="mt-1 text-sm text-red-600">{errors.qualifications.message}</p>
+          {errors.qualifications_background && (
+            <p className="mt-1 text-sm text-red-600">{errors.qualifications_background.message}</p>
           )}
         </div>
 
@@ -553,14 +553,14 @@ const ResearcherRegisterForm: React.FC = () => {
         />
 
         <FormInput
-          id="password_confirm"
+          id="confirm_password"
           label="Confirm Password"
           type="password"
-          error={errors.password_confirm}
+          error={errors.confirm_password}
           autoComplete="new-password"
           required
           disabled={isSubmitting}
-          {...register('password_confirm')}
+          {...register('confirm_password')}
         />
 
         <div className="mt-6 space-y-4">

@@ -32,7 +32,7 @@ const complianceRegisterSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
-  password_confirm: z
+  confirm_password: z
     .string()
     .min(1, 'Please confirm your password'),
   first_name: z
@@ -57,7 +57,7 @@ const complianceRegisterSchema = z.object({
     .min(10, 'Please enter a valid phone number')
     .max(15, 'Please enter a valid phone number')
     .regex(/^[0-9+\-\s()]*$/, 'Please enter a valid phone number'),
-  specialization_areas: z
+  primary_specialization: z
     .string()
     .min(1, 'Specialization areas are required'),
   job_title: z
@@ -76,10 +76,10 @@ const complianceRegisterSchema = z.object({
 
 // Match passwords
 const complianceSchema = complianceRegisterSchema.refine(
-  (data) => data.password === data.password_confirm,
+  (data) => data.password === data.confirm_password,
   {
     message: "Passwords don't match",
-    path: ['password_confirm'],
+    path: ['confirm_password'],
   }
 );
 
@@ -136,14 +136,14 @@ const ComplianceRegisterForm: React.FC = () => {
     defaultValues: {
       email: '',
       password: '',
-      password_confirm: '',
+      confirm_password: '',
       first_name: '',
       last_name: '',
       compliance_certification: '',
       regulatory_experience: '',
       organization: '',
       phone_number: '',
-      specialization_areas: '',
+      primary_specialization: '',
       job_title: '',
       terms_accepted: false,
       hipaa_consent: false,
@@ -162,7 +162,7 @@ const ComplianceRegisterForm: React.FC = () => {
       await registerUser({
         email: data.email,
         password: data.password,
-        password_confirm: data.password_confirm,
+        confirm_password: data.confirm_password,
         first_name: data.first_name,
         last_name: data.last_name,
         role: 'compliance',
@@ -173,7 +173,7 @@ const ComplianceRegisterForm: React.FC = () => {
         hipaa_privacy_acknowledged: data.hipaa_consent,
         organization: data.organization,
         job_title: data.job_title,
-        specialization_areas: data.specialization_areas,
+        primary_specialization: data.primary_specialization,
       });
 
       // Show success message and mark registration as complete
@@ -202,7 +202,7 @@ const ComplianceRegisterForm: React.FC = () => {
             compliance_certification?: string[] | string;
             regulatory_experience?: string[] | string;
             organization?: string[] | string;
-            specialization_areas?: string[] | string;
+            primary_specialization?: string[] | string;
             job_title?: string[] | string;
             confidentiality_agreement?: string[] | string;
             non_field_errors?: string[] | string;
@@ -267,8 +267,8 @@ const ComplianceRegisterForm: React.FC = () => {
               }
             }
             // Handle specialization areas errors
-            else if (fieldErrors.specialization_areas) {
-              const specializationError = Array.isArray(fieldErrors.specialization_areas) ? fieldErrors.specialization_areas[0] : fieldErrors.specialization_areas;
+            else if (fieldErrors.primary_specialization) {
+              const specializationError = Array.isArray(fieldErrors.primary_specialization) ? fieldErrors.primary_specialization[0] : fieldErrors.primary_specialization;
               if (specializationError.toLowerCase().includes('required')) {
                 errorMsg = 'Please select your primary area of compliance specialization.';
               } else {
@@ -561,19 +561,19 @@ const ComplianceRegisterForm: React.FC = () => {
         </div>
 
         <div className="mb-4">
-          <label htmlFor="specialization_areas" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="primary_specialization" className="block text-sm font-medium text-gray-700 mb-1">
             Primary Area of Specialization<span className="text-red-500 ml-1">*</span>
           </label>
           <select
-            id="specialization_areas"
+            id="primary_specialization"
             className={`
               block w-full px-4 py-2 rounded-md border 
-              ${errors.specialization_areas 
+              ${errors.primary_specialization 
                 ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
                 : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
             `}
             disabled={isSubmitting}
-            {...register('specialization_areas')}
+            {...register('primary_specialization')}
           >
             {specializationAreas.map((option) => (
               <option key={option.value} value={option.value}>
@@ -581,8 +581,8 @@ const ComplianceRegisterForm: React.FC = () => {
               </option>
             ))}
           </select>
-          {errors.specialization_areas && (
-            <p className="mt-1 text-sm text-red-600">{errors.specialization_areas.message}</p>
+          {errors.primary_specialization && (
+            <p className="mt-1 text-sm text-red-600">{errors.primary_specialization.message}</p>
           )}
         </div>
 
@@ -627,14 +627,14 @@ const ComplianceRegisterForm: React.FC = () => {
         />
 
         <FormInput
-          id="password_confirm"
+          id="confirm_password"
           label="Confirm Password"
           type="password"
-          error={errors.password_confirm}
+          error={errors.confirm_password}
           autoComplete="new-password"
           required
           disabled={isSubmitting}
-          {...register('password_confirm')}
+          {...register('confirm_password')}
         />
 
         <div className="mt-6 space-y-4">

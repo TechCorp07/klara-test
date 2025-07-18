@@ -120,10 +120,10 @@ export interface LogoutResponse {
 }
 
 export interface RegisterRequest {
-  username: string;
+  username?: string;
   email: string;
   password: string;
-  password_confirm: string;
+  confirm_password: string;
   first_name: string;
   last_name: string;
   role: UserRole;
@@ -131,7 +131,7 @@ export interface RegisterRequest {
   date_of_birth?: string;
   
   // Provider-specific fields
-  medical_license_number?: string;      // Maps to medical_license_number in backend
+  medical_license_number?: string;
   specialty?: string;
   npi_number?: string;
   practice_name?: string;
@@ -146,7 +146,7 @@ export interface RegisterRequest {
 
   // Pharmaceutical company fields
   company_name?: string;
-  company_role?: string;
+  role_at_company?: string;
   regulatory_id?: string;
   primary_research_focus?: string;      
   
@@ -160,7 +160,7 @@ export interface RegisterRequest {
   regulatory_experience?: string;
   organization?: string;
   job_title?: string;
-  specialization_areas?: string;
+  primary_specialization?: string;
 
     // Consent fields
     terms_accepted: boolean;
@@ -179,7 +179,7 @@ export interface RegisterResponse {
 export interface ResetPasswordRequest {
   token: string;
   password: string;
-  password_confirm: string; 
+  confirm_password: string; 
 }
 
 /**

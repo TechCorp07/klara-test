@@ -32,7 +32,7 @@ const pharmcoRegisterSchema = z.object({
       (password) => !config.passwordRequiresSpecialChar || /[^a-zA-Z0-9]/.test(password),
       'Password must contain at least one special character'
     ),
-  password_confirm: z
+  confirm_password: z
     .string()
     .min(1, 'Please confirm your password'),
   first_name: z
@@ -47,13 +47,13 @@ const pharmcoRegisterSchema = z.object({
     .string()
     .min(1, 'Company name is required')
     .max(100, 'Company name cannot exceed 100 characters'),
-  company_role: z
+  role_at_company: z
     .string()
     .min(1, 'Your role at the company is required'),
   regulatory_id: z
     .string()
     .min(1, 'Regulatory ID is required'),
-  research_focus: z
+    primary_research_focus: z
     .string()
     .min(1, 'Research focus is required'),
   phone_number: z
@@ -64,20 +64,20 @@ const pharmcoRegisterSchema = z.object({
   terms_accepted: z
     .boolean()
     .refine((val) => val === true, 'You must accept the terms and conditions'),
-  hipaa_consent: z
+    hipaa_privacy_acknowledged: z
     .boolean()
     .refine((val) => val === true, 'You must acknowledge the HIPAA Notice of Privacy Practices'),
-  data_handling_agreement: z
+    phi_handling_acknowledged: z
     .boolean()
     .refine((val) => val === true, 'You must agree to the data handling principles'),
 });
 
 // Match passwords
 const pharmcoSchema = pharmcoRegisterSchema.refine(
-  (data) => data.password === data.password_confirm,
+  (data) => data.password === data.confirm_password,
   {
     message: "Passwords don't match",
-    path: ['password_confirm'],
+    path: ['confirm_password'],
   }
 );
 
@@ -134,17 +134,17 @@ const PharmcoRegisterForm: React.FC = () => {
     defaultValues: {
       email: '',
       password: '',
-      password_confirm: '',
+      confirm_password: '',
       first_name: '',
       last_name: '',
       company_name: '',
-      company_role: '',
+      role_at_company: '',
       regulatory_id: '',
-      research_focus: '',
+      primary_research_focus: '',
       phone_number: '',
       terms_accepted: false,
-      hipaa_consent: false,
-      data_handling_agreement: false,
+      hipaa_privacy_acknowledged: false,
+      phi_handling_acknowledged: false,
     },
   });
 
@@ -159,17 +159,18 @@ const PharmcoRegisterForm: React.FC = () => {
       await registerUser({
         email: data.email,
         password: data.password,
-        password_confirm: data.password_confirm,
+        confirm_password: data.confirm_password,
         first_name: data.first_name,
         last_name: data.last_name,
         role: 'pharmco',
         company_name: data.company_name,
-        company_role: data.company_role,
+        role_at_company: data.role_at_company,
         regulatory_id: data.regulatory_id,
-        research_focus: data.research_focus,
+        primary_research_focus: data.primary_research_focus,
         phone_number: data.phone_number,
         terms_accepted: data.terms_accepted,
-        hipaa_privacy_acknowledged: data.hipaa_consent, // Map hipaa_consent to hipaa_privacy_acknowledged
+        hipaa_privacy_acknowledged: data.hipaa_privacy_acknowledged,
+        phi_handling_acknowledged: data.phi_handling_acknowledged,
       });
 
       // Show success message and mark registration as complete
@@ -196,7 +197,7 @@ const PharmcoRegisterForm: React.FC = () => {
             message?: string;
             email?: string[] | string;
             company_name?: string[] | string;
-            company_role?: string[] | string;
+            role_at_company?: string[] | string;
             regulatory_id?: string[] | string;
             research_focus?: string[] | string;
             non_field_errors?: string[] | string;
@@ -250,8 +251,8 @@ const PharmcoRegisterForm: React.FC = () => {
               }
             }
             // Handle company role errors
-            else if (fieldErrors.company_role) {
-              const companyRoleError = Array.isArray(fieldErrors.company_role) ? fieldErrors.company_role[0] : fieldErrors.company_role;
+            else if (fieldErrors.role_at_company) {
+              const companyRoleError = Array.isArray(fieldErrors.role_at_company) ? fieldErrors.role_at_company[0] : fieldErrors.role_at_company;
               errorMsg = companyRoleError;
             }
             // Handle research focus errors
@@ -482,19 +483,19 @@ const PharmcoRegisterForm: React.FC = () => {
         />
 
         <div className="mb-4">
-          <label htmlFor="company_role" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="role_at_company" className="block text-sm font-medium text-gray-700 mb-1">
             Your Role at the Company<span className="text-red-500 ml-1">*</span>
           </label>
           <select
-            id="company_role"
+            id="role_at_company"
             className={`
               block w-full px-4 py-2 rounded-md border 
-              ${errors.company_role 
+              ${errors.role_at_company 
                 ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
                 : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
             `}
             disabled={isSubmitting}
-            {...register('company_role')}
+            {...register('role_at_company')}
           >
             {companyRoleOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -502,8 +503,8 @@ const PharmcoRegisterForm: React.FC = () => {
               </option>
             ))}
           </select>
-          {errors.company_role && (
-            <p className="mt-1 text-sm text-red-600">{errors.company_role.message}</p>
+          {errors.role_at_company && (
+            <p className="mt-1 text-sm text-red-600">{errors.role_at_company.message}</p>
           )}
         </div>
 
@@ -525,12 +526,12 @@ const PharmcoRegisterForm: React.FC = () => {
             id="research_focus"
             className={`
               block w-full px-4 py-2 rounded-md border 
-              ${errors.research_focus 
+              ${errors.primary_research_focus 
                 ? 'border-red-300 text-red-900 focus:outline-none focus:ring-red-500 focus:border-red-500' 
                 : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}
             `}
             disabled={isSubmitting}
-            {...register('research_focus')}
+            {...register('primary_research_focus')}
           >
             {researchFocusAreas.map((option) => (
               <option key={option.value} value={option.value}>
@@ -538,8 +539,8 @@ const PharmcoRegisterForm: React.FC = () => {
               </option>
             ))}
           </select>
-          {errors.research_focus && (
-            <p className="mt-1 text-sm text-red-600">{errors.research_focus.message}</p>
+          {errors.primary_research_focus && (
+            <p className="mt-1 text-sm text-red-600">{errors.primary_research_focus.message}</p>
           )}
         </div>
 
@@ -562,14 +563,14 @@ const PharmcoRegisterForm: React.FC = () => {
         />
 
         <FormInput
-          id="password_confirm"
+          id="confirm_password"
           label="Confirm Password"
           type="password"
-          error={errors.password_confirm}
+          error={errors.confirm_password}
           autoComplete="new-password"
           required
           disabled={isSubmitting}
-          {...register('password_confirm')}
+          {...register('confirm_password')}
         />
 
         <div className="mt-6 space-y-4">
@@ -618,11 +619,11 @@ const PharmcoRegisterForm: React.FC = () => {
           <div className="flex items-start">
             <div className="flex items-center h-5">
               <Controller
-                name="hipaa_consent"
+                name="hipaa_privacy_acknowledged"
                 control={control}
                 render={({ field }) => (
                   <input
-                    id="hipaa_consent"
+                    id="hipaa_privacy_acknowledged"
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     checked={field.value}
@@ -633,7 +634,7 @@ const PharmcoRegisterForm: React.FC = () => {
               />
             </div>
             <div className="ml-3 text-sm">
-              <label htmlFor="hipaa_consent" className="font-medium text-gray-700">
+              <label htmlFor="hipaa_privacy_acknowledged" className="font-medium text-gray-700">
                 I acknowledge that I have read and understand the{' '}
                 <Link
                   href={config.hipaaNoticeUrl}
@@ -644,8 +645,8 @@ const PharmcoRegisterForm: React.FC = () => {
                 </Link>{' '}
                 and will comply with all HIPAA regulations
               </label>
-              {errors.hipaa_consent && (
-                <p className="mt-1 text-sm text-red-600">{errors.hipaa_consent.message}</p>
+              {errors.hipaa_privacy_acknowledged && (
+                <p className="mt-1 text-sm text-red-600">{errors.hipaa_privacy_acknowledged.message}</p>
               )}
             </div>
           </div>
@@ -653,11 +654,11 @@ const PharmcoRegisterForm: React.FC = () => {
           <div className="flex items-start">
             <div className="flex items-center h-5">
               <Controller
-                name="data_handling_agreement"
+                name="phi_handling_acknowledged"
                 control={control}
                 render={({ field }) => (
                   <input
-                    id="data_handling_agreement"
+                    id="phi_handling_acknowledged"
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     checked={field.value}
@@ -668,13 +669,13 @@ const PharmcoRegisterForm: React.FC = () => {
               />
             </div>
             <div className="ml-3 text-sm">
-              <label htmlFor="data_handling_agreement" className="font-medium text-gray-700">
+              <label htmlFor="phi_handling_acknowledged" className="font-medium text-gray-700">
                 I agree to handle all data in accordance with healthcare data handling principles, 
                 including de-identification of PHI when accessing research data, maintaining confidentiality,
                 and only using data for approved purposes
               </label>
-              {errors.data_handling_agreement && (
-                <p className="mt-1 text-sm text-red-600">{errors.data_handling_agreement.message}</p>
+              {errors.phi_handling_acknowledged && (
+                <p className="mt-1 text-sm text-red-600">{errors.phi_handling_acknowledged.message}</p>
               )}
             </div>
           </div>
