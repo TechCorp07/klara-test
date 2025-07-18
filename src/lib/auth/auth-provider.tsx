@@ -305,6 +305,43 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error('❌ Tab login error:', error);
+
+        // Type guard to check if error has the properties we need
+        const isErrorWithData = (err: unknown): err is {
+          requires_approval?: boolean;
+          role?: string;
+          submitted_at?: string;
+          response?: {
+            data?: {
+              requires_approval?: boolean;
+              role?: string;
+              submitted_at?: string;
+            };
+          };
+        } => {
+          return typeof err === 'object' && err !== null;
+        };
+
+        // CHECK FOR APPROVAL PENDING - ADD THIS BLOCK
+        if (isErrorWithData(error)) {
+          const hasApprovalPending = error.requires_approval || error.response?.data?.requires_approval;
+          
+          if (hasApprovalPending) {
+            const errorData = error.response?.data || error;
+            const role = errorData.role || 'user';
+            const submittedAt = errorData.submitted_at || new Date().toISOString();
+            const approvalUrl = `/approval-pending?role=${role}&submitted=${encodeURIComponent(submittedAt)}`;
+            
+            // Use Next.js router to navigate
+            if (typeof window !== 'undefined') {
+              window.location.href = approvalUrl;
+            }
+            
+            // Throw a specific error instead of returning undefined
+            throw new Error('Account pending approval - redirecting to approval page');
+          }
+        }
+
       throw error;
     } finally {
       setIsLoading(false);

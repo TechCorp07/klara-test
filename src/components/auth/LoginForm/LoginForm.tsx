@@ -89,8 +89,16 @@ const LoginForm = () => {
       // Enhanced error handling for different scenarios
       if (error && typeof error === 'object') {
         const err = error as {
+          requires_approval?: boolean;
+          role?: string;
+          submitted_at?: string;
+          redirect_to?: string;
           response?: {
             data?: {
+              requires_approval?: boolean;
+              role?: string;
+              submitted_at?: string;
+              redirect_to?: string;
               detail?: string;
               error?: string;
               error_type?: string;
@@ -100,9 +108,17 @@ const LoginForm = () => {
           error?: string;
           error_type?: string;
         };
-
-        let errorMessage = 'Login failed';
         
+        // CHECK FOR APPROVAL PENDING - ADD THIS BLOCK FIRST
+        if (err.requires_approval || err.response?.data?.requires_approval) {
+          const errorData = err.response?.data || err;
+          const approvalUrl = errorData.redirect_to || 
+            `/approval-pending?role=${errorData.role}&submitted=${encodeURIComponent(errorData.submitted_at || new Date().toISOString())}`;
+          
+          router.push(approvalUrl);
+          return;
+        }
+
         // Check for direct error properties first (from our API route)
         if (err.error_type || err.error) {
           const errorType = err.error_type;
