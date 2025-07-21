@@ -74,6 +74,19 @@ export interface PatientDashboardData {
       last_sync: string;
       battery_level?: number;
     }>;
+    health_insights: {
+      steps_today: number;
+      steps_goal: number;
+      active_minutes: number;
+      calories_burned: number;
+      sleep_hours: number;
+      heart_rate_avg: number;
+    };
+    data_sharing: {
+      research_data_shared: boolean;
+      pharmaceutical_monitoring: boolean;
+      provider_access: boolean;
+    };
     today_summary: {
       steps: number;
       heart_rate_avg: number;
@@ -88,10 +101,13 @@ export interface PatientDashboardData {
       date: string;
       time: string;
       provider_name: string;
+      provider_specialty: string;
       appointment_type: string;
-      location: string;
       is_telemedicine: boolean;
+      location?: string;
       preparation_notes?: string;
+      can_reschedule: boolean;
+      can_cancel: boolean;
     }>;
     recent: Array<{
       date: string;
@@ -170,6 +186,7 @@ export interface VitalSignsEntry {
   oxygen_saturation?: number;
   pain_level?: number;
   notes?: string;
+  recorded_at?: string;
 }
 
 export interface WearableDevice {
@@ -179,6 +196,19 @@ export interface WearableDevice {
   is_connected: boolean;
   last_sync?: string;
   authorization_url?: string;
+}
+
+export interface WearableDeviceConnection {
+  device_type: 'fitbit' | 'apple_watch' | 'garmin' | 'other';
+  device_name: string;
+  authorization_code?: string;
+}
+
+export interface ResearchInterest {
+  study_id: number;
+  interest_level: 'low' | 'medium' | 'high';
+  questions?: string;
+  availability?: string;
 }
 
 export interface AppointmentRequest {
@@ -226,19 +256,22 @@ class EnhancedPatientService {
       return extractData(response);
     } catch (error) {
       console.error('Failed to fetch patient dashboard data:', error);
-      throw new Error('Failed to load dashboard data');
+      throw new Error('Unable to load dashboard data. Please try refreshing the page.');
     }
   }
 
   /**
-   * Log medication taken
+   * Log medication as taken or missed
    */
-  async logMedicationTaken(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
+  async logMedication(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(medicationId), logEntry);
+      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(medicationId), {
+        ...logEntry,
+        taken_at: logEntry.taken_at || new Date().toISOString()
+      });
     } catch (error) {
       console.error('Failed to log medication:', error);
-      throw new Error('Failed to log medication');
+      throw new Error('Failed to record medication. Please try again.');
     }
   }
 
@@ -247,13 +280,31 @@ class EnhancedPatientService {
    */
   async recordVitalSigns(vitals: VitalSignsEntry): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.VITALS, vitals);
+      const vitalsWithTimestamp = {
+        ...vitals,
+        recorded_at: vitals.recorded_at || new Date().toISOString()
+      };
+      
+      await apiClient.post(ENDPOINTS.PATIENT.VITALS, vitalsWithTimestamp);
     } catch (error) {
       console.error('Failed to record vital signs:', error);
-      throw new Error('Failed to record vital signs');
+      throw new Error('Failed to save vital signs. Please check your data and try again.');
     }
   }
 
+    /**
+   * Get latest vital signs
+   */
+    async getLatestVitals(): Promise<VitalSignsEntry> {
+      try {
+        const response = await apiClient.get<VitalSignsEntry>(ENDPOINTS.PATIENT.VITALS_LATEST);
+        return extractData(response);
+      } catch (error) {
+        console.error('Failed to fetch latest vitals:', error);
+        throw new Error('Unable to load vital signs data.');
+      }
+    }
+    
   /**
    * Acknowledge health alert
    */
@@ -262,7 +313,7 @@ class EnhancedPatientService {
       await apiClient.post(ENDPOINTS.PATIENT.ACKNOWLEDGE_ALERT(alertId));
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
-      throw new Error('Failed to acknowledge alert');
+      throw new Error('Failed to acknowledge alert. Please try again.');
     }
   }
 
@@ -282,16 +333,13 @@ class EnhancedPatientService {
   /**
    * Connect a new wearable device
    */
-  async connectWearableDevice(deviceType: string): Promise<{ authorization_url: string }> {
+  async connectWearableDevice(deviceData: WearableDeviceConnection): Promise<{ authorization_url?: string }> {
     try {
-      const response = await apiClient.post<{ authorization_url: string }>(
-        ENDPOINTS.PATIENT.CONNECT_DEVICE,
-        { device_type: deviceType }
-      );
+      const response = await apiClient.post<{ authorization_url?: string }>(ENDPOINTS.PATIENT.CONNECT_DEVICE, deviceData);
       return extractData(response);
     } catch (error) {
       console.error('Failed to connect wearable device:', error);
-      throw new Error('Failed to connect device');
+      throw new Error('Failed to connect device. Please check your device settings and try again.');
     }
   }
 
@@ -303,7 +351,7 @@ class EnhancedPatientService {
       await apiClient.post(ENDPOINTS.PATIENT.DISCONNECT_DEVICE(deviceId));
     } catch (error) {
       console.error('Failed to disconnect wearable device:', error);
-      throw new Error('Failed to disconnect device');
+      throw new Error('Failed to disconnect device. Please try again.');
     }
   }
 
@@ -319,7 +367,7 @@ class EnhancedPatientService {
       return extractData(response);
     } catch (error) {
       console.error('Failed to request appointment:', error);
-      throw new Error('Failed to request appointment');
+      throw new Error('Failed to schedule appointment. Please try again or contact support.');
     }
   }
 
@@ -328,37 +376,53 @@ class EnhancedPatientService {
    */
   async cancelAppointment(appointmentId: number, reason: string): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.CANCEL_APPOINTMENT(appointmentId), { reason });
+      await apiClient.post(ENDPOINTS.PATIENT.CANCEL_APPOINTMENT(appointmentId), {
+        reason: reason || 'Patient requested cancellation'
+      });
     } catch (error) {
       console.error('Failed to cancel appointment:', error);
-      throw new Error('Failed to cancel appointment');
+      throw new Error('Failed to cancel appointment. Please contact your provider directly.');
     }
   }
 
   /**
    * Get available research studies
    */
-  async getAvailableResearchStudies(): Promise<ResearchStudy[]> {
+  async getAvailableResearchStudies(): Promise<PatientDashboardData['research_participation']['available_studies']> {
     try {
-      const response = await apiClient.get<ResearchStudy[]>(ENDPOINTS.PATIENT.RESEARCH_STUDIES);
+      const response = await apiClient.get<PatientDashboardData['research_participation']['available_studies']>(ENDPOINTS.PATIENT.RESEARCH_STUDIES);
       return extractData(response);
     } catch (error) {
       console.error('Failed to fetch research studies:', error);
-      throw new Error('Failed to load research studies');
+      throw new Error('Unable to load research studies.');
     }
   }
 
   /**
    * Express interest in a research study
    */
-  async expressResearchInterest(studyId: number, message?: string): Promise<void> {
+  async expressResearchInterest(studyId: number, interestData: ResearchInterest): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.EXPRESS_RESEARCH_INTEREST(studyId), {
-        message: message || ''
-      });
+      await apiClient.post(ENDPOINTS.PATIENT.EXPRESS_RESEARCH_INTEREST(studyId), interestData);
     } catch (error) {
       console.error('Failed to express research interest:', error);
-      throw new Error('Failed to express interest');
+      throw new Error('Failed to register research interest. Please try again.');
+    }
+  }
+  
+  /**
+   * Contact provider/care team member
+   */
+  async contactProvider(providerId: number, method: 'phone' | 'email' | 'message', urgency: 'low' | 'medium' | 'high' = 'medium'): Promise<void> {
+    try {
+      await apiClient.post(`/users/patient/care-team/${providerId}/contact/`, {
+        contact_method: method,
+        urgency: urgency,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to contact provider:', error);
+      throw new Error('Failed to contact provider. Please try again or use emergency contact if urgent.');
     }
   }
 
@@ -372,6 +436,19 @@ class EnhancedPatientService {
     } catch (error) {
       console.error('Failed to fetch FHIR data:', error);
       throw new Error('Failed to fetch FHIR data');
+    }
+  }
+  
+  /**
+   * Request FHIR data export
+   */
+  async requestFHIRExport(options?: { include_external?: boolean; date_range?: { start: string; end: string } }): Promise<{ export_id: string; estimated_completion: string }> {
+    try {
+      const response = await apiClient.post<{ export_id: string; estimated_completion: string }>(ENDPOINTS.PATIENT.FHIR_EXPORT, options || {});
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to request FHIR export:', error);
+      throw new Error('Failed to request data export. Please try again.');
     }
   }
 
@@ -398,6 +475,21 @@ class EnhancedPatientService {
       throw new Error('Failed to request records import');
     }
   }
+  
+  /**
+   * Emergency notification to care team
+   */
+  async sendEmergencyNotification(details: { severity: 'urgent' | 'critical'; description: string; location?: string }): Promise<void> {
+    try {
+      await apiClient.post('/users/patient/emergency/notify/', {
+        ...details,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to send emergency notification:', error);
+      throw new Error('Failed to send emergency alert. Please call emergency services if this is life-threatening.');
+    }
+  }
 
   /**
    * Update medication reminder preferences
@@ -413,6 +505,27 @@ class EnhancedPatientService {
     } catch (error) {
       console.error('Failed to update medication reminders:', error);
       throw new Error('Failed to update reminder preferences');
+    }
+  }
+
+  /**
+   * Get medication analytics and adherence insights
+   */
+  async getMedicationAnalytics(timeframe: '7d' | '30d' | '90d' = '30d'): Promise<{
+    adherence_trends: Array<{ date: string; rate: number }>;
+    missed_doses: Array<{ medication: string; missed_times: string[] }>;
+    side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        adherence_trends: Array<{ date: string; rate: number }>;
+        missed_doses: Array<{ medication: string; missed_times: string[] }>;
+        side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
+      }>(`${ENDPOINTS.PATIENT.MEDICATION_ANALYTICS}?timeframe=${timeframe}`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication analytics:', error);
+      throw new Error('Unable to load medication analytics.');
     }
   }
 
@@ -610,7 +723,7 @@ class EnhancedPatientService {
 }
 
 // Export singleton instance
-export const enhancedPatientService = new EnhancedPatientService();
+export const patientService = new EnhancedPatientService();
 
 // Also export the class for dependency injection
 export { EnhancedPatientService };

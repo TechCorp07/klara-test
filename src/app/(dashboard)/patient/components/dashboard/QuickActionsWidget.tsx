@@ -1,100 +1,211 @@
 // src/app/(dashboard)/patient/components/dashboard/QuickActionsWidget.tsx
+import React from 'react';
+import { Zap, Calendar, Pill, Heart, Phone, FileText, Users, FlaskConical, Shield } from 'lucide-react';
+
 interface QuickActionsProps {
-    actions: Array<{
-      id: string;
-      title: string;
-      description: string;
-      icon: string;
-      href: string;
-      priority: 'high' | 'medium' | 'low';
-      requires_verification?: boolean;
-    }>;
-    identityVerified: boolean;
-  }
-  
-  export function QuickActionsWidget({ actions, identityVerified }: QuickActionsProps) {
-    const getIcon = (iconName: string) => {
-      switch (iconName) {
-        case 'calendar':
+  quickActions: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    href: string;
+    priority: 'high' | 'medium' | 'low';
+    requires_verification?: boolean;
+  }>;
+}
+
+export function QuickActionsWidget({ quickActions }: QuickActionsProps) {
+  const getActionIcon = (iconName: string) => {
+    switch (iconName.toLowerCase()) {
+      case 'calendar':
+        return <Calendar className="w-5 h-5" />;
+      case 'pills':
+      case 'medication':
+        return <Pill className="w-5 h-5" />;
+      case 'heart':
+      case 'vitals':
+        return <Heart className="w-5 h-5" />;
+      case 'phone':
+      case 'emergency':
+        return <Phone className="w-5 h-5" />;
+      case 'filetext':
+      case 'records':
+        return <FileText className="w-5 h-5" />;
+      case 'users':
+      case 'team':
+        return <Users className="w-5 h-5" />;
+      case 'flaskconical':
+      case 'research':
+        return <FlaskConical className="w-5 h-5" />;
+      case 'shield':
+      case 'identity':
+        return <Shield className="w-5 h-5" />;
+      default:
+        return <Zap className="w-5 h-5" />;
+    }
+  };
+
+  const getPriorityStyles = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return {
+          container: 'border-red-200 bg-red-50 hover:bg-red-100',
+          icon: 'text-red-600',
+          title: 'text-red-900',
+          description: 'text-red-700'
+        };
+      case 'medium':
+        return {
+          container: 'border-yellow-200 bg-yellow-50 hover:bg-yellow-100',
+          icon: 'text-yellow-600',
+          title: 'text-yellow-900',
+          description: 'text-yellow-700'
+        };
+      default:
+        return {
+          container: 'border-blue-200 bg-blue-50 hover:bg-blue-100',
+          icon: 'text-blue-600',
+          title: 'text-blue-900',
+          description: 'text-blue-700'
+        };
+    }
+  };
+
+  // Sort actions by priority (high > medium > low)
+  const sortedActions = [...quickActions].sort((a, b) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
+
+  // Default actions if none provided
+  const defaultActions = [
+    {
+      id: 'schedule-appointment',
+      title: 'Schedule Appointment',
+      description: 'Book your next visit',
+      icon: 'calendar',
+      href: '/patient/appointments/schedule',
+      priority: 'high' as const,
+      requires_verification: false
+    },
+    {
+      id: 'log-medication',
+      title: 'Log Medication',
+      description: 'Record taken medications',
+      icon: 'pills',
+      href: '/patient/medications/log',
+      priority: 'high' as const,
+      requires_verification: false
+    },
+    {
+      id: 'record-vitals',
+      title: 'Record Vitals',
+      description: 'Add your vital signs',
+      icon: 'heart',
+      href: '/patient/vitals/record',
+      priority: 'medium' as const,
+      requires_verification: false
+    },
+    {
+      id: 'emergency-contact',
+      title: 'Emergency Contact',
+      description: 'Reach your care team',
+      icon: 'phone',
+      href: '/patient/emergency/contact',
+      priority: 'high' as const,
+      requires_verification: true
+    },
+    {
+      id: 'view-records',
+      title: 'View Records',
+      description: 'Access medical history',
+      icon: 'filetext',
+      href: '/patient/records',
+      priority: 'low' as const,
+      requires_verification: true
+    },
+    {
+      id: 'research-studies',
+      title: 'Research Studies',
+      description: 'Explore available studies',
+      icon: 'flaskconical',
+      href: '/patient/research',
+      priority: 'medium' as const,
+      requires_verification: false
+    }
+  ];
+
+  const actionsToShow = sortedActions.length > 0 ? sortedActions : defaultActions;
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center mb-4">
+        <Zap className="w-5 h-5 text-indigo-600 mr-2" />
+        <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {actionsToShow.slice(0, 6).map((action) => {
+          const styles = getPriorityStyles(action.priority);
+          
           return (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-            </svg>
-          );
-        case 'pill':
-          return (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 2L13 5v10l-3 3-3-3V5l3-3z" />
-            </svg>
-          );
-        case 'file-medical':
-          return (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-            </svg>
-          );
-        default:
-          return (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-          );
-      }
-    };
-  
-    const getPriorityColor = (priority: string) => {
-      switch (priority) {
-        case 'high': return 'bg-red-50 border-red-200 text-red-800 hover:bg-red-100';
-        case 'medium': return 'bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100';
-        case 'low': return 'bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100';
-        default: return 'bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100';
-      }
-    };
-  
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        
-        <div className="space-y-3">
-          {actions.map((action) => {
-            const isDisabled = action.requires_verification && !identityVerified;
-            
-            return (
-              <a
-                key={action.id}
-                href={isDisabled ? '#' : action.href}
-                className={`block border rounded-lg p-3 transition-colors ${
-                  isDisabled 
-                    ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
-                    : getPriorityColor(action.priority)
-                }`}
-                onClick={isDisabled ? (e) => e.preventDefault() : undefined}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${isDisabled ? 'bg-gray-200' : 'bg-white'}`}>
-                      {getIcon(action.icon)}
-                    </div>
-                    <div>
-                      <div className="font-medium">{action.title}</div>
-                      <div className="text-sm">{action.description}</div>
-                      {isDisabled && (
-                        <div className="text-xs mt-1 text-gray-500">
-                          Requires identity verification
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {!isDisabled && (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
+            <a
+              key={action.id}
+              href={action.href}
+              className={`block p-3 rounded-lg border transition-colors ${styles.container}`}
+            >
+              <div className="flex items-start">
+                <div className={`mr-3 mt-1 ${styles.icon}`}>
+                  {getActionIcon(action.icon)}
                 </div>
-              </a>
-            );
-          })}
+                <div className="flex-1 min-w-0">
+                  <div className={`font-medium text-sm ${styles.title}`}>
+                    {action.title}
+                    {action.requires_verification && (
+                      <span className="ml-1 text-xs bg-yellow-200 text-yellow-800 px-1 rounded">
+                        ID Required
+                      </span>
+                    )}
+                  </div>
+                  <div className={`text-xs mt-1 ${styles.description}`}>
+                    {action.description}
+                  </div>
+                </div>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+
+      {/* Priority Indicators */}
+      <div className="mt-4 pt-3 border-t border-gray-200">
+        <div className="flex items-center justify-between text-xs text-gray-600">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+              <span>High Priority</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
+              <span>Medium Priority</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+              <span>Low Priority</span>
+            </div>
+          </div>
         </div>
       </div>
-    );
-  }
+
+      {/* Additional Help */}
+      <div className="mt-3 p-2 bg-gray-50 rounded text-center">
+        <p className="text-xs text-gray-600">
+          Need help? 
+          <a href="/patient/help" className="text-blue-600 hover:text-blue-700 ml-1">
+            Visit our help center
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

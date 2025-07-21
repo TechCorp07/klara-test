@@ -1,133 +1,244 @@
 // src/app/(dashboard)/patient/components/dashboard/VitalsWidget.tsx
+import React from 'react';
+import { Heart, Thermometer, Weight, Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+
 interface VitalsProps {
-    vitals: {
-      current: {
-        blood_pressure?: string;
-        heart_rate?: number;
-        temperature?: number;
-        weight?: number;
-        oxygen_saturation?: number;
-        pain_level?: number;
-      };
-      trends: {
-        improving: string[];
-        stable: string[];
-        concerning: string[];
-      };
-      last_recorded: string;
+  vitals: {
+    current: {
+      blood_pressure?: string;
+      heart_rate?: number;
+      temperature?: number;
+      weight?: number;
+      oxygen_saturation?: number;
+      pain_level?: number;
     };
-    onRecordVitals: () => void;
-  }
-  
-  export function VitalsWidget({ vitals, onRecordVitals }: VitalsProps) {
-    const getVitalStatus = (vital: string, value: number | string) => {
-      // Basic vital signs ranges - in production, these should be personalized
-      if (vital === 'heart_rate' && typeof value === 'number') {
-        if (value >= 60 && value <= 100) return 'normal';
-        if (value >= 50 && value < 60) return 'low';
-        if (value > 100 && value <= 120) return 'elevated';
-        return 'concerning';
-      }
-      if (vital === 'temperature' && typeof value === 'number') {
-        if (value >= 97.0 && value <= 99.5) return 'normal';
-        if (value < 97.0) return 'low';
-        if (value > 99.5 && value <= 101.0) return 'elevated';
-        return 'concerning';
-      }
-      if (vital === 'oxygen_saturation' && typeof value === 'number') {
-        if (value >= 95) return 'normal';
-        if (value >= 90) return 'low';
-        return 'concerning';
-      }
-      return 'normal';
+    trends: {
+      improving: string[];
+      stable: string[];
+      concerning: string[];
     };
-  
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'normal': return 'text-green-600';
-        case 'low': return 'text-yellow-600';
-        case 'elevated': return 'text-orange-600';
-        case 'concerning': return 'text-red-600';
-        default: return 'text-gray-600';
-      }
-    };
-  
-    const formatVital = (vital: string, value: number | string) => {
-      if (vital === 'temperature') return `${value}°F`;
-      if (vital === 'heart_rate') return `${value} bpm`;
-      if (vital === 'oxygen_saturation') return `${value}%`;
-      if (vital === 'weight') return `${value} lbs`;
-      if (vital === 'pain_level') return `${value}/10`;
-      return value.toString();
-    };
-  
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
+    last_recorded: string;
+  };
+  onRecordVitals: () => void;
+}
+
+export function VitalsWidget({ vitals, onRecordVitals }: VitalsProps) {
+  const formatLastRecorded = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return 'Less than an hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} days ago`;
+  };
+
+  const getVitalIcon = (vital: string) => {
+    switch (vital.toLowerCase()) {
+      case 'blood_pressure':
+      case 'blood pressure':
+        return <Heart className="w-4 h-4" />;
+      case 'heart_rate':
+      case 'heart rate':
+        return <Activity className="w-4 h-4" />;
+      case 'temperature':
+        return <Thermometer className="w-4 h-4" />;
+      case 'weight':
+        return <Weight className="w-4 h-4" />;
+      default:
+        return <Activity className="w-4 h-4" />;
+    }
+  };
+
+  const getTrendIcon = (trend: 'improving' | 'stable' | 'concerning') => {
+    switch (trend) {
+      case 'improving':
+        return <TrendingUp className="w-4 h-4 text-green-600" />;
+      case 'concerning':
+        return <TrendingDown className="w-4 h-4 text-red-600" />;
+      default:
+        return <Minus className="w-4 h-4 text-gray-600" />;
+    }
+  };
+
+  const getTrendColor = (trend: 'improving' | 'stable' | 'concerning') => {
+    switch (trend) {
+      case 'improving':
+        return 'text-green-600 bg-green-50';
+      case 'concerning':
+        return 'text-red-600 bg-red-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const getVitalStatus = (vital: string, value: number | string) => {
+    switch (vital) {
+      case 'heart_rate':
+        const hr = value as number;
+        if (hr < 60 || hr > 100) return 'concerning';
+        if (hr < 70 || hr > 90) return 'stable';
+        return 'improving';
+      
+      case 'temperature':
+        const temp = value as number;
+        if (temp < 97 || temp > 99.5) return 'concerning';
+        return 'stable';
+      
+      case 'oxygen_saturation':
+        const o2 = value as number;
+        if (o2 < 95) return 'concerning';
+        if (o2 < 98) return 'stable';
+        return 'improving';
+      
+      case 'pain_level':
+        const pain = value as number;
+        if (pain > 7) return 'concerning';
+        if (pain > 4) return 'stable';
+        return 'improving';
+      
+      default:
+        return 'stable';
+    }
+  };
+
+  const hasRecentData = vitals.current && Object.keys(vitals.current).some(key => vitals.current[key as keyof typeof vitals.current] !== undefined);
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <Activity className="w-5 h-5 text-red-600 mr-2" />
           <h3 className="text-lg font-semibold text-gray-900">Vital Signs</h3>
-          <button
-            onClick={onRecordVitals}
-            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
-          >
-            Record
-          </button>
         </div>
-  
-        {/* Current Vitals */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {Object.entries(vitals.current).map(([key, value]) => {
-            if (!value) return null;
-            const status = getVitalStatus(key, value);
-            const displayName = key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            
-            return (
-              <div key={key} className="text-center">
-                <div className={`text-xl font-bold ${getStatusColor(status)}`}>
-                  {formatVital(key, value)}
+        <button
+          onClick={onRecordVitals}
+          className="bg-red-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-700 transition-colors"
+        >
+          Record
+        </button>
+      </div>
+
+      {hasRecentData ? (
+        <>
+          {/* Current Vitals */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {vitals.current.blood_pressure && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center mb-1">
+                  <Heart className="w-4 h-4 text-red-600 mr-1" />
+                  <span className="text-sm font-medium text-gray-900">Blood Pressure</span>
                 </div>
-                <div className="text-sm text-gray-600">{displayName}</div>
-              </div>
-            );
-          })}
-        </div>
-  
-        {/* Trends */}
-        {(vitals.trends.concerning.length > 0 || vitals.trends.improving.length > 0) && (
-          <div className="space-y-3 mb-4">
-            {vitals.trends.concerning.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex items-center mb-2">
-                  <svg className="w-4 h-4 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm font-medium text-red-800">Concerning Trends</span>
-                </div>
-                <div className="text-sm text-red-700">
-                  {vitals.trends.concerning.join(', ')}
-                </div>
+                <div className="text-lg font-bold text-gray-900">{vitals.current.blood_pressure}</div>
+                <div className="text-xs text-gray-600">mmHg</div>
               </div>
             )}
-  
-            {vitals.trends.improving.length > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center mb-2">
-                  <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm font-medium text-green-800">Improving</span>
+
+            {vitals.current.heart_rate && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center mb-1">
+                  <Activity className="w-4 h-4 text-red-600 mr-1" />
+                  <span className="text-sm font-medium text-gray-900">Heart Rate</span>
                 </div>
-                <div className="text-sm text-green-700">
-                  {vitals.trends.improving.join(', ')}
+                <div className="text-lg font-bold text-gray-900">{vitals.current.heart_rate}</div>
+                <div className="text-xs text-gray-600">bpm</div>
+              </div>
+            )}
+
+            {vitals.current.temperature && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center mb-1">
+                  <Thermometer className="w-4 h-4 text-red-600 mr-1" />
+                  <span className="text-sm font-medium text-gray-900">Temperature</span>
                 </div>
+                <div className="text-lg font-bold text-gray-900">{vitals.current.temperature}°F</div>
+                <div className="text-xs text-gray-600">Fahrenheit</div>
+              </div>
+            )}
+
+            {vitals.current.oxygen_saturation && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center mb-1">
+                  <Activity className="w-4 h-4 text-red-600 mr-1" />
+                  <span className="text-sm font-medium text-gray-900">O₂ Sat</span>
+                </div>
+                <div className="text-lg font-bold text-gray-900">{vitals.current.oxygen_saturation}%</div>
+                <div className="text-xs text-gray-600">SpO₂</div>
+              </div>
+            )}
+
+            {vitals.current.weight && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center mb-1">
+                  <Weight className="w-4 h-4 text-red-600 mr-1" />
+                  <span className="text-sm font-medium text-gray-900">Weight</span>
+                </div>
+                <div className="text-lg font-bold text-gray-900">{vitals.current.weight}</div>
+                <div className="text-xs text-gray-600">lbs</div>
+              </div>
+            )}
+
+            {vitals.current.pain_level !== undefined && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center mb-1">
+                  <Activity className="w-4 h-4 text-red-600 mr-1" />
+                  <span className="text-sm font-medium text-gray-900">Pain Level</span>
+                </div>
+                <div className="text-lg font-bold text-gray-900">{vitals.current.pain_level}/10</div>
+                <div className="text-xs text-gray-600">Scale</div>
               </div>
             )}
           </div>
-        )}
-  
-        <div className="text-xs text-gray-500">
-          Last recorded: {new Date(vitals.last_recorded).toLocaleDateString()} at {new Date(vitals.last_recorded).toLocaleTimeString()}
+
+          {/* Trends Summary */}
+          <div className="space-y-2">
+            {vitals.trends.concerning.length > 0 && (
+              <div className="flex items-center text-sm">
+                <TrendingDown className="w-4 h-4 text-red-600 mr-2" />
+                <span className="text-red-700">
+                  Concerning: {vitals.trends.concerning.join(', ')}
+                </span>
+              </div>
+            )}
+
+            {vitals.trends.improving.length > 0 && (
+              <div className="flex items-center text-sm">
+                <TrendingUp className="w-4 h-4 text-green-600 mr-2" />
+                <span className="text-green-700">
+                  Improving: {vitals.trends.improving.join(', ')}
+                </span>
+              </div>
+            )}
+
+            {vitals.trends.stable.length > 0 && (
+              <div className="flex items-center text-sm">
+                <Minus className="w-4 h-4 text-gray-600 mr-2" />
+                <span className="text-gray-700">
+                  Stable: {vitals.trends.stable.join(', ')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <div className="text-xs text-gray-600">
+              Last recorded: {formatLastRecorded(vitals.last_recorded)}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-6 text-gray-500">
+          <Activity className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+          <p className="text-sm">No recent vital signs recorded</p>
+          <button
+            onClick={onRecordVitals}
+            className="text-red-600 hover:text-red-700 text-sm mt-1"
+          >
+            Record your first measurement
+          </button>
         </div>
-      </div>
-    );
-  }
-  
+      )}
+    </div>
+  );
+}
