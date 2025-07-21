@@ -102,22 +102,74 @@ export const ENDPOINTS = {
     RESEARCH_STUDIES: '/users/patient/research/available-studies/',
     EXPRESS_RESEARCH_INTEREST: (id: number) => `/users/patient/research/studies/${id}/interest/`,
     
-    // FHIR data exchange
+    // FHIR Data Exchange
     FHIR_EXPORT: '/users/patient/fhir/export/',
     FHIR_IMPORT_REQUEST: '/users/patient/fhir/import-request/',
+    FHIR_EXPORTS_LIST: '/users/patient/fhir/exports/',
+    FHIR_EXPORT_DOWNLOAD: (exportId: string) => `/users/patient/fhir/exports/${exportId}/download/`,
+    FHIR_IMPORT_STATUS: (requestId: string) => `/users/patient/fhir/imports/${requestId}/status/`,
     
-    // Family history
+    // Family History
     FAMILY_HISTORY: '/users/patient/family-history/',
+    ADD_FAMILY_MEMBER: '/users/patient/family-history/add/',
+    UPDATE_FAMILY_MEMBER: (memberId: number) => `/users/patient/family-history/${memberId}/`,
+    DELETE_FAMILY_MEMBER: (memberId: number) => `/users/patient/family-history/${memberId}/delete/`,
+    GENETIC_ANALYSIS: '/users/patient/family-history/genetic-analysis/',
     
     // Telemedicine
     TELEMEDICINE_REQUEST: '/users/patient/telemedicine/request/',
-    
-    // Chat groups
+    TELEMEDICINE_SESSIONS: '/users/patient/telemedicine/sessions/',
+    TELEMEDICINE_JOIN: (sessionId: number) => `/users/patient/telemedicine/sessions/${sessionId}/join/`,
+    TELEMEDICINE_TECH_CHECK: '/users/patient/telemedicine/tech-check/',
+    TELEMEDICINE_CANCEL: (sessionId: number) => `/users/patient/telemedicine/sessions/${sessionId}/cancel/`,
+
+    // Community/Chat Groups
     CHAT_GROUPS: '/users/patient/chat-groups/',
     JOIN_CHAT_GROUP: (id: number) => `/users/patient/chat-groups/${id}/join/`,
-    
-    // Emergency
+    LEAVE_CHAT_GROUP: (id: number) => `/users/patient/chat-groups/${id}/leave/`,
+    CHAT_MESSAGES: (groupId: number) => `/users/patient/chat-groups/${groupId}/messages/`,
+    SEND_MESSAGE: (groupId: number) => `/users/patient/chat-groups/${groupId}/send/`,
+
+    // Emergency Features
     EMERGENCY_NOTIFICATION: '/users/patient/emergency/notify/',
+    EMERGENCY_CONTACTS: '/users/patient/emergency/contacts/',
+    UPDATE_EMERGENCY_INFO: '/users/patient/emergency/update-info/',
+    EMERGENCY_MEDICAL_ID: '/users/patient/emergency/medical-id/',
+
+    // Communication/Messaging
+    MESSAGES: '/users/patient/messages/',
+    SEND_MESSAGE_TO_PROVIDER: (providerId: number) => `/users/patient/messages/providers/${providerId}/send/`,
+    MESSAGE_THREAD: (threadId: number) => `/users/patient/messages/threads/${threadId}/`,
+    MARK_MESSAGE_READ: (messageId: number) => `/users/patient/messages/${messageId}/read/`,
+
+    // Additional Patient Features
+    PATIENT_PREFERENCES: '/users/patient/preferences/',
+    UPDATE_PREFERENCES: '/users/patient/preferences/update/',
+    NOTIFICATION_SETTINGS: '/users/patient/notifications/settings/',
+    PRIVACY_SETTINGS: '/users/patient/privacy/settings/',
+
+    // Document Management
+    MEDICAL_DOCUMENTS: '/users/patient/documents/',
+    UPLOAD_DOCUMENT: '/users/patient/documents/upload/',
+    DOWNLOAD_DOCUMENT: (docId: number) => `/users/patient/documents/${docId}/download/`,
+    DELETE_DOCUMENT: (docId: number) => `/users/patient/documents/${docId}/delete/`,
+
+    // Care Coordination
+    CARE_PLAN: '/users/patient/care-plan/',
+    CARE_GOALS: '/users/patient/care-plan/goals/',
+    UPDATE_CARE_GOAL: (goalId: number) => `/users/patient/care-plan/goals/${goalId}/update/`,
+
+    // Health Metrics & Analytics  
+    HEALTH_SCORE: '/users/patient/health-score/',
+    HEALTH_TRENDS: '/users/patient/health-trends/',
+    MEDICATION_ADHERENCE_REPORT: '/users/patient/medications/adherence-report/',
+    VITALS_TRENDS: '/users/patient/vitals/trends/',
+
+    // Rare Disease Specific
+    RARE_DISEASE_REGISTRY: '/users/patient/rare-disease/registry/',
+    CONDITION_MONITORING: '/users/patient/rare-disease/monitoring/',
+    SYMPTOM_TRACKER: '/users/patient/rare-disease/symptoms/',
+    RARE_DISEASE_RESOURCES: '/users/patient/rare-disease/resources/',
   },
   
   // Admin-specific endpoints

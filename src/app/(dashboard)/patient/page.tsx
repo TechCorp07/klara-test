@@ -18,6 +18,11 @@ import { SmartWatchDataWidget } from './components/dashboard/SmartWatchDataWidge
 import { ResearchParticipationWidget } from './components/dashboard/ResearchParticipationWidget';
 import { CareTeamWidget } from './components/dashboard/CareTeamWidget';
 import { HealthAlertsWidget } from './components/dashboard/HealthAlertsWidget';
+import { CommunityGroupsWidget } from './components/dashboard/CommunityGroupsWidget';
+import { FHIRDataWidget } from './components/dashboard/FHIRDataWidget';
+import { TelemedicineWidget } from './components/dashboard/TelemedicineWidget';
+import { FamilyHistoryWidget } from './components/dashboard/FamilyHistoryWidget';
+import { EmergencyFeaturesWidget } from './components/dashboard/EmergencyFeaturesWidget';
 import { QuickActionsWidget } from './components/dashboard/QuickActionsWidget';
 
 import { RefreshCw, Menu, X, Bell, Settings, User } from 'lucide-react';
@@ -145,6 +150,15 @@ function PatientDashboardContent() {
                 vitals={dashboardData.vitals}
               />
             )}
+            <FamilyHistoryWidget 
+              onAddMember={() => router.push('/patient/family-history/add')}
+              onEditMember={(memberId) => router.push(`/patient/family-history/${memberId}/edit`)}
+              onViewGenetics={() => router.push('/patient/genetics/analysis')}
+            />
+            <FHIRDataWidget 
+              onRequestImport={() => router.push('/patient/fhir/import')}
+              onExportData={() => console.log('FHIR export initiated')}
+            />
           </>
         );
       
@@ -155,10 +169,13 @@ function PatientDashboardContent() {
               appointments={dashboardData.appointments}
               onScheduleAppointment={() => router.push('/patient/appointments/schedule')}
             />
+            <TelemedicineWidget 
+              onRequestSession={() => router.push('/patient/telemedicine/request')}
+              onJoinSession={(sessionId) => console.log('Joining session:', sessionId)}
+            />
             <CareTeamWidget 
               careTeam={dashboardData.care_team}
               onContactProvider={(providerId) => {
-                // Handle provider contact
                 addNotification({
                   type: 'info',
                   title: 'Contacting Provider',
@@ -169,6 +186,20 @@ function PatientDashboardContent() {
             <HealthAlertsWidget 
               alerts={dashboardData.alerts}
               onAcknowledgeAlert={handleAcknowledgeAlert}
+            />
+            <EmergencyFeaturesWidget 
+              emergencyInfo={{
+                medical_id: dashboardData.patient_info.email,
+                allergies: ['Penicillin', 'Shellfish'], // This would come from patient profile
+                current_medications: dashboardData.medications.active_medications.map(m => `${m.name} ${m.dosage}`),
+                medical_conditions: dashboardData.patient_info.rare_conditions.map(c => c.name),
+                emergency_contacts: [
+                  { name: 'Emergency Contact', relationship: 'Spouse', phone: '555-0123', is_primary: true }
+                ],
+                blood_type: 'O+',
+                insurance_info: 'Health Insurance Inc.'
+              }}
+              onUpdateEmergencyInfo={() => router.push('/patient/emergency/update')}
             />
           </>
         );
@@ -183,6 +214,14 @@ function PatientDashboardContent() {
             <SmartWatchDataWidget 
               wearableData={dashboardData.wearable_data}
               onConnectDevice={() => router.push('/patient/devices/connect')}
+            />
+            <CommunityGroupsWidget 
+              onJoinGroup={(groupId) => console.log('Joining group:', groupId)}
+              onViewGroup={(groupId) => router.push(`/patient/community/groups/${groupId}`)}
+            />
+            <FHIRDataWidget 
+              onRequestImport={() => router.push('/patient/fhir/import')}
+              onExportData={() => console.log('FHIR export for research')}
             />
           </>
         );
@@ -204,6 +243,10 @@ function PatientDashboardContent() {
               onAcknowledgeAlert={handleAcknowledgeAlert}
             />
             <QuickActionsWidget quickActions={dashboardData.quick_actions} />
+            <CommunityGroupsWidget 
+              onJoinGroup={(groupId) => console.log('Joining group:', groupId)}
+              onViewGroup={(groupId) => router.push(`/patient/community/groups/${groupId}`)}
+            />
             {dashboardData.patient_info.has_rare_condition && (
               <RareDiseaseMonitoringWidget 
                 rareConditions={dashboardData.patient_info.rare_conditions}
@@ -243,10 +286,10 @@ function PatientDashboardContent() {
         
         <nav className="p-4 space-y-2">
           {[
-            { id: 'overview', label: 'Overview', icon: '📊' },
-            { id: 'health', label: 'Health & Vitals', icon: '❤️' },
-            { id: 'care', label: 'Care Team', icon: '👥' },
-            { id: 'research', label: 'Research', icon: '🔬' }
+            { id: 'overview', label: 'Overview', icon: '📊', description: 'Quick summary of your health' },
+            { id: 'health', label: 'Health & Records', icon: '❤️', description: 'Vitals, medications, family history' },
+            { id: 'care', label: 'Care & Communication', icon: '👥', description: 'Providers, appointments, emergency' },
+            { id: 'research', label: 'Research & Community', icon: '🔬', description: 'Studies, data sharing, patient groups' }
           ].map((item) => (
             <button
               key={item.id}
@@ -254,14 +297,19 @@ function PatientDashboardContent() {
                 setSelectedView(item.id as typeof selectedView);
                 setSidebarOpen(false);
               }}
-              className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+              className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
                 selectedView === item.id
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
-              <span className="mr-2">{item.icon}</span>
-              {item.label}
+              <div className="flex items-start">
+                <span className="text-lg mr-3">{item.icon}</span>
+                <div>
+                  <div className="font-medium">{item.label}</div>
+                  <div className="text-xs text-gray-500 mt-1">{item.description}</div>
+                </div>
+              </div>
             </button>
           ))}
         </nav>
@@ -338,9 +386,9 @@ function PatientDashboardContent() {
             <nav className="flex space-x-8 py-4">
               {[
                 { id: 'overview', label: 'Overview' },
-                { id: 'health', label: 'Health & Vitals' },
-                { id: 'care', label: 'Care Team' },
-                { id: 'research', label: 'Research' }
+                { id: 'health', label: 'Health & Records' },
+                { id: 'care', label: 'Care & Communication' },
+                { id: 'research', label: 'Research & Community' }
               ].map((item) => (
                 <button
                   key={item.id}
