@@ -1,6 +1,6 @@
 // src/app/(dashboard)/patient/components/dashboard/SmartWatchDataWidget.tsx
 import React from 'react';
-import { Watch, Battery, Wifi, WifiOff, Smartphone, Activity, TrendingUp } from 'lucide-react';
+import { Watch, Battery, Wifi, Smartphone, Activity, TrendingUp } from 'lucide-react';
 
 interface SmartWatchDataProps {
   wearableData: {
@@ -10,22 +10,14 @@ interface SmartWatchDataProps {
       name: string;
       last_sync: string;
       battery_level?: number;
-      is_connected: boolean;
-      data_points_today: number;
     }>;
-    health_insights: {
-      steps_today: number;
-      steps_goal: number;
-      active_minutes: number;
-      calories_burned: number;
-      sleep_hours: number;
+    today_summary: {
+      steps: number;
       heart_rate_avg: number;
+      sleep_hours: number;
+      active_minutes: number;
     };
-    data_sharing: {
-      research_data_shared: boolean;
-      pharmaceutical_monitoring: boolean;
-      provider_access: boolean;
-    };
+    medication_reminders_sent: number;
   };
   onConnectDevice: () => void;
 }
@@ -62,11 +54,6 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
     return `${Math.floor(diffHours / 24)}d ago`;
   };
 
-  const getStepsProgress = () => {
-    const { steps_today, steps_goal } = wearableData.health_insights;
-    return Math.min((steps_today / steps_goal) * 100, 100);
-  };
-
   const hasConnectedDevices = wearableData.connected_devices.length > 0;
 
   return (
@@ -97,17 +84,10 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <div>
                     <div className="font-medium text-gray-900">{device.name}</div>
                     <div className="flex items-center text-sm text-gray-600">
-                      {device.is_connected ? (
-                        <div className="flex items-center">
-                          <Wifi className="w-3 h-3 text-green-600 mr-1" />
-                          <span>Connected</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <WifiOff className="w-3 h-3 text-red-600 mr-1" />
-                          <span>Disconnected</span>
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        <Wifi className="w-3 h-3 text-green-600 mr-1" />
+                        <span>Connected</span>
+                      </div>
                       <span className="mx-2">•</span>
                       <span>{formatLastSync(device.last_sync)}</span>
                     </div>
@@ -123,15 +103,12 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                       </span>
                     </div>
                   )}
-                  <div className="text-xs text-gray-500">
-                    {device.data_points_today} data points today
-                  </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Health Insights */}
+          {/* Today's Activity Summary */}
           <div>
             <h4 className="font-medium text-gray-900 mb-3">Today's Activity</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -142,17 +119,9 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <Activity className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.health_insights.steps_today.toLocaleString()}
+                  {wearableData.today_summary.steps.toLocaleString()}
                 </div>
-                <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${getStepsProgress()}%` }}
-                  ></div>
-                </div>
-                <div className="text-xs text-gray-600 mt-1">
-                  Goal: {wearableData.health_insights.steps_goal.toLocaleString()}
-                </div>
+                <div className="text-xs text-gray-600">steps taken</div>
               </div>
 
               {/* Heart Rate */}
@@ -162,7 +131,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <Activity className="w-4 h-4 text-red-600" />
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.health_insights.heart_rate_avg}
+                  {wearableData.today_summary.heart_rate_avg}
                 </div>
                 <div className="text-xs text-gray-600">bpm</div>
               </div>
@@ -174,7 +143,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <TrendingUp className="w-4 h-4 text-green-600" />
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.health_insights.active_minutes}
+                  {wearableData.today_summary.active_minutes}
                 </div>
                 <div className="text-xs text-gray-600">minutes</div>
               </div>
@@ -186,46 +155,25 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <span className="text-purple-600">😴</span>
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.health_insights.sleep_hours}h
+                  {wearableData.today_summary.sleep_hours}h
                 </div>
                 <div className="text-xs text-gray-600">last night</div>
               </div>
             </div>
           </div>
 
-          {/* Data Sharing Status */}
+          {/* Medication Reminders Summary */}
           <div className="border-t border-gray-200 pt-3">
-            <h4 className="font-medium text-gray-900 mb-2">Data Sharing</h4>
-            <div className="space-y-1 text-sm">
+            <h4 className="font-medium text-gray-900 mb-2">Health Monitoring</h4>
+            <div className="bg-blue-50 p-3 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Research Studies</span>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  wearableData.data_sharing.research_data_shared 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {wearableData.data_sharing.research_data_shared ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Pharmaceutical Monitoring</span>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  wearableData.data_sharing.pharmaceutical_monitoring 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {wearableData.data_sharing.pharmaceutical_monitoring ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Provider Access</span>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  wearableData.data_sharing.provider_access 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {wearableData.data_sharing.provider_access ? 'Enabled' : 'Disabled'}
-                </span>
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Medication Reminders</div>
+                  <div className="text-xs text-gray-600">Sent today via smartwatch</div>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {wearableData.medication_reminders_sent}
+                </div>
               </div>
             </div>
           </div>
