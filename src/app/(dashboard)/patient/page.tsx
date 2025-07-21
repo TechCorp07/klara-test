@@ -14,6 +14,7 @@ import { ResearchParticipationWidget } from './components/dashboard/ResearchPart
 import { CareTeamWidget } from './components/dashboard/CareTeamWidget';
 import { HealthAlertsWidget } from './components/dashboard/HealthAlertsWidget';
 import { QuickActionsWidget } from './components/dashboard/QuickActionsWidget';
+import { useRouter } from 'next/navigation';
 
 interface PatientDashboardData {
   patient_info: {
@@ -166,6 +167,7 @@ export default function PatientDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const router = useRouter();
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -432,11 +434,10 @@ export default function PatientDashboardPage() {
 
               {/* Column 2: Appointments & Care Team */}
               <div className="space-y-6">
-                <AppointmentsWidget 
+                <AppointmentsWidget
                   appointments={dashboardData.appointments}
                   onScheduleAppointment={() => {
-                    // Navigate to appointment scheduling
-                    window.location.href = '/patient/appointments/schedule';
+                    router.push('/patient/appointments/schedule');
                   }}
                 />
                 <CareTeamWidget 
@@ -449,8 +450,7 @@ export default function PatientDashboardPage() {
                 <VitalsWidget 
                   vitals={dashboardData.vitals}
                   onRecordVitals={() => {
-                    // Navigate to vitals recording
-                    window.location.href = '/patient/vitals/record';
+                    router.push('/patient/vitals/record');
                   }}
                 />
               </div>
@@ -460,13 +460,13 @@ export default function PatientDashboardPage() {
                 <SmartWatchDataWidget 
                   wearableData={dashboardData.wearable_data}
                   onConnectDevice={() => {
-                    window.location.href = '/patient/devices/connect';
+                    router.push('/patient/devices/connect');
                   }}
                 />
                 <ResearchParticipationWidget 
                   researchData={dashboardData.research_participation}
                   onJoinStudy={(studyId) => {
-                    window.location.href = `/patient/research/studies/${studyId}`;
+                    router.push(`/patient/research/studies/${studyId}`);
                   }}
                 />
                 <QuickActionsWidget 
