@@ -1,8 +1,30 @@
 // src/lib/api/services/patient.service.ts
-
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
 import { AxiosResponse } from 'axios';
+
+
+// Helper function for error handling
+const handleError = (error: unknown): string => {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as any;
+    if (axiosError.response?.data?.message) {
+      return axiosError.response.data.message;
+    }
+    if (axiosError.response?.data?.detail) {
+      return axiosError.response.data.detail;
+    }
+    if (axiosError.response?.data?.errors?.length) {
+      return axiosError.response.data.errors.join(', ');
+    }
+  }
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  return 'An unexpected error occurred';
+};
 
 // Helper function to extract data from your existing Axios responses
 const extractData = <T>(response: AxiosResponse<T>): T => {
@@ -74,7 +96,7 @@ export interface PatientDashboardData {
       last_sync: string;
       battery_level?: number;
     }>;
-    health_insights: {
+/*     health_insights: {
       steps_today: number;
       steps_goal: number;
       active_minutes: number;
@@ -86,7 +108,7 @@ export interface PatientDashboardData {
       research_data_shared: boolean;
       pharmaceutical_monitoring: boolean;
       provider_access: boolean;
-    };
+    }; */
     today_summary: {
       steps: number;
       heart_rate_avg: number;
@@ -304,7 +326,7 @@ class EnhancedPatientService {
         throw new Error('Unable to load vital signs data.');
       }
     }
-    
+
   /**
    * Acknowledge health alert
    */

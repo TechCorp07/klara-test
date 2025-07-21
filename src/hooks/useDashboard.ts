@@ -1,7 +1,6 @@
 // src/hooks/useDashboard.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { dashboardPatientService } from '@/lib/api/services/dashboard-patient.service';
-import { PatientDashboardData } from '@/lib/api/services/patient.service';
+import { PatientDashboardData, patientService } from '@/lib/api/services/patient.service';
 
 interface UseDashboardReturn {
   data: PatientDashboardData | null;
@@ -31,7 +30,7 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
       }
       setError(null);
 
-      const dashboardData = await dashboardPatientService.getDashboardData();
+      const dashboardData = await patientService.getDashboardData();
       
       if (mountedRef.current) {
         setData(dashboardData);
@@ -143,7 +142,7 @@ export function usePatientActions() {
 
   const logMedication = useCallback(async (medicationId: number, taken: boolean, notes?: string) => {
     return executeAction(
-      () => dashboardPatientService.logMedication(medicationId, { 
+      () => patientService.logMedication(medicationId, { 
         medication_id: medicationId, 
         taken, 
         notes,
@@ -155,7 +154,7 @@ export function usePatientActions() {
 
   const recordVitals = useCallback(async (vitals: any) => {
     return executeAction(
-      () => dashboardPatientService.recordVitalSigns({
+      () => patientService.recordVitalSigns({
         ...vitals,
         recorded_at: new Date().toISOString()
       }),
@@ -165,21 +164,21 @@ export function usePatientActions() {
 
   const acknowledgeAlert = useCallback(async (alertId: number) => {
     return executeAction(
-      () => dashboardPatientService.acknowledgeAlert(alertId),
+      () => patientService.acknowledgeAlert(alertId),
       'Alert acknowledged'
     );
   }, [executeAction]);
 
   const requestAppointment = useCallback(async (appointmentData: any) => {
     return executeAction(
-      () => dashboardPatientService.requestAppointment(appointmentData),
+      () => patientService.requestAppointment(appointmentData),
       'Appointment request submitted successfully'
     );
   }, [executeAction]);
 
   const connectDevice = useCallback(async (deviceData: any) => {
     return executeAction(
-      () => dashboardPatientService.connectWearableDevice(deviceData),
+      () => patientService.connectWearableDevice(deviceData),
       'Device connection initiated'
     );
   }, [executeAction]);
@@ -224,7 +223,7 @@ export function useRealTimeAlerts() {
     const checkForNewAlerts = async () => {
       try {
         // This would be replaced with WebSocket or Server-Sent Events
-        const dashboardData = await dashboardPatientService.getDashboardData();
+        const dashboardData = await patientService.getDashboardData();
         const newAlerts = dashboardData.alerts.filter((alert: any) => !alert.acknowledged);
         
         setAlerts(newAlerts);
