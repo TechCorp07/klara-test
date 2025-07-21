@@ -66,7 +66,7 @@ export function FHIRDataWidget({ onRequestImport, onExportData }: FHIRDataProps)
       });
       
       const newExport: FHIRExport = {
-        id: response.data.export_id,
+        id: (response.data as { export_id: string }).export_id,
         status: 'pending',
         resource_types: resourceTypes,
         created_at: new Date().toISOString()

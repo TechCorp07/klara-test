@@ -38,7 +38,7 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
     try {
       setLoading(true);
       const response = await apiClient.get(ENDPOINTS.PATIENT.CHAT_GROUPS);
-      setGroups(response.data.groups || []);
+      setGroups((response.data as { groups: CommunityGroup[] }).groups || []);
     } catch (err) {
       setError('Failed to load community groups');
       console.error('Error fetching community groups:', err);
@@ -160,7 +160,7 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
                       <Globe className="w-3 h-3 text-gray-400 ml-1" />
                     )}
                     {group.has_medical_professional && (
-                      <Crown className="w-3 h-3 text-yellow-500 ml-1" title="Medical professional moderator" />
+                      <Crown className="w-3 h-3 text-yellow-500 ml-1" aria-label="Medical professional moderator" />
                     )}
                   </div>
 

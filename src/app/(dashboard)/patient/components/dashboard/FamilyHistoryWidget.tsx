@@ -40,8 +40,12 @@ export function FamilyHistoryWidget({ onAddMember, onEditMember, onViewGenetics 
     try {
       setLoading(true);
       const response = await apiClient.get(ENDPOINTS.PATIENT.FAMILY_HISTORY);
-      setFamilyMembers(response.data.family_members || []);
-      setGeneticRiskFactors(response.data.genetic_risk_factors || []);
+      const responseData = response.data as { 
+        family_members: FamilyMember[]; 
+        genetic_risk_factors: string[] 
+      };
+      setFamilyMembers(responseData.family_members || []);
+      setGeneticRiskFactors(responseData.genetic_risk_factors || []);
     } catch (err) {
       setError('Failed to load family history');
       console.error('Error fetching family history:', err);
@@ -202,7 +206,7 @@ export function FamilyHistoryWidget({ onAddMember, onEditMember, onViewGenetics 
                             }`}></span>
                             {condition.condition}
                             {condition.genetic_factor && (
-                              <Dna className="w-3 h-3 text-purple-600 ml-1" title="Genetic factor" />
+                              <Dna className="w-5 h-5 text-green-600 mr-2" aria-label="Family History" />
                             )}
                           </span>
                           {condition.age_of_onset && (
