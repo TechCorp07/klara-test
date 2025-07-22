@@ -3,7 +3,6 @@
 
 import React, { ReactNode, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { Spinner } from '@/components/ui/spinner';
 
 interface DashboardLayoutProps {
@@ -47,7 +46,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     navigation.push({
       id: 'dashboard',
       name: 'Dashboard',
-      href: `/dashboard/${userRole}`,
+      href: `/${userRole}`,
       icon: 'home',
       show: true
     });
@@ -58,7 +57,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'user-management',
           name: 'User Management',
-          href: '/dashboard/admin/users',
+          href: '/admin/users',
           icon: 'users',
           permission: 'can_manage_users',
           show: hasPermission('can_manage_users')
@@ -66,7 +65,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'approvals',
           name: 'Approvals',
-          href: '/dashboard/admin/approvals',
+          href: '/admin/approvals',
           icon: 'check-circle',
           permission: 'can_manage_users',
           show: hasPermission('can_manage_users')
@@ -74,7 +73,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'audit-logs',
           name: 'Audit Logs',
-          href: '/dashboard/admin/audit-logs',
+          href: '/admin/audit-logs',
           icon: 'file-text',
           permission: 'can_access_audit_logs',
           show: hasPermission('can_access_audit_logs')
@@ -87,21 +86,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'health-records',
           name: 'Health Records',
-          href: '/dashboard/patient/health-records',
+          href: '/patient?tab=health',
           icon: 'file-medical',
           show: true
         },
         {
           id: 'appointments',
           name: 'Appointments',
-          href: '/dashboard/patient/appointments',
+          href: '/patient?tab=care',
           icon: 'calendar',
           show: true
         },
         {
           id: 'medications',
           name: 'Medications',
-          href: '/dashboard/patient/medications',
+          href: '/patient?tab=health',
           icon: 'pill',
           show: true
         }
@@ -113,7 +112,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'patients',
           name: 'My Patients',
-          href: '/dashboard/provider/patients',
+          href: '/provider/patients',
           icon: 'users',
           permission: 'can_access_patient_data',
           show: hasPermission('can_access_patient_data')
@@ -121,7 +120,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'appointments',
           name: 'Appointments',
-          href: '/dashboard/provider/appointments',
+          href: '/provider/appointments',
           icon: 'calendar',
           show: true
         }
@@ -141,7 +140,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: 'approve-users',
           name: 'Quick Approvals',
           description: 'Review pending user registrations',
-          href: '/dashboard/admin/approvals',
+          href: '/admin/approvals',
           icon: 'user-check',
           permission: 'can_manage_users',
           priority: 'high'
@@ -150,7 +149,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: 'system-health',
           name: 'System Health',
           description: 'Monitor system performance',
-          href: '/dashboard/admin/monitoring',
+          href: '/admin/monitoring',
           icon: 'activity',
           permission: 'can_access_admin',
           priority: 'medium'
@@ -164,7 +163,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: 'book-appointment',
           name: 'Book Appointment',
           description: 'Schedule a visit with your provider',
-          href: '/dashboard/patient/appointments/new',
+          href: '/patient/appointments/schedule',
           icon: 'calendar-plus',
           priority: 'high'
         },
@@ -172,7 +171,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: 'log-medication',
           name: 'Log Medication',
           description: 'Record medication taken',
-          href: '/dashboard/patient/medications/log',
+          href: '/patient?tab=health',
           icon: 'pill',
           priority: 'medium'
         }
@@ -185,7 +184,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: 'patient-records',
           name: 'Patient Records',
           description: 'Access patient medical records',
-          href: '/dashboard/provider/patients',
+          href: '/provider/patients',
           icon: 'file-medical',
           permission: 'can_access_patient_data',
           priority: 'high'
@@ -194,7 +193,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: 'emergency-access',
           name: 'Emergency Access',
           description: 'Request emergency patient access',
-          href: '/dashboard/provider/emergency-access',
+          href: '/provider/emergency-access',
           icon: 'alert-triangle',
           permission: 'can_emergency_access',
           priority: 'high'
