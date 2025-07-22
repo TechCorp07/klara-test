@@ -37,7 +37,7 @@ function PatientDashboardContent() {
   // Mobile sidebar state
   const currentTab = searchParams.get('tab') || 'overview';
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>(currentTab as any || 'overview');
   
   // Dashboard data and actions
   const { 
@@ -71,6 +71,11 @@ function PatientDashboardContent() {
     }
   }, [userRole, router]);
 
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'overview';
+    setSelectedView(tab as any);
+  }, [searchParams]);
+  
   // Handle action notifications
   useEffect(() => {
     if (actionSuccess) {
@@ -82,6 +87,12 @@ function PatientDashboardContent() {
       clearMessages();
     }
   }, [actionSuccess, addNotification, clearMessages]);
+
+  const handleTabChange = (tabId: string) => {
+    setSelectedView(tabId as any);
+    const newUrl = tabId === 'overview' ? '/patient' : `/patient?tab=${tabId}`;
+    router.push(newUrl, { scroll: false });
+  };
 
   useEffect(() => {
     if (actionError) {
@@ -295,7 +306,7 @@ function PatientDashboardContent() {
             <button
               key={item.id}
               onClick={() => {
-                setSelectedView(item.id as typeof selectedView);
+                handleTabChange(item.id);
                 setSidebarOpen(false);
               }}
               className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
@@ -393,7 +404,7 @@ function PatientDashboardContent() {
               ].map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setSelectedView(item.id as typeof selectedView)}
+                  onClick={() => handleTabChange(item.id)}
                   className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                     selectedView === item.id
                       ? 'border-blue-500 text-blue-600'
