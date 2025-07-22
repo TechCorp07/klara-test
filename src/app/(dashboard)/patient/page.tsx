@@ -71,6 +71,23 @@ function PatientDashboardContent() {
     }
   }, [userRole, router]);
 
+  // Add this after the useDashboard hook call (around line 70)
+  useEffect(() => {
+    console.log('🔍 Dashboard Debug Info:', {
+      isLoading,
+      hasError: !!error,
+      error,
+      hasData: !!dashboardData,
+      dataKeys: dashboardData ? Object.keys(dashboardData) : [],
+      sampleData: dashboardData ? {
+        patient_info: dashboardData.patient_info,
+        has_health_summary: !!dashboardData.health_summary,
+        has_appointments: !!dashboardData.appointments,
+        has_medications: !!dashboardData.medications
+      } : null
+    });
+  }, [dashboardData, isLoading, error]);
+
   useEffect(() => {
     const tab = searchParams.get('tab') || 'overview';
     setSelectedView(tab as any);

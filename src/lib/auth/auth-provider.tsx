@@ -221,7 +221,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     };
   }, [isTabAuthenticated]);
 
-  // Token refresh monitoring
+  // Auto-refresh token logic
   useEffect(() => {
     if (!jwtPayload || !isTabAuthenticated) return;
 
@@ -231,8 +231,9 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       
       setTimeToExpiration(timeToExp);
       
-      // Auto-refresh if token expires in 5 minutes
-      if (timeToExp < 5 * 60 && timeToExp > 0) {
+      // Auto-refresh if token expires in 5 minutes and not already refreshing
+      if (timeToExp < 5 * 60 && timeToExp > 0 && !tokenNeedsRefresh) {
+        console.log('🔄 Token expires in', timeToExp, 'seconds, auto-refreshing...');
         setTokenNeedsRefresh(true);
         refreshToken();
       }
@@ -244,9 +245,47 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    checkTokenExpiration();
+
+    // Set up interval for periodic checks
     const interval = setInterval(checkTokenExpiration, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
-  }, [jwtPayload, isTabAuthenticated]);
+    
+    // Additionally, set up a precise timeout for refresh
+    const now = Math.floor(Date.now() / 1000);
+    const timeToExp = jwtPayload.exp - now;
+    
+    let refreshTimeout: NodeJS.Timeout | null = null;
+    
+    if (timeToExp > 0) {
+      // Calculate when to refresh (5 minutes before expiration)
+      const refreshIn = Math.max(0, (timeToExp - 300) * 1000);
+      
+      if (refreshIn > 0) {
+        console.log('⏰ Setting refresh timeout for', Math.floor(refreshIn / 1000), 'seconds from now');
+        
+        refreshTimeout = setTimeout(() => {
+          console.log('⏰ Refresh timeout triggered');
+          
+          // Double-check we still need to refresh
+          const currentTime = Math.floor(Date.now() / 1000);
+          const currentTimeToExp = jwtPayload.exp - currentTime;
+          
+          if (currentTimeToExp < 5 * 60 && currentTimeToExp > 0 && !tokenNeedsRefresh) {
+            setTokenNeedsRefresh(true);
+            refreshToken();
+          }
+        }, refreshIn);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      clearInterval(interval);
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [jwtPayload, isTabAuthenticated, tokenNeedsRefresh]);
 
   /**
    * Enhanced login with tab-specific storage
