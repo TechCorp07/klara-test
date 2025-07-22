@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useDashboard, usePatientActions, useRealTimeAlerts } from '@/hooks/useDashboard';
 import { NotificationProvider, useNotifications, LiveUpdateIndicator } from '@/components/notifications/NotificationProvider';
-import { DashboardErrorBoundary, DashboardLoader, WidgetError, NetworkStatus } from '@/components/dashboard/DashboardErrorBoundary';
+import { DashboardErrorBoundary, DashboardLoader, NetworkStatus } from '@/components/dashboard/DashboardErrorBoundary';
 
 // Import all dashboard widgets
 import { HealthSummaryWidget } from './components/dashboard/HealthSummaryWidget';
@@ -30,7 +30,14 @@ import { RefreshCw, Menu, X, Bell, Settings, User } from 'lucide-react';
 function PatientDashboardContent() {
   const { user, getUserRole, hasPermission } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addNotification } = useNotifications();
+  
+  const { alerts: realTimeAlerts, unreadCount } = useRealTimeAlerts();
+  // Mobile sidebar state
+  const currentTab = searchParams.get('tab') || 'overview';
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>('overview');
   
   // Dashboard data and actions
   const { 
@@ -53,12 +60,6 @@ function PatientDashboardContent() {
     connectDevice,
     clearMessages 
   } = usePatientActions();
-
-  const { alerts: realTimeAlerts, unreadCount } = useRealTimeAlerts();
-
-  // Mobile sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>('overview');
 
   // Role validation
   const userRole = getUserRole();
