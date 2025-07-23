@@ -498,7 +498,11 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tabSession.jwtToken && { 'Authorization': `Bearer ${tabSession.jwtToken}` }),
+          ...(tabId && { 'X-Tab-ID': tabId }),
+        },
         body: JSON.stringify({ 
           refresh_token: tabSession.refreshToken,
           tabId,
@@ -533,6 +537,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Refresh failed, logout this tab
+        console.error('❌ Token refresh failed:', await response.text());
         await logout();
       }
     } catch (error) {

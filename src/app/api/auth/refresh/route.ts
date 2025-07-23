@@ -22,16 +22,21 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    // GET THE AUTHORIZATION HEADER FROM THE INCOMING REQUEST
+    const authHeader = request.headers.get('authorization');
 
     // Forward refresh request to backend
     const backendUrl = `${config.apiBaseUrl}/users/auth/refresh_token/`;
     console.log('🔗 Calling backend refresh:', backendUrl);
-    
+    console.log('🔑 Auth header present:', !!authHeader);
+
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        // FORWARD THE AUTHORIZATION HEADER
+        ...(authHeader && { 'Authorization': authHeader }),
         ...(tabId && { 'X-Tab-ID': tabId }),
       },
       body: JSON.stringify({
