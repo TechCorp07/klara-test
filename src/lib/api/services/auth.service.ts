@@ -20,6 +20,8 @@ interface AuthResponse {
   message?: string;
   session?: any;
   refresh_token?: string;
+  success?: boolean;
+  detail?: string; 
 }
 
 interface RefreshResponse {
@@ -46,33 +48,29 @@ class JWTAuthService {
         ENDPOINTS.AUTH.LOGIN,
         credentials
       );
-
+  
       const data = response.data;
-
-      if (!data.success) {
-        throw new Error(data.message || 'Login failed');
+  
+      // Check for errors without relying on success property
+      if (!data.token && !data.access_token) {
+        throw new Error(data.message || data.detail || 'Login failed');
       }
-
-      // Store both JWT and session token
-      if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token);
-      }
-      
-      // NEW: Store session token for ongoing authentication
+  
+      // Store session token if provided
       if (data.session_token) {
         localStorage.setItem('session_token', data.session_token);
       }
-
+  
       return {
         token: data.access_token || data.token || '',
         access_token: data.access_token,
         session_token: data.session_token,
         user: data.user as User,
-        message: data.message || 'Login successful',
         requires_2fa: false,
         session: data.session,
+        message: data.message,
       };
-
+  
     } catch (error) {
       console.error('Login service error:', error);
       throw new Error(
@@ -131,8 +129,8 @@ class JWTAuthService {
 
       const data = response.data;
 
-      if (!data.success) {
-        throw new Error(data.message || 'Registration failed');
+      if (!data.user) {
+        throw new Error(data.message || data.detail || 'Registration failed');
       }
 
       return {
@@ -236,7 +234,7 @@ class JWTAuthService {
       const data = response.data;
 
       return {
-        success: data.success,
+        success: true,
         message: data.message || 'Email verification processed',
       };
 
@@ -261,7 +259,7 @@ class JWTAuthService {
       const data = response.data;
 
       return {
-        success: data.success,
+        success: true,
         message: data.message || 'Password reset email sent',
       };
 
@@ -286,7 +284,7 @@ class JWTAuthService {
       const data = response.data;
 
       return {
-        success: data.success,
+        success: true,
         message: data.message || 'Password reset successful',
       };
 

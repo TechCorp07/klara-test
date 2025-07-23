@@ -172,9 +172,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           if (validationResult.isValid && validationResult.payload) {
             const userFromJWT = jwtPayloadToUser(validationResult.payload);
             
-            if (loginResponse.session_token) {
-              setupSessionRefresh();
-            }
             setUser(userFromJWT);
             setJwtPayload(validationResult.payload);
             setIsTabAuthenticated(true);
@@ -357,6 +354,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           setUser(userFromJWT);
           setJwtPayload(validationResult.payload);
           setIsTabAuthenticated(true);
+          setupSessionRefresh();
           setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
           setTimeToExpiration(validationResult.expiresIn ?? null);
           

@@ -97,6 +97,7 @@ export interface LoginResponse {
   access_token?: string;        // Backend sends this
   session_token?: string;       // NEW for session-based auth
   expires_in?: number;          // NEW for token expiration info
+  message?: string;
 }
 
 export interface RefreshTokenRequest {
