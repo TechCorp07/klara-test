@@ -152,7 +152,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const [isTabAuthenticated, setIsTabAuthenticated] = useState(false);
 
   const router = useRouter();
-  const pathname = usePathname();
 
   const sessionRefreshInterval = useRef<NodeJS.Timeout | null>(null);
   // Initialize authentication state from tab-specific storage
@@ -161,7 +160,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       console.log(`🔐 Initializing tab authentication for tab: ${tabId}`);
       
       try {
-        // Check if current tab has authentication
+        // STEP 1: Check if current tab has valid JWT authentication
         const tabSession = TabAuthManager.getTabSession();
         
         if (tabSession && tabSession.jwtToken) {
@@ -180,14 +179,16 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
             setTimeToExpiration(validationResult.expiresIn ?? null);
             
             console.log(`✅ Tab authentication successful for: ${userFromJWT.email}`);
+            return; // Exit early - JWT auth successful
           } else {
-            console.log('❌ Invalid JWT token in tab session, clearing...');
+            console.log('❌ Invalid JWT token in tab session, checking session token fallback...');
             TabAuthManager.clearTabSession();
           }
         }
-        // STEP 2: JWT failed/expired - Check for session token fallback 
+        
+        // STEP 2: JWT failed/expired - Check for session token fallback
         const sessionToken = localStorage.getItem('session_token');
-      
+        
         if (sessionToken) {
           console.log('🔄 JWT expired, attempting session token authentication...');
           
@@ -227,7 +228,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         // STEP 3: Both JWT and session token failed
         console.log('ℹ️ No valid authentication found - tab requires login');
         setIsTabAuthenticated(false);
-
+        
       } catch (error) {
         console.error('❌ Error initializing tab authentication:', error);
         TabAuthManager.clearTabSession();
@@ -264,68 +265,60 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
   // Auto-refresh token logic
   useEffect(() => {
-    if (!jwtPayload || !isTabAuthenticated) return;
+    if (!isTabAuthenticated) return;
 
-    const checkTokenExpiration = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const timeToExp = jwtPayload.exp - now;
-      
-      setTimeToExpiration(timeToExp);
-      
-      // Auto-refresh if token expires in 5 minutes and not already refreshing
-      if (timeToExp < 5 * 60 && timeToExp > 0 && !tokenNeedsRefresh) {
-        console.log('🔄 Token expires in', timeToExp, 'seconds, auto-refreshing...');
-        setTokenNeedsRefresh(true);
-        refreshToken();
-      }
-      
-      // Auto-logout if token is expired
-      if (timeToExp <= 0) {
-        console.log('🕐 JWT token expired, logging out tab...');
-        logout();
-      }
-    };
-
-    checkTokenExpiration();
-
-    // Set up interval for periodic checks
-    const interval = setInterval(checkTokenExpiration, 30000); // Check every 30 seconds
-    
-    // Additionally, set up a precise timeout for refresh
-    const now = Math.floor(Date.now() / 1000);
-    const timeToExp = jwtPayload.exp - now;
-    
-    let refreshTimeout: NodeJS.Timeout | null = null;
-    
-    if (timeToExp > 0) {
-      // Calculate when to refresh (5 minutes before expiration)
-      const refreshIn = Math.max(0, (timeToExp - 300) * 1000);
-      
-      if (refreshIn > 0) {
-        console.log('⏰ Setting refresh timeout for', Math.floor(refreshIn / 1000), 'seconds from now');
+    // For JWT tokens, set up refresh logic
+    if (jwtPayload) {
+      const checkTokenExpiration = () => {
+        const now = Math.floor(Date.now() / 1000);
+        const timeToExp = jwtPayload.exp - now;
         
-        refreshTimeout = setTimeout(() => {
-          console.log('⏰ Refresh timeout triggered');
+        setTimeToExpiration(timeToExp);
+        
+        // If JWT token expires in 5 minutes, switch to session token instead of refreshing JWT
+        if (timeToExp < 5 * 60 && timeToExp > 0 && !tokenNeedsRefresh) {
+          console.log('🔄 JWT expires in', timeToExp, 'seconds, switching to session token...');
           
-          // Double-check we still need to refresh
-          const currentTime = Math.floor(Date.now() / 1000);
-          const currentTimeToExp = jwtPayload.exp - currentTime;
-          
-          if (currentTimeToExp < 5 * 60 && currentTimeToExp > 0 && !tokenNeedsRefresh) {
+          // Check if we have a session token
+          const sessionToken = localStorage.getItem('session_token');
+          if (sessionToken) {
+            console.log('✅ Switching from JWT to session token authentication');
+            // Clear JWT state but keep session authenticated
+            setJwtPayload(null);
+            setTokenNeedsRefresh(false);
+            setTimeToExpiration(null);
+            
+            // Set up session refresh
+            setupSessionRefresh();
+            return;
+          } else {
+            console.log('❌ No session token available, will need to re-login');
             setTokenNeedsRefresh(true);
-            refreshToken();
           }
-        }, refreshIn);
-      }
-    }
+        }
+        
+        // Auto-logout if token is expired and no session token
+        if (timeToExp <= 0) {
+          const sessionToken = localStorage.getItem('session_token');
+          if (!sessionToken) {
+            console.log('🕐 JWT token expired and no session token, logging out...');
+            logout();
+          }
+        }
+      };
 
-    // Cleanup function
-    return () => {
-      clearInterval(interval);
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-    };
+      checkTokenExpiration();
+      const interval = setInterval(checkTokenExpiration, 30000);
+      
+      return () => {
+        clearInterval(interval);
+      };
+    }
+    
+    // For session token only authentication, just keep session refresh running
+    else {
+      setupSessionRefresh();
+    }
   }, [jwtPayload, isTabAuthenticated, tokenNeedsRefresh]);
 
   /**
@@ -395,10 +388,11 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           setUser(userFromJWT);
           setJwtPayload(validationResult.payload);
           setIsTabAuthenticated(true);
-          setupSessionRefresh();
           setTokenNeedsRefresh(validationResult.needsRefresh ?? false);
           setTimeToExpiration(validationResult.expiresIn ?? null);
           
+          setupSessionRefresh();
+
           console.log(`✅ Tab login successful for: ${userFromJWT.email} on tab: ${tabId}`);
         }
       }
@@ -453,7 +447,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       // Notify backend about logout if we have a session
       if (tabSession?.jwtToken) {
         try {
-          await fetch('/api/auth/tab-logout', {
+          await fetch('/api/auth/logout', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
@@ -593,41 +587,54 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-/**
+  /**
    * Set up automatic session token refresh
    */
-const setupSessionRefresh = useCallback(() => {
-  // Clear any existing interval
-  if (sessionRefreshInterval.current) {
-    clearInterval(sessionRefreshInterval.current);
-  }
-  
-  // Set up automatic refresh every 50 minutes
-  sessionRefreshInterval.current = setInterval(async () => {
-    try {
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const response = await fetch('/api/users/auth/refresh-session/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_token: sessionToken })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          localStorage.setItem('session_token', data.session_token);
-          console.log('✅ Session token refreshed automatically');
-        } else {
-          console.error('❌ Session refresh failed, clearing token');
-          localStorage.removeItem('session_token');
-          await logout();
-        }
-      }
-    } catch (error) {
-      console.error('Failed to refresh session token:', error);
+  const setupSessionRefresh = useCallback(() => {
+    // Clear any existing interval
+    if (sessionRefreshInterval.current) {
+      clearInterval(sessionRefreshInterval.current);
     }
-  }, 50 * 60 * 1000); // 50 minutes
-}, []);
+    
+    // Only set up refresh if we have a session token
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) {
+      console.log('⚠️ No session token found, skipping session refresh setup');
+      return;
+    }
+    
+    console.log('🔄 Setting up session token auto-refresh');
+    
+    // Set up automatic refresh every 50 minutes
+    sessionRefreshInterval.current = setInterval(async () => {
+      try {
+        const currentSessionToken = localStorage.getItem('session_token');
+        if (currentSessionToken) {
+          console.log('🔄 Refreshing session token...');
+          
+          const response = await fetch('/api/users/auth/refresh-session/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_token: currentSessionToken })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('session_token', data.session_token);
+            console.log('✅ Session token refreshed automatically');
+          } else {
+            console.error('❌ Session refresh failed, status:', response.status);
+            localStorage.removeItem('session_token');
+            await logout();
+          }
+        }
+      } catch (error) {
+        console.error('❌ Session refresh error:', error);
+        localStorage.removeItem('session_token');
+        await logout();
+      }
+    }, 50 * 60 * 1000); // 50 minutes
+  }, []);
 
   // Permission checking methods
   const hasPermission = useCallback((permission: string): boolean => {
