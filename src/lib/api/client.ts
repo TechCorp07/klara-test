@@ -82,6 +82,7 @@ class TabAPIClient {
           if (sessionToken) {
             config.headers.Authorization = `Session ${sessionToken}`;
             config.headers['X-Auth-Type'] = 'session-based';
+            console.log('🔄 API Client using session token for request:', config.url);
           }
         }
         

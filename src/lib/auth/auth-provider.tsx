@@ -274,6 +274,12 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         const timeToExp = jwtPayload.exp - now;
         
         setTimeToExpiration(timeToExp);
+
+        console.log('🔍 JWT EXPIRATION CHECK:', {
+          timeToExp,
+          willExpireIn5Min: timeToExp < 5 * 60,
+          needsRefresh: !tokenNeedsRefresh
+        });
         
         // If JWT token expires in 5 minutes, switch to session token instead of refreshing JWT
         if (timeToExp < 5 * 60 && timeToExp > 0 && !tokenNeedsRefresh) {
@@ -281,12 +287,25 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           
           // Check if we have a session token
           const sessionToken = localStorage.getItem('session_token');
+          console.log('🔍 SESSION TOKEN CHECK:', {
+            hasSessionToken: !!sessionToken,
+            sessionTokenPreview: sessionToken?.substring(0, 20) + '...' || 'NONE',
+            sessionTokenLength: sessionToken?.length || 0
+          });
+
           if (sessionToken) {
             console.log('✅ Switching from JWT to session token authentication');
+
+            // TEST THE SESSION TOKEN IMMEDIATELY
+            testSessionTokenAuth(sessionToken);
+
             // Clear JWT state but keep session authenticated
             setJwtPayload(null);
             setTokenNeedsRefresh(false);
             setTimeToExpiration(null);
+            
+            TabAuthManager.clearTabSession();
+            console.log('🧹 Cleared expired JWT from TabAuthManager');
             
             // Set up session refresh
             setupSessionRefresh();
@@ -321,6 +340,68 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [jwtPayload, isTabAuthenticated, tokenNeedsRefresh]);
 
+  // Add this function in your auth provider component
+  const testSessionTokenAuth = useCallback(async (sessionToken: string) => {
+    console.log('🧪 TESTING SESSION TOKEN AUTH...');
+    
+    try {
+      // Test 1: Direct API call with session token
+      console.log('🧪 Test 1: Direct /me call with session token');
+      const response = await fetch('/api/users/auth/me/', {
+        headers: {
+          'Authorization': `Session ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('🧪 Session token /me response status:', response.status);
+      
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('✅ Session token auth SUCCESSFUL');
+        console.log('✅ User email from session:', userData.user?.email);
+      } else {
+        const errorText = await response.text();
+        console.log('❌ Session token auth FAILED');
+        console.log('❌ Error response:', errorText);
+      }
+      
+      // Test 2: API call through your client
+      console.log('🧪 Test 2: API call through apiClient');
+      
+      // Temporarily store session token for the client to use
+      const oldAuthHeader = localStorage.getItem('temp_test_auth');
+      localStorage.setItem('temp_test_auth', `Session ${sessionToken}`);
+      
+      try {
+        const clientResponse = await fetch('/api/users/patient/dashboard/', {
+          headers: {
+            'Authorization': `Session ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('🧪 Dashboard API response status:', clientResponse.status);
+        
+        if (clientResponse.ok) {
+          console.log('✅ Dashboard API call with session token SUCCESSFUL');
+        } else {
+          const errorText = await clientResponse.text();
+          console.log('❌ Dashboard API call FAILED:', errorText);
+        }
+      } finally {
+        if (oldAuthHeader) {
+          localStorage.setItem('temp_test_auth', oldAuthHeader);
+        } else {
+          localStorage.removeItem('temp_test_auth');
+        }
+      }
+      
+    } catch (error) {
+      console.log('❌ Session token test ERROR:', error);
+    }
+  }, []);
+
   /**
    * Enhanced login with tab-specific storage
    */
@@ -346,7 +427,24 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       // Parse response data first, regardless of status
       const responseData = await response.json();
       console.log('🔍 DEBUG - Full responseData:', responseData); // DEBUG
-  
+
+      console.log('🔍 SESSION TOKEN STORAGE DEBUG:');
+      console.log('responseData.session_token:', responseData.session_token);
+      console.log('responseData.session_token length:', responseData.session_token?.length);
+
+      // Check if session token gets stored
+      if (responseData.session_token) {
+        localStorage.setItem('session_token', responseData.session_token);
+        console.log('✅ STORED session_token in localStorage');
+        
+        // Immediately verify storage
+        const storedToken = localStorage.getItem('session_token');
+        console.log('✅ VERIFIED stored token:', storedToken?.substring(0, 20) + '...');
+        console.log('✅ Storage successful:', storedToken === responseData.session_token);
+      } else {
+        console.log('❌ No session_token in responseData to store');
+      }
+
       if (!response.ok) {
         // CHECK FOR APPROVAL PENDING FIRST
         if (responseData.requires_approval || responseData.error_type === 'APPROVAL_PENDING') {
@@ -592,25 +690,40 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
    */
   const setupSessionRefresh = useCallback(() => {
     // Clear any existing interval
+    console.log('🔄 SETTING UP SESSION REFRESH...');
     if (sessionRefreshInterval.current) {
       clearInterval(sessionRefreshInterval.current);
+      console.log('🔄 Cleared existing session refresh interval');
     }
     
     // Only set up refresh if we have a session token
     const sessionToken = localStorage.getItem('session_token');
+    console.log('🔍 SESSION REFRESH SETUP CHECK:', {
+      hasSessionToken: !!sessionToken,
+      sessionTokenPreview: sessionToken?.substring(0, 20) + '...' || 'NONE'
+    });
+
     if (!sessionToken) {
       console.log('⚠️ No session token found, skipping session refresh setup');
       return;
     }
     
-    console.log('🔄 Setting up session token auto-refresh');
+    console.log('🔄 Setting up session token auto-refresh (50min interval)');
     
     // Set up automatic refresh every 50 minutes
     sessionRefreshInterval.current = setInterval(async () => {
+      console.log('⏰ SESSION REFRESH INTERVAL TRIGGERED');
+
       try {
         const currentSessionToken = localStorage.getItem('session_token');
+
+        console.log('🔍 REFRESH ATTEMPT:', {
+          hasCurrentToken: !!currentSessionToken,
+          tokenPreview: currentSessionToken?.substring(0, 20) + '...' || 'NONE'
+        });
+
         if (currentSessionToken) {
-          console.log('🔄 Refreshing session token...');
+          console.log('🔄 Attempting to refresh session token...');
           
           const response = await fetch('/api/users/auth/refresh-session/', {
             method: 'POST',
@@ -618,12 +731,17 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify({ session_token: currentSessionToken })
           });
           
+          console.log('🔍 Refresh response status:', response.status);
+
           if (response.ok) {
             const data = await response.json();
             localStorage.setItem('session_token', data.session_token);
-            console.log('✅ Session token refreshed automatically');
+            console.log('✅ Session token refreshed successfully');
+            console.log('✅ New token preview:', data.session_token?.substring(0, 20) + '...');
           } else {
+            const errorText = await response.text();
             console.error('❌ Session refresh failed, status:', response.status);
+            console.error('❌ Error response:', errorText);
             localStorage.removeItem('session_token');
             await logout();
           }
@@ -634,6 +752,8 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         await logout();
       }
     }, 50 * 60 * 1000); // 50 minutes
+    
+    console.log('✅ Session refresh interval setup complete');
   }, []);
 
   // Permission checking methods

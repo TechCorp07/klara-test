@@ -204,15 +204,6 @@ function isPublicRoute(pathname: string): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 🔍 ADD THIS DEBUG BLOCK
-  console.log('🛡️ Middleware processing:', {
-      pathname,
-      method: request.method,
-      isExcluded: shouldExcludePath(pathname),
-      isPublic: isPublicRoute(pathname),
-      hasAuthHeader: !!request.headers.get('authorization')
-    });
-
   if (shouldExcludePath(pathname)) {
     console.log('✅ Excluding path:', pathname);
     return NextResponse.next();
