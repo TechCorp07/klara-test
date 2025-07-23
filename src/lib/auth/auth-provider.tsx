@@ -1,7 +1,7 @@
 // src/lib/auth/auth-provider.tsx
 'use client';
 
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { JWTValidator, JWTPayload } from './validator';
 import { TabAuthManager } from './tab-auth-utils';
@@ -154,9 +154,10 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const sessionRefreshInterval = useRef<NodeJS.Timeout | null>(null);
   // Initialize authentication state from tab-specific storage
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       console.log(`🔐 Initializing tab authentication for tab: ${tabId}`);
       
       try {
@@ -182,15 +183,55 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           } else {
             console.log('❌ Invalid JWT token in tab session, clearing...');
             TabAuthManager.clearTabSession();
-            setIsTabAuthenticated(false);
           }
-        } else {
-          console.log('ℹ️ No tab session found - tab requires login');
-          setIsTabAuthenticated(false);
         }
+        // STEP 2: JWT failed/expired - Check for session token fallback 
+        const sessionToken = localStorage.getItem('session_token');
+      
+        if (sessionToken) {
+          console.log('🔄 JWT expired, attempting session token authentication...');
+          
+          try {
+            // Validate session token with backend
+            const response = await fetch('/api/users/auth/me/', {
+              headers: {
+                'Authorization': `Session ${sessionToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('✅ Session token authentication successful');
+              
+              // Set up authentication state using session token
+              setUser(userData.user);
+              setIsTabAuthenticated(true);
+              setTokenNeedsRefresh(false);
+              setTimeToExpiration(null); // Session tokens don't have JWT expiration
+              
+              // Set up session refresh
+              setupSessionRefresh();
+              
+              return; // Exit early - session auth successful
+            } else {
+              console.log('❌ Session token validation failed');
+              localStorage.removeItem('session_token');
+            }
+          } catch (error) {
+            console.error('❌ Session token validation error:', error);
+            localStorage.removeItem('session_token');
+          }
+        }
+        
+        // STEP 3: Both JWT and session token failed
+        console.log('ℹ️ No valid authentication found - tab requires login');
+        setIsTabAuthenticated(false);
+
       } catch (error) {
         console.error('❌ Error initializing tab authentication:', error);
         TabAuthManager.clearTabSession();
+        localStorage.removeItem('session_token');
         setIsTabAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -431,6 +472,10 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       // Always clear local state
       TabAuthManager.clearTabSession();
       localStorage.removeItem('session_token');
+      if (sessionRefreshInterval.current) {
+        clearInterval(sessionRefreshInterval.current);
+        sessionRefreshInterval.current = null;
+      }
       setUser(null);
       setJwtPayload(null);
       setIsTabAuthenticated(false);
@@ -548,12 +593,17 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /**
- * Session token refresh
- */
+/**
+   * Set up automatic session token refresh
+   */
 const setupSessionRefresh = useCallback(() => {
+  // Clear any existing interval
+  if (sessionRefreshInterval.current) {
+    clearInterval(sessionRefreshInterval.current);
+  }
+  
   // Set up automatic refresh every 50 minutes
-  const refreshInterval = setInterval(async () => {
+  sessionRefreshInterval.current = setInterval(async () => {
     try {
       const sessionToken = localStorage.getItem('session_token');
       if (sessionToken) {
@@ -567,15 +617,16 @@ const setupSessionRefresh = useCallback(() => {
           const data = await response.json();
           localStorage.setItem('session_token', data.session_token);
           console.log('✅ Session token refreshed automatically');
+        } else {
+          console.error('❌ Session refresh failed, clearing token');
+          localStorage.removeItem('session_token');
+          await logout();
         }
       }
     } catch (error) {
       console.error('Failed to refresh session token:', error);
     }
   }, 50 * 60 * 1000); // 50 minutes
-  
-  // Store interval for cleanup
-  return refreshInterval;
 }, []);
 
   // Permission checking methods
@@ -642,6 +693,14 @@ const setupSessionRefresh = useCallback(() => {
     getUserRole,
     getSessionId,
   };
+  
+  useEffect(() => {
+    return () => {
+      if (sessionRefreshInterval.current) {
+        clearInterval(sessionRefreshInterval.current);
+      }
+    };
+  }, []);
 
   return (
     <JWTAuthContext.Provider value={contextValue}>
