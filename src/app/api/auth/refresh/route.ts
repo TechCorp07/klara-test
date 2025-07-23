@@ -22,12 +22,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Forward refresh request to backend
+    const backendUrl = `${config.apiBaseUrl}/users/auth/refresh/`;
+    console.log('🔗 Calling backend refresh:', backendUrl);
+
     // GET THE AUTHORIZATION HEADER FROM THE INCOMING REQUEST
     const authHeader = request.headers.get('authorization');
 
-    // Forward refresh request to backend
-    const backendUrl = `${config.apiBaseUrl}/users/auth/refresh_token/`;
-    console.log('🔗 Calling backend refresh:', backendUrl);
     console.log('🔑 Auth header present:', !!authHeader);
 
     const backendResponse = await fetch(backendUrl, {
