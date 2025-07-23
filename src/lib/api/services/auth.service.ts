@@ -1,5 +1,5 @@
 // src/lib/api/services/auth.service.ts
-import { jwtApiClient, extractDataFromResponse } from '../client';
+import { apiClient } from '../client';
 import { ENDPOINTS } from '../endpoints';
 import type { 
   LoginResponse, 
@@ -13,10 +13,13 @@ import type {
  * Authentication response interfaces
  */
 interface AuthResponse {
-  success: boolean;
-  message?: string;
   token?: string;
+  access_token?: string;
+  session_token?: string;
   user?: User;
+  message?: string;
+  session?: any;
+  refresh_token?: string;
 }
 
 interface RefreshResponse {
@@ -39,12 +42,12 @@ class JWTAuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await jwtApiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse>(
         ENDPOINTS.AUTH.LOGIN,
         credentials
       );
 
-      const data = extractDataFromResponse(response);
+      const data = response.data;
 
       if (!data.success) {
         throw new Error(data.message || 'Login failed');
@@ -61,11 +64,12 @@ class JWTAuthService {
       }
 
       return {
-        success: true,
         token: data.access_token || data.token || '',
+        access_token: data.access_token,
         session_token: data.session_token,
         user: data.user as User,
         message: data.message || 'Login successful',
+        requires_2fa: false,
         session: data.session,
       };
 
@@ -87,28 +91,26 @@ class JWTAuthService {
       if (!sessionToken) {
         throw new Error('No session token available');
       }
-
-      const response = await jwtApiClient.post<{
+  
+      const response = await apiClient.post<{
         session_token: string;
         expires_in: number;
         token_type: string;
       }>(
         ENDPOINTS.AUTH.REFRESH_SESSION,
         { session_token: sessionToken },
-        { skipAuth: true } // Skip auth for refresh
+        { skipAuth: true }
       );
-
-      const data = extractDataFromResponse(response);
-
+  
       // Store new session token
-      localStorage.setItem('session_token', data.session_token);
-
+      localStorage.setItem('session_token', response.data.session_token);
+  
       return {
         success: true,
-        token: data.session_token,
-        expires_in: data.expires_in,
+        token: response.data.session_token,
+        expires_in: response.data.expires_in,
       };
-
+  
     } catch (error) {
       console.error('Session refresh error:', error);
       throw new Error(
@@ -122,22 +124,21 @@ class JWTAuthService {
    */
   async register(userData: RegisterRequest): Promise<RegisterResponse> {
     try {
-      const response = await jwtApiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse>(
         ENDPOINTS.AUTH.REGISTER,
         userData
       );
 
-      const data = extractDataFromResponse(response);
+      const data = response.data;
 
       if (!data.success) {
         throw new Error(data.message || 'Registration failed');
       }
 
       return {
-        success: true,
         user: data.user as User,
         message: data.message || 'Registration successful',
-        requiresVerification: true,
+        requires_approval: true,
       };
 
     } catch (error) {
@@ -183,8 +184,8 @@ class JWTAuthService {
    */
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await jwtApiClient.get<User>(ENDPOINTS.AUTH.ME);
-      const data = extractDataFromResponse(response);
+      const response = await apiClient.get<User>(ENDPOINTS.AUTH.ME);
+      const data = response.data;
       
       return data;
 
@@ -201,11 +202,11 @@ class JWTAuthService {
    */
   async refreshToken(): Promise<string> {
     try {
-      const response = await jwtApiClient.post<RefreshResponse>(
+      const response = await apiClient.post<RefreshResponse>(
         ENDPOINTS.AUTH.REFRESH_TOKEN
       );
 
-      const data = extractDataFromResponse(response);
+      const data = response.data;
 
       if (!data.success || !data.token) {
         throw new Error('Token refresh failed');
@@ -227,12 +228,12 @@ class JWTAuthService {
    */
   async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await jwtApiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse>(
         ENDPOINTS.AUTH.VERIFY_EMAIL,
         { token }
       );
 
-      const data = extractDataFromResponse(response);
+      const data = response.data;
 
       return {
         success: data.success,
@@ -252,12 +253,12 @@ class JWTAuthService {
    */
   async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await jwtApiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse>(
         ENDPOINTS.AUTH.FORGOT_PASSWORD,
         { email }
       );
 
-      const data = extractDataFromResponse(response);
+      const data = response.data;
 
       return {
         success: data.success,
@@ -277,12 +278,12 @@ class JWTAuthService {
    */
   async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await jwtApiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse>(
         ENDPOINTS.AUTH.RESET_PASSWORD,
         { token, password: newPassword }
       );
 
-      const data = extractDataFromResponse(response);
+      const data = response.data;
 
       return {
         success: data.success,

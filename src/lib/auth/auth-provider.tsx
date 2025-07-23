@@ -172,7 +172,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           if (validationResult.isValid && validationResult.payload) {
             const userFromJWT = jwtPayloadToUser(validationResult.payload);
             
-            if (responseData.session_token) {
+            if (loginResponse.session_token) {
               setupSessionRefresh();
             }
             setUser(userFromJWT);
