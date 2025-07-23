@@ -90,9 +90,13 @@ export interface LoginResponse {
     id: string;
     expires_at: string;
     created_at: string;
+    session_id?: string;
   };
   permissions?: Record<string, boolean>;
   tab_id?: string;
+  access_token?: string;        // Backend sends this
+  session_token?: string;       // NEW for session-based auth
+  expires_in?: number;          // NEW for token expiration info
 }
 
 export interface RefreshTokenRequest {

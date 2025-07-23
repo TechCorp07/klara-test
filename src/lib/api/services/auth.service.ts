@@ -35,7 +35,7 @@ interface LogoutResponse {
  */
 class JWTAuthService {
   /**
-   * User login with credentials
+   * User login with credentials - Updated for session tokens
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
@@ -50,17 +50,69 @@ class JWTAuthService {
         throw new Error(data.message || 'Login failed');
       }
 
+      // Store both JWT and session token
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+      }
+      
+      // NEW: Store session token for ongoing authentication
+      if (data.session_token) {
+        localStorage.setItem('session_token', data.session_token);
+      }
+
       return {
         success: true,
-        token: data.token || '',
+        token: data.access_token || data.token || '',
+        session_token: data.session_token,
         user: data.user as User,
         message: data.message || 'Login successful',
+        session: data.session,
       };
 
     } catch (error) {
       console.error('Login service error:', error);
       throw new Error(
         error instanceof Error ? error.message : 'Login failed'
+      );
+    }
+  }
+
+  /**
+   * Refresh session token - NEW SESSION METHOD
+   */
+  async refreshSession(): Promise<{ success: boolean; token: string; expires_in: number }> {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      
+      if (!sessionToken) {
+        throw new Error('No session token available');
+      }
+
+      const response = await jwtApiClient.post<{
+        session_token: string;
+        expires_in: number;
+        token_type: string;
+      }>(
+        ENDPOINTS.AUTH.REFRESH_SESSION,
+        { session_token: sessionToken },
+        { skipAuth: true } // Skip auth for refresh
+      );
+
+      const data = extractDataFromResponse(response);
+
+      // Store new session token
+      localStorage.setItem('session_token', data.session_token);
+
+      return {
+        success: true,
+        token: data.session_token,
+        expires_in: data.expires_in,
+      };
+
+    } catch (error) {
+      console.error('Session refresh error:', error);
+      throw new Error(
+        error instanceof Error ? error.message : 'Session refresh failed'
       );
     }
   }
@@ -169,6 +221,7 @@ class JWTAuthService {
     }
   }
 
+  
   /**
    * Verify email address
    */

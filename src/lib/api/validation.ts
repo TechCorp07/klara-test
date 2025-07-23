@@ -22,8 +22,7 @@ export const validateUserResponse = (data: unknown): data is User => {
     const response = data as Record<string, unknown>;
     
     return (
-      typeof response.token === 'string' &&
-      response.token.length > 0 &&
+      (typeof response.token === 'string' || typeof response.access_token === 'string') &&
       validateUserResponse(response.user)
     );
   };

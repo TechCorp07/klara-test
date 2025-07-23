@@ -172,6 +172,9 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           if (validationResult.isValid && validationResult.payload) {
             const userFromJWT = jwtPayloadToUser(validationResult.payload);
             
+            if (responseData.session_token) {
+              setupSessionRefresh();
+            }
             setUser(userFromJWT);
             setJwtPayload(validationResult.payload);
             setIsTabAuthenticated(true);
@@ -429,6 +432,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // Always clear local state
       TabAuthManager.clearTabSession();
+      localStorage.removeItem('session_token');
       setUser(null);
       setJwtPayload(null);
       setIsTabAuthenticated(false);
@@ -545,6 +549,36 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       await logout();
     }
   };
+
+  /**
+ * Session token refresh
+ */
+const setupSessionRefresh = useCallback(() => {
+  // Set up automatic refresh every 50 minutes
+  const refreshInterval = setInterval(async () => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const response = await fetch('/api/users/auth/refresh-session/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_token: sessionToken })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('session_token', data.session_token);
+          console.log('✅ Session token refreshed automatically');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh session token:', error);
+    }
+  }, 50 * 60 * 1000); // 50 minutes
+  
+  // Store interval for cleanup
+  return refreshInterval;
+}, []);
 
   // Permission checking methods
   const hasPermission = useCallback((permission: string): boolean => {

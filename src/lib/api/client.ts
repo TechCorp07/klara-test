@@ -67,7 +67,7 @@ class TabAPIClient {
           return config;
         }
 
-        // Get tab-specific JWT token
+        // Get tab-specific JWT token (existing behavior)
         const tabSession = TabAuthManager.getTabSession();
         
         if (tabSession?.jwtToken) {
@@ -76,6 +76,13 @@ class TabAPIClient {
           // Add tab context headers
           config.headers['X-Tab-ID'] = tabSession.tabId;
           config.headers['X-Auth-Type'] = 'tab-specific';
+        }
+        else {
+          const sessionToken = localStorage.getItem('session_token');
+          if (sessionToken) {
+            config.headers.Authorization = `Session ${sessionToken}`;
+            config.headers['X-Auth-Type'] = 'session-based';
+          }
         }
         
         // Add request timestamp for debugging
@@ -113,9 +120,34 @@ class TabAPIClient {
         
         // Handle authentication errors
         if (error.response?.status === 401 && !originalRequest?.skipAuthRefresh) {
-          console.log('🔐 Authentication error, clearing tab session');
+          console.log('🔐 Authentication error detected');
           
+          // NEW: Try session token refresh first
+          const sessionToken = localStorage.getItem('session_token');
+          if (sessionToken && !originalRequest.headers?.Authorization?.includes('Session')) {
+            try {
+              const refreshResponse = await fetch('/api/users/auth/refresh-session/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_token: sessionToken })
+              });
+              
+              if (refreshResponse.ok) {
+                const data = await refreshResponse.json();
+                localStorage.setItem('session_token', data.session_token);
+                
+                // Retry original request with new session token
+                originalRequest.headers!.Authorization = `Session ${data.session_token}`;
+                return this.client(originalRequest);
+              }
+            } catch (refreshError) {
+              console.error('Session refresh failed:', refreshError);
+            }
+          }
+          
+          // If session refresh fails or no session token, clear everything
           TabAuthManager.clearTabSession();
+          localStorage.removeItem('session_token');
           
           // Only redirect if we're in the browser
           if (typeof window !== 'undefined') {
