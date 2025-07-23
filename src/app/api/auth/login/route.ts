@@ -121,6 +121,14 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Backend tab-specific login successful');
 
+    // ADD THIS DEBUG SECTION:
+    console.log('🔍 BACKEND RESPONSE DEBUG:', {
+      hasAccessToken: !!responseData.access_token,
+      hasSessionToken: !!responseData.session_token,
+      hasRefreshToken: !!responseData.refresh_token,
+      sessionTokenPreview: responseData.session_token?.substring(0, 20) || 'none'
+    });
+
     // Extract JWT token
     const jwtToken = responseData.access_token;
     
@@ -134,6 +142,8 @@ export async function POST(request: NextRequest) {
     // Create response with user data (NO COOKIES SET)
     const loginResponse = {
       token: jwtToken,
+      access_token: responseData.access_token,
+      session_token: responseData.session_token,
       refresh_token: responseData.refresh_token,
       user: responseData.user,
       requires_2fa: responseData.requires_2fa || false,
