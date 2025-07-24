@@ -1,7 +1,7 @@
 // src/app/(dashboard)/patient/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useDashboard, usePatientActions, useRealTimeAlerts } from '@/hooks/useDashboard';
@@ -38,6 +38,7 @@ function PatientDashboardContent() {
   const currentTab = searchParams.get('tab') || 'overview';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>(currentTab as any || 'overview');
+  const dashboardInitialized = useRef(false);
   
   // Dashboard data and actions
   const { 
@@ -47,9 +48,13 @@ function PatientDashboardContent() {
     lastUpdated, 
     refreshData, 
     isRefreshing 
-  } = useDashboard(5 * 60 * 1000); // Auto-refresh every 5 minutes
+  } = useDashboard(dashboardInitialized.current ? 5 * 60 * 1000 : 0); // Auto-refresh every 5 minutes
 
-  const { 
+  useEffect(() => {
+    dashboardInitialized.current = true;
+  }, []);
+
+  const {
     isSubmitting, 
     actionError, 
     actionSuccess, 
@@ -82,6 +87,7 @@ function PatientDashboardContent() {
       healthSummary: dashboardData?.health_summary?.overall_status,
       medicationsCount: dashboardData?.medications?.active_medications?.length || 0,
       appointmentsCount: (dashboardData?.appointments?.upcoming?.length || 0) + (dashboardData?.appointments?.recent?.length || 0)
+      //shouldShowDashboard: !isLoading && !error && !!dashboardData
     });
   }, [dashboardData, isLoading, error]);
 
@@ -121,11 +127,13 @@ function PatientDashboardContent() {
 
   // Loading state
   if (isLoading && !dashboardData) {
+    console.log('🔄 Showing loading state');
     return <DashboardLoader />;
   }
 
   // Error state
   if (error && !dashboardData) {
+    console.log('❌ Showing error state:', error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="bg-white rounded-lg shadow p-6 max-w-md w-full text-center">
@@ -143,6 +151,7 @@ function PatientDashboardContent() {
   }
 
   if (!dashboardData) {
+    console.log('⚠️ No dashboard data, showing loader');
     return <DashboardLoader />;
   }
 

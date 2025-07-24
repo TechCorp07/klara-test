@@ -25,7 +25,14 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
   const fetchData = useCallback(async (isRefresh = false) => {
     // Prevent duplicate requests
     if (requestRef.current && !isRefresh) {
-      return requestRef.current;
+      console.log('🔄 Request already in progress, waiting...');
+      try {
+        const dashboardData = await requestRef.current;
+        return dashboardData;
+      } catch (err) {
+        // If the cached request failed, continue to make a new one
+        requestRef.current = null;
+      }
     }
   
     try {
@@ -36,20 +43,28 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
       }
       setError(null);
   
+      console.log('🔄 Making new dashboard request...');
+      
       // Cache the request promise
-      requestRef.current = patientService.getDashboardData();
-      const dashboardData = await requestRef.current;
+      const requestPromise = patientService.getDashboardData();
+      requestRef.current = requestPromise;
+      
+      const dashboardData = await requestPromise;
       
       if (mountedRef.current) {
+        console.log('✅ Setting dashboard data:', Object.keys(dashboardData));
         setData(dashboardData);
         setLastUpdated(new Date());
       }
+      
+      return dashboardData;
     } catch (err) {
       if (mountedRef.current) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
         setError(errorMessage);
-        console.error('Dashboard fetch error:', err);
+        console.error('❌ Dashboard fetch error:', err);
       }
+      throw err;
     } finally {
       requestRef.current = null; // Clear cache after completion
       if (mountedRef.current) {
