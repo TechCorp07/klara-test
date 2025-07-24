@@ -1,4 +1,5 @@
 // src/lib/api/services/auth.service.ts
+import { TabAuthManager } from '@/lib/auth/tab-auth-utils';
 import { apiClient } from '../client';
 import { ENDPOINTS } from '../endpoints';
 import type { 
@@ -8,6 +9,7 @@ import type {
   RegisterResponse,
   User,
 } from '@/types/auth.types';
+import config from '@/lib/config';
 
 /**
  * Authentication response interfaces
@@ -90,30 +92,30 @@ class JWTAuthService {
         throw new Error('No session token available');
       }
   
-      const response = await apiClient.post<{
-        session_token: string;
-        expires_in: number;
-        token_type: string;
-      }>(
-        ENDPOINTS.AUTH.REFRESH_SESSION,
-        { session_token: sessionToken },
-        { skipAuth: true }
-      );
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/refresh-session/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Session ${sessionToken}`,
+        },
+        body: JSON.stringify({ session_token: sessionToken }),
+      });
   
-      // Store new session token
-      localStorage.setItem('session_token', response.data.session_token);
-  
-      return {
-        success: true,
-        token: response.data.session_token,
-        expires_in: response.data.expires_in,
-      };
-  
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('session_token', data.session_token);
+        
+        return {
+          success: true,
+          token: data.session_token,
+          expires_in: data.expires_in,
+        };
+      } else {
+        throw new Error('Session refresh failed');
+      }
     } catch (error) {
       console.error('Session refresh error:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Session refresh failed'
-      );
+      throw error;
     }
   }
 
@@ -152,28 +154,22 @@ class JWTAuthService {
    */
   async logout(): Promise<void> {
     try {
-      console.log('🚪 AuthService: Starting logout...');
+      const sessionToken = localStorage.getItem('session_token');
       
-      // Call the frontend logout API (this will handle both frontend and backend logout)
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-  
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ AuthService: Logout successful:', data.message);
-      } else {
-        console.warn('⚠️ AuthService: Logout API returned non-success, but continuing');
+      if (sessionToken) {
+        await fetch(`${config.apiBaseUrl}/users/auth/logout/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Session ${sessionToken}`,
+          },
+        });
       }
-  
     } catch (error) {
-      // Log error but don't throw - logout should always succeed on client side
-      console.error('❌ AuthService: Logout error:', error);
-      console.log('✅ AuthService: Logout completed despite API error');
+      console.error('Logout error:', error);
+    } finally {
+      // ✅ Clean up all tokens
+      localStorage.removeItem('session_token');
+      TabAuthManager.clearTabSession();
     }
   }
 
@@ -194,32 +190,6 @@ class JWTAuthService {
       );
     }
   }
-
-  /**
-   * Refresh JWT token
-   */
-  async refreshToken(): Promise<string> {
-    try {
-      const response = await apiClient.post<RefreshResponse>(
-        ENDPOINTS.AUTH.REFRESH_TOKEN
-      );
-
-      const data = response.data;
-
-      if (!data.success || !data.token) {
-        throw new Error('Token refresh failed');
-      }
-
-      return data.token;
-
-    } catch (error) {
-      console.error('Token refresh service error:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Token refresh failed'
-      );
-    }
-  }
-
   
   /**
    * Verify email address

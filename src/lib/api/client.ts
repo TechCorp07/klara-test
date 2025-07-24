@@ -67,23 +67,11 @@ class TabAPIClient {
           return config;
         }
 
-        // Get tab-specific JWT token (existing behavior)
-        const tabSession = TabAuthManager.getTabSession();
+        // ✅ Only check for session token
+        const sessionToken = localStorage.getItem('session_token');
         
-        if (tabSession?.jwtToken) {
-          config.headers.Authorization = `Bearer ${tabSession.jwtToken}`;
-          
-          // Add tab context headers
-          config.headers['X-Tab-ID'] = tabSession.tabId;
-          config.headers['X-Auth-Type'] = 'tab-specific';
-        }
-        else {
-          const sessionToken = localStorage.getItem('session_token');
-          if (sessionToken) {
-            config.headers.Authorization = `Session ${sessionToken}`;
-            config.headers['X-Auth-Type'] = 'session-based';
-            console.log('🔄 API Client using session token for request:', config.url);
-          }
+        if (sessionToken) {
+          config.headers.Authorization = `Session ${sessionToken}`;
         }
         
         // Add request timestamp for debugging
