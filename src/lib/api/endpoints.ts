@@ -125,12 +125,13 @@ export const ENDPOINTS = {
     TELEMEDICINE_CANCEL: (sessionId: number) => `/users/patient/telemedicine/sessions/${sessionId}/cancel/`,
 
     // Community/Chat Groups
-    CHAT_GROUPS: '/users/patient/chat-groups/',
-    JOIN_CHAT_GROUP: (id: number) => `/users/patient/chat-groups/${id}/join/`,
-    LEAVE_CHAT_GROUP: (id: number) => `/users/patient/chat-groups/${id}/leave/`,
-    CHAT_MESSAGES: (groupId: number) => `/users/patient/chat-groups/${groupId}/messages/`,
-    SEND_MESSAGE: (groupId: number) => `/users/patient/chat-groups/${groupId}/send/`,
-
+    CHAT_GROUPS: '/community/groups/',
+    JOIN_CHAT_GROUP: (id: number) => `/community/groups/${id}/join/`,
+    LEAVE_CHAT_GROUP: (id: number) => `/community/groups/${id}/leave/`,
+    CHAT_MESSAGES: (groupId: number) => `/community/posts/?group=${groupId}`,
+    SEND_MESSAGE: (groupId: number) => `/community/posts/`,
+    GROUP_MEMBERS: (groupId: number) => `/community/groups/${groupId}/members/`,
+    
     // Emergency Features
     EMERGENCY_NOTIFICATION: '/users/patient/emergency/notify/',
     EMERGENCY_CONTACTS: '/users/patient/emergency/contacts/',

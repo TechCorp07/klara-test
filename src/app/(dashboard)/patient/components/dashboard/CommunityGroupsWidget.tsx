@@ -37,8 +37,9 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
   const fetchCommunityGroups = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(ENDPOINTS.PATIENT.CHAT_GROUPS);
-      setGroups((response.data as { groups: CommunityGroup[] }).groups || []);
+      const response = await apiClient.get('/community/groups/');
+      // Community app returns results directly, not in a groups wrapper
+      setGroups((response.data as CommunityGroup[]) || []);
     } catch (err) {
       setError('Failed to load community groups');
       console.error('Error fetching community groups:', err);
@@ -49,7 +50,7 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
 
   const handleJoinGroup = async (groupId: number) => {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.JOIN_CHAT_GROUP(groupId));
+      await apiClient.post(`/community/groups/${groupId}/join/`);
       // Update the group status locally
       setGroups(prev => 
         prev.map(group => 
