@@ -14,6 +14,7 @@ import {
   RegisterResponse,
   AdminPermissions,
 } from '@/types/auth.types';
+import apiClient from '../api/client';
 
 export interface JWTAuthContextType {
   // Core authentication state
@@ -194,23 +195,25 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           
           try {
             // Validate session token with backend
-            const response = await fetch('/api/users/auth/me/', {
+            const response = await apiClient.get('/users/auth/me/', {
               headers: {
                 'Authorization': `Session ${sessionToken}`,
-                'Content-Type': 'application/json',
               },
+              skipAuth: true,
             });
-            
-            if (response.ok) {
-              const userData = await response.json();
+
+            if (response.status === 200) {
+              const userData = response.data;
               console.log('✅ Session token authentication successful');
               
+              // ADD DEBUG TO SEE RESPONSE STRUCTURE
+              console.log('🔍 INIT AUTH - FULL USER DATA:', userData);
+              
               // Set up authentication state using session token
-              setUser(userData.user);
+              setUser((userData as { user: User }).user);
               setIsTabAuthenticated(true);
               setTokenNeedsRefresh(false);
               setTimeToExpiration(null); // Session tokens don't have JWT expiration
-              
               // Set up session refresh
               setupSessionRefresh();
               
@@ -269,7 +272,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
     // For JWT tokens, set up refresh logic
     if (jwtPayload) {
-      const checkTokenExpiration = () => {
+      const checkTokenExpiration = async () => {
         const now = Math.floor(Date.now() / 1000);
         const timeToExp = jwtPayload.exp - now;
         
@@ -295,21 +298,50 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
           if (sessionToken) {
             console.log('✅ Switching from JWT to session token authentication');
-
+          
             // TEST THE SESSION TOKEN IMMEDIATELY
             testSessionTokenAuth(sessionToken);
-
-            // Clear JWT state but keep session authenticated
-            setJwtPayload(null);
-            setTokenNeedsRefresh(false);
-            setTimeToExpiration(null);
-            
-            TabAuthManager.clearTabSession();
-            console.log('🧹 Cleared expired JWT from TabAuthManager');
-            
-            // Set up session refresh
-            setupSessionRefresh();
-            return;
+          
+            // IMPORTANT: Get user data from session token before clearing JWT
+            try {
+              console.log('🔄 Getting user data from session token...');
+              const response = await fetch('http://localhost:8000/api/users/auth/me/', {
+                headers: {
+                  'Authorization': `Session ${sessionToken}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              if (response.ok) {
+                const userData = await response.json();
+                console.log('✅ Got user data from session token:', userData.user?.email);
+                
+                // Update user state with session token data
+                setUser(userData.user);
+                console.log('✅ Updated user state from session token');
+                
+                // Clear JWT state but keep session authenticated
+                setJwtPayload(null);
+                setTokenNeedsRefresh(false);
+                setTimeToExpiration(null);
+                
+                TabAuthManager.clearTabSession();
+                console.log('🧹 Cleared expired JWT from TabAuthManager');
+                
+                // Set up session refresh
+                setupSessionRefresh();
+                return;
+              } else {
+                console.log('❌ Failed to get user data from session token');
+                // Fall back to re-login
+                setTokenNeedsRefresh(true);
+                return;
+              }
+            } catch (error) {
+              console.error('❌ Error getting user data from session token:', error);
+              setTokenNeedsRefresh(true);
+              return;
+            }
           } else {
             console.log('❌ No session token available, will need to re-login');
             setTokenNeedsRefresh(true);
@@ -359,7 +391,16 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         console.log('✅ Session token auth SUCCESSFUL');
-        console.log('✅ User email from session:', userData.user?.email);
+        console.log('✅ Got user data from session token:', userData.user?.email);
+
+        // ADD THIS DEBUG TO SEE THE ACTUAL STRUCTURE
+        console.log('🔍 FULL USER DATA STRUCTURE:', userData);
+        console.log('🔍 USER OBJECT:', userData.user);
+        console.log('🔍 USER KEYS:', Object.keys(userData.user || {}));
+        
+        // Update user state with session token data
+        setUser(userData.user);
+        console.log('✅ Updated user state from session token');
       } else {
         const errorText = await response.text();
         console.log('❌ Session token auth FAILED');
@@ -828,6 +869,18 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    console.log('🔍 USER STATE CHANGE DEBUG:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      userRole: user?.role,
+      userPermissions: user?.permissions ? Object.keys(user.permissions) : 'none',
+      isTabAuthenticated,
+      hasJwtPayload: !!jwtPayload,
+      hasSessionToken: !!localStorage.getItem('session_token')
+    });
+  }, [user, isTabAuthenticated, jwtPayload]);
 
   return (
     <JWTAuthContext.Provider value={contextValue}>
