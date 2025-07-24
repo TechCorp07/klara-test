@@ -165,79 +165,79 @@ function PatientDashboardContent() {
   };
 
   const renderWidgetsByView = () => {
-    // Add safety checks for undefined data
+    // Add comprehensive safety checks for all data
+    if (!dashboardData) {
+      return (
+        <div className="text-center py-8">
+          <div className="text-gray-500">Loading dashboard...</div>
+        </div>
+      );
+    }
+  
+    // Safe data extraction with fallbacks
     const safeAppointments = dashboardData?.appointments || [];
     const safeMedications = dashboardData?.medications || [];
     const safeVitals = dashboardData?.vitals || [];
     const safeAlerts = dashboardData?.alerts || [];
     const safeQuickActions = dashboardData?.quick_actions || [];
-    const safeRareConditions = dashboardData?.patient_info?.rare_conditions || [];
     const safeHealthSummary = dashboardData?.health_summary || {};
     const safeResearchData = dashboardData?.research_participation || {};
     const safeWearableData = dashboardData?.wearable_data || {};
-
+    const safeCareTeam = dashboardData?.care_team || [];
+    const safePatientInfo = dashboardData?.patient_info || {};
+    const safeRareConditions = safePatientInfo?.rare_conditions || [];
+  
     switch (selectedView) {
       case 'health':
         return (
           <>
-          <HealthSummaryWidget healthSummary={safeHealthSummary} />
-          <MedicationAdherenceWidget 
-            medications={safeMedications}
-            onLogMedication={handleLogMedication}
-          />
-          <VitalsWidget 
-            vitals={safeVitals}
-            onRecordVitals={() => router.push('/patient/vitals/record')}
-          />
-          {dashboardData?.patient_info?.has_rare_condition && (
-            <RareDiseaseMonitoringWidget 
-              rareConditions={safeRareConditions}
-              vitals={safeVitals}
+            <HealthSummaryWidget healthSummary={safeHealthSummary} />
+            <MedicationAdherenceWidget 
+              medications={safeMedications}
+              onLogMedication={handleLogMedication}
             />
-          )}
-          <FamilyHistoryWidget 
-            onAddMember={() => router.push('/patient/family-history/add')}
-            onEditMember={(memberId) => router.push(`/patient/family-history/${memberId}/edit`)}
-            onViewGenetics={() => router.push('/patient/genetics/analysis')}
-          />
-          <FHIRDataWidget 
-            onRequestImport={() => router.push('/patient/fhir/import')}
-            onExportData={() => console.log('FHIR export initiated')}
-          />
-        </>
-      );
+            <VitalsWidget 
+              vitals={safeVitals}
+              onRecordVitals={() => router.push('/patient/vitals/record')}
+            />
+            {safePatientInfo?.has_rare_condition && (
+              <RareDiseaseMonitoringWidget 
+                rareConditions={safeRareConditions}
+                vitals={safeVitals}
+              />
+            )}
+            <FamilyHistoryWidget 
+              onAddMember={() => router.push('/patient/family-history/add')}
+              onEditMember={(memberId) => router.push(`/patient/family-history/${memberId}/edit`)}
+              onViewGenetics={() => router.push('/patient/genetics/analysis')}
+            />
+            <FHIRDataWidget 
+              onRequestImport={() => router.push('/patient/fhir/import')}
+              onExportData={() => console.log('FHIR export initiated')}
+            />
+          </>
+        );
       
       case 'care':
         return (
-            <>
+          <>
             <AppointmentsWidget
               appointments={safeAppointments}
               onScheduleAppointment={() => router.push('/patient/appointments/schedule')}
             />
+            <CareTeamWidget 
+              careTeam={safeCareTeam}
+              onContactProvider={(providerId) => router.push(`/patient/messages/providers/${providerId}`)}
+            />
             <TelemedicineWidget 
               onRequestSession={() => router.push('/patient/telemedicine/request')}
-              onJoinSession={(sessionId) => console.log('Joining session:', sessionId)}
-            />
-            <CareTeamWidget 
-              careTeam={dashboardData.care_team}
-              onContactProvider={(providerId) => {
-                addNotification({
-                  type: 'info',
-                  title: 'Contacting Provider',
-                  message: 'Connecting you with your care team member'
-                });
-              }}
-            />
-            <HealthAlertsWidget 
-              alerts={dashboardData.alerts}
-              onAcknowledgeAlert={handleAcknowledgeAlert}
             />
             <EmergencyFeaturesWidget 
               emergencyInfo={{
-                medical_id: dashboardData.patient_info.email,
+                medical_id: safePatientInfo?.email || 'Not provided',
                 allergies: ['Penicillin', 'Shellfish'], // This would come from patient profile
-                current_medications: dashboardData.medications.active_medications.map(m => `${m.name} ${m.dosage}`),
-                medical_conditions: dashboardData.patient_info.rare_conditions.map(c => c.name),
+                current_medications: safeMedications?.active_medications?.map((m: any) => `${m.name} ${m.dosage}`) || [],
+                medical_conditions: safeRareConditions?.map((c: any) => c.name) || [],
                 emergency_contacts: [
                   { name: 'Emergency Contact', relationship: 'Spouse', phone: '555-0123', is_primary: true }
                 ],
@@ -252,14 +252,14 @@ function PatientDashboardContent() {
       case 'research':
         return (
           <>
-          <ResearchParticipationWidget 
-            researchData={safeResearchData}
-            onJoinStudy={(studyId) => router.push(`/patient/research/studies/${studyId}`)}
-          />
-          <SmartWatchDataWidget 
-            wearableData={safeWearableData}
-            onConnectDevice={() => router.push('/patient/devices/connect')}
-          />
+            <ResearchParticipationWidget 
+              researchData={safeResearchData}
+              onJoinStudy={(studyId) => router.push(`/patient/research/studies/${studyId}`)}
+            />
+            <SmartWatchDataWidget 
+              wearableData={safeWearableData}
+              onConnectDevice={() => router.push('/patient/devices/connect')}
+            />
             <CommunityGroupsWidget 
               onJoinGroup={(groupId) => console.log('Joining group:', groupId)}
               onViewGroup={(groupId) => router.push(`/patient/community/groups/${groupId}`)}
@@ -273,7 +273,7 @@ function PatientDashboardContent() {
       
       default: // overview
         return (
-            <>
+          <>
             <HealthSummaryWidget healthSummary={safeHealthSummary} />
             <MedicationAdherenceWidget 
               medications={safeMedications}
@@ -292,10 +292,10 @@ function PatientDashboardContent() {
               onJoinGroup={(groupId) => console.log('Joining group:', groupId)}
               onViewGroup={(groupId) => router.push(`/patient/community/groups/${groupId}`)}
             />
-            {dashboardData.patient_info.has_rare_condition && (
+            {safePatientInfo?.has_rare_condition && (
               <RareDiseaseMonitoringWidget 
-                rareConditions={dashboardData.patient_info.rare_conditions}
-                vitals={dashboardData.vitals}
+                rareConditions={safeRareConditions}
+                vitals={safeVitals}
               />
             )}
           </>
