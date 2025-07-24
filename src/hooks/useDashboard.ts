@@ -23,64 +23,64 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
   const mountedRef = useRef(true);
 
   const fetchData = useCallback(async (isRefresh = false) => {
-    // Prevent duplicate requests
+    console.log('🎯 FETCH START:', { isRefresh, hasCurrentRequest: !!requestRef.current });
+    
     if (requestRef.current && !isRefresh) {
       console.log('🔄 Request already in progress, waiting...');
       try {
         const dashboardData = await requestRef.current;
+        console.log('🎯 CACHE PATH: Got data, updating state...', !!dashboardData);
         
-        // ✅ FIX: Update state even when using cached request
-        if (mountedRef.current) {
-          console.log('✅ Setting dashboard data from cache:', Object.keys(dashboardData));
-          setData(dashboardData);
-          setLastUpdated(new Date());
-          setIsLoading(false); // ✅ This was missing!
-          setIsRefreshing(false);
-        }
+        // Remove mountedRef.current check - just update state
+        console.log('✅ Setting dashboard data from cache:', Object.keys(dashboardData));
+        setData(dashboardData);
+        setLastUpdated(new Date());
+        setIsLoading(false);
+        setIsRefreshing(false);
         
         return dashboardData;
       } catch (err) {
-        // If the cached request failed, continue to make a new one
+        console.log('❌ Cache request failed, making new one');
         requestRef.current = null;
       }
     }
-  
+
     try {
+      console.log('🎯 NEW REQUEST PATH: Starting...');
+      
       if (isRefresh) {
         setIsRefreshing(true);
       } else {
         setIsLoading(true);
       }
       setError(null);
-  
+
       console.log('🔄 Making new dashboard request...');
       
-      // Cache the request promise
       const requestPromise = patientService.getDashboardData();
       requestRef.current = requestPromise;
       
       const dashboardData = await requestPromise;
+      console.log('🎯 API SUCCESS: Got data', !!dashboardData);
       
-      if (mountedRef.current) {
-        console.log('✅ Setting dashboard data:', Object.keys(dashboardData));
-        setData(dashboardData);
-        setLastUpdated(new Date());
-      }
+      // Remove mountedRef.current check - just update state
+      console.log('✅ Setting dashboard data:', Object.keys(dashboardData));
+      setData(dashboardData);
+      setLastUpdated(new Date());
+      console.log('🎯 ABOUT TO SET isLoading to false');
       
       return dashboardData;
     } catch (err) {
-      if (mountedRef.current) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
-        setError(errorMessage);
-        console.error('❌ Dashboard fetch error:', err);
-      }
+      console.log('❌ API ERROR:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
+      setError(errorMessage);
+      console.error('❌ Dashboard fetch error:', err);
       throw err;
     } finally {
-      requestRef.current = null; // Clear cache after completion
-      if (mountedRef.current) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
+      console.log('🎯 FINALLY BLOCK: Setting isLoading to false');
+      requestRef.current = null;
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -124,6 +124,7 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
 
   // Cleanup
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
