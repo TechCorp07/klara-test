@@ -1,8 +1,7 @@
 // src/app/(dashboard)/patient/components/dashboard/FamilyHistoryWidget.tsx
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit, AlertTriangle, Heart, Dna } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
-import { ENDPOINTS } from '@/lib/api/endpoints';
+import { patientService } from '@/lib/api/services/patient.service';
 
 interface FamilyMember {
   id: number;
@@ -32,27 +31,64 @@ export function FamilyHistoryWidget({ onAddMember, onEditMember, onViewGenetics 
   const [error, setError] = useState<string | null>(null);
   const [geneticRiskFactors, setGeneticRiskFactors] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchFamilyHistory();
-  }, []);
 
   const fetchFamilyHistory = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(ENDPOINTS.PATIENT.FAMILY_HISTORY);
-      const responseData = response.data as { 
-        family_members: FamilyMember[]; 
-        genetic_risk_factors: string[] 
-      };
-      setFamilyMembers(responseData.family_members || []);
-      setGeneticRiskFactors(responseData.genetic_risk_factors || []);
+      setError(null);
+      
+      // Use the correct service method instead of direct API call
+      const data = await patientService.getFamilyMedicalHistory();
+      
+      // Transform the data to match the widget's expected format
+      const transformedMembers: FamilyMember[] = [
+        ...data.immediate_family.map((member, index) => ({
+          id: index + 1, // Generate ID since backend doesn't provide it
+          relationship: member.relationship,
+          age: undefined, // Backend doesn't provide this field
+          is_deceased: false, // Backend doesn't provide this field
+          medical_conditions: member.conditions.map(condition => ({
+            condition,
+            age_of_onset: member.age_of_onset,
+            severity: 'mild' as const, // Default since backend doesn't provide
+            genetic_factor: false // Default since backend doesn't provide
+          })),
+          rare_disease_history: false, // Default since backend doesn't provide
+          genetic_mutations: [] // Default since backend doesn't provide
+        })),
+        ...data.extended_family.map((member, index) => ({
+          id: index + 100, // Generate unique IDs for extended family
+          relationship: member.relationship,
+          age: undefined,
+          is_deceased: false,
+          medical_conditions: member.conditions.map(condition => ({
+            condition,
+            age_of_onset: member.age_of_onset,
+            severity: 'mild' as const,
+            genetic_factor: false
+          })),
+          rare_disease_history: false,
+          genetic_mutations: []
+        }))
+      ];
+      
+      setFamilyMembers(transformedMembers);
+      setGeneticRiskFactors([]); // Backend doesn't provide this yet
+      
     } catch (err) {
       setError('Failed to load family history');
       console.error('Error fetching family history:', err);
+      // Set empty arrays to prevent crashes
+      setFamilyMembers([]);
+      setGeneticRiskFactors([]);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchFamilyHistory();
+  }, []);
 
   const getRelationshipIcon = (relationship: string) => {
     const rel = relationship.toLowerCase();
