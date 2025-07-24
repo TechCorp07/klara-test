@@ -71,7 +71,6 @@ function PatientDashboardContent() {
     }
   }, [userRole, router]);
 
-  // Add this after the useDashboard hook call (around line 70)
   useEffect(() => {
     console.log('🔍 Dashboard Debug Info:', {
       isLoading,
@@ -79,12 +78,10 @@ function PatientDashboardContent() {
       error,
       hasData: !!dashboardData,
       dataKeys: dashboardData ? Object.keys(dashboardData) : [],
-      sampleData: dashboardData ? {
-        patient_info: dashboardData.patient_info,
-        has_health_summary: !!dashboardData.health_summary,
-        has_appointments: !!dashboardData.appointments,
-        has_medications: !!dashboardData.medications
-      } : null
+      patientInfo: dashboardData?.patient_info?.name,
+      healthSummary: dashboardData?.health_summary?.overall_status,
+      medicationsCount: dashboardData?.medications?.active_medications?.length || 0,
+      appointmentsCount: (dashboardData?.appointments?.upcoming?.length || 0) + (dashboardData?.appointments?.recent?.length || 0)
     });
   }, [dashboardData, isLoading, error]);
 

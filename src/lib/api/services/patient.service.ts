@@ -272,15 +272,27 @@ class EnhancedPatientService {
   /**
    * Get comprehensive patient dashboard data
    */
-  async getDashboardData(): Promise<PatientDashboardData> {
-    try {
-      const response = await apiClient.get<PatientDashboardData>(ENDPOINTS.PATIENT.DASHBOARD);
-      return extractData(response);
-    } catch (error) {
-      console.error('Failed to fetch patient dashboard data:', error);
-      throw new Error('Unable to load dashboard data. Please try refreshing the page.');
+    async getDashboardData(): Promise<PatientDashboardData> {
+      try {
+        console.log('🔄 Fetching dashboard data...');
+        const response = await apiClient.get<PatientDashboardData>(ENDPOINTS.PATIENT.DASHBOARD);
+        const data = extractData(response);
+        
+        // Add debug logging
+        console.log('✅ Dashboard data received:', {
+          hasPatientInfo: !!data.patient_info,
+          hasHealthSummary: !!data.health_summary,
+          hasMedications: !!data.medications,
+          hasVitals: !!data.vitals,
+          dataKeys: Object.keys(data)
+        });
+        
+        return data;
+      } catch (error) {
+        console.error('❌ Failed to fetch patient dashboard data:', error);
+        throw new Error('Unable to load dashboard data. Please try refreshing the page.');
+      }
     }
-  }
 
   /**
    * Log medication as taken or missed

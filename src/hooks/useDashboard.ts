@@ -19,9 +19,15 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const requestRef = useRef<Promise<PatientDashboardData> | null>(null);
   const mountedRef = useRef(true);
 
   const fetchData = useCallback(async (isRefresh = false) => {
+    // Prevent duplicate requests
+    if (requestRef.current && !isRefresh) {
+      return requestRef.current;
+    }
+  
     try {
       if (isRefresh) {
         setIsRefreshing(true);
@@ -29,8 +35,10 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
         setIsLoading(true);
       }
       setError(null);
-
-      const dashboardData = await patientService.getDashboardData();
+  
+      // Cache the request promise
+      requestRef.current = patientService.getDashboardData();
+      const dashboardData = await requestRef.current;
       
       if (mountedRef.current) {
         setData(dashboardData);
@@ -43,6 +51,7 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
         console.error('Dashboard fetch error:', err);
       }
     } finally {
+      requestRef.current = null; // Clear cache after completion
       if (mountedRef.current) {
         setIsLoading(false);
         setIsRefreshing(false);
