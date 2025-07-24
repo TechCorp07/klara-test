@@ -28,6 +28,16 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
       console.log('🔄 Request already in progress, waiting...');
       try {
         const dashboardData = await requestRef.current;
+        
+        // ✅ FIX: Update state even when using cached request
+        if (mountedRef.current) {
+          console.log('✅ Setting dashboard data from cache:', Object.keys(dashboardData));
+          setData(dashboardData);
+          setLastUpdated(new Date());
+          setIsLoading(false); // ✅ This was missing!
+          setIsRefreshing(false);
+        }
+        
         return dashboardData;
       } catch (err) {
         // If the cached request failed, continue to make a new one

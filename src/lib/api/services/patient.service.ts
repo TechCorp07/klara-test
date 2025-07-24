@@ -278,13 +278,18 @@ class EnhancedPatientService {
         const response = await apiClient.get<PatientDashboardData>(ENDPOINTS.PATIENT.DASHBOARD);
         const data = extractData(response);
         
-        // Add debug logging
+        // Validate required fields
+        if (!data.patient_info || !data.medications || !data.appointments) {
+          throw new Error('Invalid dashboard data structure received');
+        }
+        
         console.log('✅ Dashboard data received:', {
           hasPatientInfo: !!data.patient_info,
           hasHealthSummary: !!data.health_summary,
           hasMedications: !!data.medications,
           hasVitals: !!data.vitals,
-          dataKeys: Object.keys(data)
+          dataKeys: Object.keys(data),
+          patientName: data.patient_info?.name
         });
         
         return data;

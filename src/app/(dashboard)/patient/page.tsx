@@ -48,7 +48,7 @@ function PatientDashboardContent() {
     lastUpdated, 
     refreshData, 
     isRefreshing 
-  } = useDashboard(dashboardInitialized.current ? 5 * 60 * 1000 : 0); // Auto-refresh every 5 minutes
+  } = useDashboard();
 
   useEffect(() => {
     dashboardInitialized.current = true;
@@ -77,17 +77,14 @@ function PatientDashboardContent() {
   }, [userRole, router]);
 
   useEffect(() => {
-    console.log('🔍 Dashboard Debug Info:', {
+    console.log('🔍 Dashboard State:', {
       isLoading,
       hasError: !!error,
       error,
       hasData: !!dashboardData,
       dataKeys: dashboardData ? Object.keys(dashboardData) : [],
       patientInfo: dashboardData?.patient_info?.name,
-      healthSummary: dashboardData?.health_summary?.overall_status,
-      medicationsCount: dashboardData?.medications?.active_medications?.length || 0,
-      appointmentsCount: (dashboardData?.appointments?.upcoming?.length || 0) + (dashboardData?.appointments?.recent?.length || 0)
-      //shouldShowDashboard: !isLoading && !error && !!dashboardData
+      medicationsCount: dashboardData?.medications?.active_medications?.length || 0
     });
   }, [dashboardData, isLoading, error]);
 
@@ -126,13 +123,13 @@ function PatientDashboardContent() {
   }, [actionError, addNotification, clearMessages]);
 
   // Loading state
-  if (isLoading && !dashboardData) {
+  if (isLoading) {
     console.log('🔄 Showing loading state');
     return <DashboardLoader />;
   }
 
   // Error state
-  if (error && !dashboardData) {
+  if (error) {
     console.log('❌ Showing error state:', error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -154,6 +151,8 @@ function PatientDashboardContent() {
     console.log('⚠️ No dashboard data, showing loader');
     return <DashboardLoader />;
   }
+  
+  console.log('✅ Rendering dashboard with data');
 
   const handleLogMedication = async (medicationId: number) => {
     await logMedication(medicationId, true);
