@@ -263,44 +263,47 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
     // For JWT tokens, set up refresh logic
     if (jwtPayload) {
-    const checkSessionHealth = useCallback(async () => {
-      const sessionToken = localStorage.getItem('session_token');
+      const checkSessionHealth = useCallback(async () => {
+        const sessionToken = localStorage.getItem('session_token');
+        
+        if (!sessionToken) {
+          console.log('❌ No session token, redirecting to login');
+          logout();
+          return;
+        }
       
-      if (!sessionToken) {
-        console.log('❌ No session token, redirecting to login');
-        logout();
-        return;
-      }
-
-      try {
-        // ✅ Call the correct backend endpoint
-        const backendUrl = `${config.apiBaseUrl}/users/auth/me/`;
-        const response = await fetch(backendUrl, {
-          headers: {
-            'Authorization': `Session ${sessionToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('✅ Session token valid, user data updated');
-          
-          // Update user state with fresh data
-          setUser(userData.user || userData);
-          setIsTabAuthenticated(true);
-        } else if (response.status === 401) {
-          console.log('🔄 Session expired, attempting refresh...');
-          await checkSessionHealth();
-        } else {
-          console.error('❌ Session check failed:', response.status);
+        try {
+          // ✅ Call the correct backend endpoint
+          const response = await fetch(`${config.apiBaseUrl}/users/auth/me/`, {
+            headers: {
+              'Authorization': `Session ${sessionToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+      
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('✅ Session token valid, user data updated');
+            
+            // Update user state with fresh data
+            setUser(userData.user || userData);
+            setIsTabAuthenticated(true);
+          } else if (response.status === 401) {
+            console.log('🔄 Session expired, attempting refresh...');
+            const refreshResult = await refreshSessionToken();
+            if (!refreshResult) {
+              console.log('❌ Session refresh failed, logging out');
+              logout();
+            }
+          } else {
+            console.error('❌ Session check failed:', response.status);
+            logout();
+          }
+        } catch (error) {
+          console.error('❌ Session check error:', error);
           logout();
         }
-      } catch (error) {
-        console.error('❌ Session check error:', error);
-        logout();
-      }
-    }, [logout]);
+      }, [logout]);
 
       checkSessionHealth();
       const interval = setInterval(checkSessionHealth, 30000);
@@ -411,7 +414,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         setTokenNeedsRefresh(false);
         
         // ✅ Start session monitoring (not JWT monitoring)
-        setupSessionRefresh();
+        setupSessionRefresh(); // ✅ Call with parentheses
         
         return response;
       } else {
@@ -423,8 +426,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
+  }, [setupSessionRefresh]);
 
   /**
    * Register method (unchanged)
