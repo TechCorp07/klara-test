@@ -30,6 +30,17 @@ interface ResearchParticipationProps {
 }
 
 export function ResearchParticipationWidget({ researchData, onJoinStudy }: ResearchParticipationProps) {
+  // Add safety checks at the top of the component
+  const safeResearchData = {
+    enrolled_studies: researchData?.enrolled_studies || [],
+    available_studies: researchData?.available_studies || [],
+    data_contributions: researchData?.data_contributions || {
+      total_surveys_completed: 0,
+      wearable_data_shared_days: 0,
+      clinical_visits_completed: 0
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -65,7 +76,8 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
     return 'bg-red-100 text-red-800';
   };
 
-  const totalCompensation = researchData.enrolled_studies.reduce(
+  // Fix the line that was causing the error - use safe data
+  const totalCompensation = safeResearchData.enrolled_studies.reduce(
     (sum, study) => sum + study.compensation_earned, 0
   );
 
@@ -77,11 +89,11 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
       </div>
 
       {/* Active Studies */}
-      {researchData.enrolled_studies.length > 0 && (
+      {safeResearchData.enrolled_studies.length > 0 && (
         <div className="mb-6">
           <h4 className="font-medium text-gray-900 mb-3">Your Active Studies</h4>
           <div className="space-y-3">
-            {researchData.enrolled_studies.map((study) => (
+            {safeResearchData.enrolled_studies.map((study) => (
               <div key={study.id} className="border border-gray-200 rounded-lg p-3">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
@@ -127,7 +139,7 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
               <span className="text-sm font-medium text-gray-900">Surveys</span>
             </div>
             <div className="text-lg font-bold text-gray-900">
-              {researchData.data_contributions.total_surveys_completed}
+              {safeResearchData.data_contributions.total_surveys_completed}
             </div>
             <div className="text-xs text-gray-600">completed</div>
           </div>
@@ -138,7 +150,7 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
               <span className="text-sm font-medium text-gray-900">Data Days</span>
             </div>
             <div className="text-lg font-bold text-gray-900">
-              {researchData.data_contributions.wearable_data_shared_days}
+              {safeResearchData.data_contributions.wearable_data_shared_days}
             </div>
             <div className="text-xs text-gray-600">shared</div>
           </div>
@@ -149,7 +161,7 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
               <span className="text-sm font-medium text-gray-900">Visits</span>
             </div>
             <div className="text-lg font-bold text-gray-900">
-              {researchData.data_contributions.clinical_visits_completed}
+              {safeResearchData.data_contributions.clinical_visits_completed}
             </div>
             <div className="text-xs text-gray-600">completed</div>
           </div>
@@ -168,11 +180,11 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
       </div>
 
       {/* Available Studies */}
-      {researchData.available_studies.length > 0 && (
+      {safeResearchData.available_studies.length > 0 && (
         <div>
           <h4 className="font-medium text-gray-900 mb-3">Recommended Studies</h4>
           <div className="space-y-3">
-            {researchData.available_studies.slice(0, 2).map((study) => (
+            {safeResearchData.available_studies.slice(0, 2).map((study) => (
               <div key={study.id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
@@ -208,7 +220,7 @@ export function ResearchParticipationWidget({ researchData, onJoinStudy }: Resea
       )}
 
       {/* No Active Studies */}
-      {researchData.enrolled_studies.length === 0 && researchData.available_studies.length === 0 && (
+      {safeResearchData.enrolled_studies.length === 0 && safeResearchData.available_studies.length === 0 && (
         <div className="text-center py-6 text-gray-500">
           <FlaskConical className="w-8 h-8 mx-auto mb-2 text-gray-400" />
           <p className="text-sm mb-2">No research studies available</p>

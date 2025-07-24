@@ -23,6 +23,18 @@ interface SmartWatchDataProps {
 }
 
 export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWatchDataProps) {
+  // Add safety checks at the top of the component
+  const safeWearableData = {
+    connected_devices: wearableData?.connected_devices || [],
+    today_summary: wearableData?.today_summary || {
+      steps: 0,
+      heart_rate_avg: 0,
+      sleep_hours: 0,
+      active_minutes: 0
+    },
+    medication_reminders_sent: wearableData?.medication_reminders_sent || 0
+  };
+
   const getDeviceIcon = (type: string) => {
     switch (type) {
       case 'apple_watch':
@@ -54,7 +66,8 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
     return `${Math.floor(diffHours / 24)}d ago`;
   };
 
-  const hasConnectedDevices = wearableData.connected_devices.length > 0;
+  // Fix the line that was causing the error - use safe data
+  const hasConnectedDevices = safeWearableData.connected_devices.length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -77,7 +90,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
         <div className="space-y-4">
           {/* Connected Devices */}
           <div className="space-y-2">
-            {wearableData.connected_devices.map((device) => (
+            {safeWearableData.connected_devices.map((device) => (
               <div key={device.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">{getDeviceIcon(device.type)}</span>
@@ -119,7 +132,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <Activity className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.today_summary.steps.toLocaleString()}
+                  {safeWearableData.today_summary.steps.toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-600">steps taken</div>
               </div>
@@ -131,7 +144,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <Activity className="w-4 h-4 text-red-600" />
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.today_summary.heart_rate_avg}
+                  {safeWearableData.today_summary.heart_rate_avg}
                 </div>
                 <div className="text-xs text-gray-600">bpm</div>
               </div>
@@ -143,7 +156,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <TrendingUp className="w-4 h-4 text-green-600" />
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.today_summary.active_minutes}
+                  {safeWearableData.today_summary.active_minutes}
                 </div>
                 <div className="text-xs text-gray-600">minutes</div>
               </div>
@@ -155,7 +168,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <span className="text-purple-600">😴</span>
                 </div>
                 <div className="text-xl font-bold text-gray-900">
-                  {wearableData.today_summary.sleep_hours}h
+                  {safeWearableData.today_summary.sleep_hours}h
                 </div>
                 <div className="text-xs text-gray-600">last night</div>
               </div>
@@ -172,7 +185,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
                   <div className="text-xs text-gray-600">Sent today via smartwatch</div>
                 </div>
                 <div className="text-2xl font-bold text-blue-600">
-                  {wearableData.medication_reminders_sent}
+                  {safeWearableData.medication_reminders_sent}
                 </div>
               </div>
             </div>
