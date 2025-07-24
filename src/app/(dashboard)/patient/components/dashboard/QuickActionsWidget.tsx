@@ -3,7 +3,7 @@ import React from 'react';
 import { Zap, Calendar, Pill, Heart, Phone, FileText, Users, FlaskConical, Shield } from 'lucide-react';
 
 interface QuickActionsProps {
-  quickActions: Array<{
+  quickActions?: Array<{
     id: string;
     title: string;
     description: string;
@@ -72,71 +72,71 @@ export function QuickActionsWidget({ quickActions }: QuickActionsProps) {
   };
 
   // Sort actions by priority (high > medium > low)
-  const sortedActions = [...quickActions].sort((a, b) => {
+  const sortedActions = quickActions ? [...quickActions].sort((a, b) => {
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
-  });
+  }) : [];
 
-  // Default actions if none provided
-  const defaultActions = [
-    {
-      id: 'schedule-appointment',
-      title: 'Schedule Appointment',
-      description: 'Book your next visit',
-      icon: 'calendar',
-      href: '/patient/appointments/schedule',
-      priority: 'high' as const,
-      requires_verification: false
-    },
-    {
-      id: 'log-medication',
-      title: 'Log Medication',
-      description: 'Record taken medications',
-      icon: 'pills',
-      href: '/patient/medications/log',
-      priority: 'high' as const,
-      requires_verification: false
-    },
-    {
-      id: 'record-vitals',
-      title: 'Record Vitals',
-      description: 'Add your vital signs',
-      icon: 'heart',
-      href: '/patient/vitals/record',
-      priority: 'medium' as const,
-      requires_verification: false
-    },
-    {
-      id: 'emergency-contact',
-      title: 'Emergency Contact',
-      description: 'Reach your care team',
-      icon: 'phone',
-      href: '/patient/emergency/contact',
-      priority: 'high' as const,
-      requires_verification: true
-    },
-    {
-      id: 'view-records',
-      title: 'View Records',
-      description: 'Access medical history',
-      icon: 'filetext',
-      href: '/patient/records',
-      priority: 'low' as const,
-      requires_verification: true
-    },
-    {
-      id: 'research-studies',
-      title: 'Research Studies',
-      description: 'Explore available studies',
-      icon: 'flaskconical',
-      href: '/patient/research',
-      priority: 'medium' as const,
-      requires_verification: false
-    }
-  ];
+    // Default actions if none provided
+    const defaultActions = [
+      {
+        id: 'schedule-appointment',
+        title: 'Schedule Appointment',
+        description: 'Book your next visit',
+        icon: 'calendar',
+        href: '/patient/appointments/schedule',
+        priority: 'high' as const,
+        requires_verification: false
+      },
+      {
+        id: 'log-medication', 
+        title: 'Log Medication',
+        description: 'Record taken medications',
+        icon: 'pills',
+        href: '/patient/medications/log',
+        priority: 'high' as const,
+        requires_verification: false
+      },
+      {
+        id: 'record-vitals',
+        title: 'Record Vitals',
+        description: 'Add your vital signs',
+        icon: 'heart', 
+        href: '/patient/vitals/record',
+        priority: 'medium' as const,
+        requires_verification: false
+      },
+      {
+        id: 'emergency-contact',
+        title: 'Emergency Contact',
+        description: 'Reach your care team',
+        icon: 'phone',
+        href: '/patient/emergency/contact', 
+        priority: 'high' as const,
+        requires_verification: true
+      },
+      {
+        id: 'view-records',
+        title: 'View Records',
+        description: 'Access medical history',
+        icon: 'filetext',
+        href: '/patient/records',
+        priority: 'low' as const,
+        requires_verification: true
+      },
+      {
+        id: 'research-studies',
+        title: 'Research Studies', 
+        description: 'Explore available studies',
+        icon: 'flaskconical',
+        href: '/patient/research',
+        priority: 'medium' as const,
+        requires_verification: false
+      }
+    ];
 
-  const actionsToShow = sortedActions.length > 0 ? sortedActions : defaultActions;
-
+    const actionsToShow = sortedActions.length > 0 ? sortedActions : defaultActions;
+    
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center mb-4">
