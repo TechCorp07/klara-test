@@ -1,7 +1,7 @@
 // src/components/dashboard/PermissionAwareDashboard.tsx
 'use client';
 
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 
@@ -67,11 +67,7 @@ export function PermissionAwareDashboard({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -139,7 +135,11 @@ export function PermissionAwareDashboard({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [hasPermission]);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
 
   // Define default widgets
   const defaultWidgets: DashboardWidget[] = [

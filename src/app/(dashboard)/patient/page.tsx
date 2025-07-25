@@ -28,7 +28,7 @@ import { QuickActionsWidget } from './components/dashboard/QuickActionsWidget';
 import { RefreshCw, Menu, X, Bell, User } from 'lucide-react';
 
 function PatientDashboardContent() {
-  const { user, getUserRole } = useAuth();
+  const { getUserRole } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addNotification } = useNotifications();

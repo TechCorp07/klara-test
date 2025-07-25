@@ -197,7 +197,7 @@ export function WidgetError({
 
 // Network status indicator
 export function NetworkStatus() {
-  const [_isOnline, setIsOnline] = React.useState(navigator.onLine);
+  const [, setIsOnline] = React.useState(navigator.onLine);
   const [showOffline, setShowOffline] = React.useState(false);
 
   React.useEffect(() => {

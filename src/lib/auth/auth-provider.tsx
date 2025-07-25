@@ -246,6 +246,13 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     };
   }, [checkSessionHealth, refreshSessionToken]);
 
+  useEffect(() => {
+    if (isTabAuthenticated) {
+      const cleanup = setupSessionRefresh();
+      return cleanup;
+    }
+  }, [isTabAuthenticated, setupSessionRefresh]);
+
   // ✅ 6. SIXTH: Define login (depends on setupSessionRefresh)
   const login = useCallback(async (credentials: LoginCredentials): Promise<LoginResponse> => {
     try {
@@ -669,7 +676,7 @@ const hasPermission = useCallback((permission: string): boolean => {
   }
   
   // Fallback: check if the permission exists directly
-  return Boolean((user.permissions as any)[permission]);
+ return Boolean((user.permissions as unknown as Record<string, unknown>)[permission]);
 }, [user]);
 
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {
@@ -720,13 +727,6 @@ const hasPermission = useCallback((permission: string): boolean => {
 
     initializeAuth();
   }, [tabId, checkSessionHealth]);
-
-  useEffect(() => {
-    if (isTabAuthenticated) {
-      const cleanup = setupSessionRefresh();
-      return cleanup;
-    }
-  }, [isTabAuthenticated, setupSessionRefresh]);
 
   // Cleanup effect
   useEffect(() => {
