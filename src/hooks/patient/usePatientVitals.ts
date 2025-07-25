@@ -117,19 +117,19 @@ export const usePatientVitals = (
         params.end_date = filters.dateRange.end;
       }
 
-      const [vitalsResponse, latestResponse] = await Promise.all([
+      const [vitalsData, latestResponse] = await Promise.all([
         patientService.getVitalSigns(params),
         patientService.getLatestVitals(),
       ]);
 
       if (append) {
-        setVitals(prev => [...prev, ...vitalsResponse.results]);
+        setVitals(prev => [...prev, ...vitalsData.results]);
       } else {
-        setVitals(vitalsResponse.results);
+        setVitals(vitalsData.results);
       }
       
-      setLatestVitals(latestResponse);
-      setHasMore(!!vitalsResponse.next);
+      setLatestVitals(vitalsData as unknown as VitalSigns);
+      setHasMore(!!vitalsData.next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load vital signs');
     } finally {
@@ -390,8 +390,8 @@ export const useLatestVitals = () => {
   useEffect(() => {
     const fetchLatest = async () => {
       try {
-        const latest = await patientService.getLatestVitals();
-        setLatestVitals(latest);
+        const vitals = await patientService.getLatestVitals();
+        setLatestVitals(vitals as VitalSigns);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load latest vitals');
       } finally {

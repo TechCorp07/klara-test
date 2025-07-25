@@ -1,9 +1,9 @@
 // src/lib/api/services/patient.service.ts
-import { HealthRecord, RecordRequest } from '@/hooks/patient/types';
+import { HealthRecord, MedicationScheduleItem, RecordRequest } from '@/hooks/patient/types';
 import { ScheduleAppointmentPayload } from '@/hooks/patient/usePatientAppointments';
 import { apiClient } from '@/lib/api/client';
 import { buildQueryUrl, ENDPOINTS } from '@/lib/api/endpoints';
-import { Appointment } from '@/types/patient.types';
+import { Appointment, EmergencyContact, HealthInsurance, MedicationAdherence, PatientPreferences, PatientProfile, Prescription, VitalSigns } from '@/types/patient.types';
 import { AxiosResponse } from 'axios';
 
 // Helper function to extract data from your existing Axios responses
@@ -177,6 +177,7 @@ export interface MedicationLogEntry {
   taken: boolean;
   taken_at: string;
   notes?: string;
+  status?: string;
 }
 
 export interface VitalSignsEntry {
@@ -792,6 +793,280 @@ class EnhancedPatientService {
     } catch (error) {
       console.error('Failed to join chat group:', error);
       throw new Error('Failed to join chat group');
+    }
+  }
+
+    /**
+   * Get patient prescriptions
+   */
+  async getPrescriptions(params?: Record<string, string | number | boolean | undefined>): Promise<{
+    results: Prescription[];
+    count: number;
+    next: string | null;
+    previous: string | null;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        results: Prescription[];
+        count: number;
+        next: string | null;
+        previous: string | null;
+      }>(buildQueryUrl(ENDPOINTS.PATIENT.MEDICATIONS, params));
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch prescriptions:', error);
+      throw new Error('Failed to load prescriptions');
+    }
+  }
+
+  /**
+   * Get medication schedule for a specific date
+   */
+  async getMedicationSchedule(date: string): Promise<MedicationScheduleItem[]> {
+    try {
+      const response = await apiClient.get<MedicationScheduleItem[]>(
+        `${ENDPOINTS.PATIENT.MEDICATIONS}schedule/?date=${date}`
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication schedule:', error);
+      throw new Error('Failed to load medication schedule');
+    }
+  }
+
+  /**
+   * Log medication as taken (alias for existing logMedication)
+   */
+  async logMedicationTaken(data: { prescription: number; scheduled_time: string; taken_time: string; taken: boolean; notes?: string }): Promise<void> {
+    const logEntry: MedicationLogEntry = {
+      medication_id: data.prescription,
+      taken: data.taken,
+      status: data.taken ? 'taken' : 'skipped',
+      taken_at: data.taken_time,
+      notes: data.notes,
+      //data_source?: string,
+    };
+    return this.logMedication(data.prescription, logEntry);
+  }
+
+  /**
+   * Get medication adherence data
+   */
+/**
+ * Get medication adherence data with flexible parameters
+ */
+  async getMedicationAdherence(params: { prescription: number; start_date?: string; end_date?: string; } | number, days?: number): Promise<{
+    results: MedicationAdherence[];
+    count: number;
+  }> {
+    try {
+      let url: string;
+      
+      if (typeof params === 'number') {
+        // Legacy call with just medicationId
+        url = `${ENDPOINTS.PATIENT.MEDICATIONS}${params}/adherence/?days=${days || 30}`;
+      } else {
+        // New call with object parameters
+        const queryParams = new URLSearchParams();
+        queryParams.append('prescription', params.prescription.toString());
+        if (params.start_date) queryParams.append('start_date', params.start_date);
+        if (params.end_date) queryParams.append('end_date', params.end_date);
+        
+        url = `${ENDPOINTS.PATIENT.MEDICATIONS}adherence/?${queryParams.toString()}`;
+      }
+      
+      const response = await apiClient.get<{
+        results: MedicationAdherence[];
+        count: number;
+      }>(url);
+      
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication adherence:', error);
+      throw new Error('Failed to load adherence data');
+    }
+  }
+
+  /**
+ * Get vital signs
+ */
+  async getVitalSigns(params?: Record<string, string | number | boolean | undefined>): Promise<{
+    results: VitalSigns[];
+    count: number;
+    next: string | null;
+    previous: string | null;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        results: VitalSigns[];
+        count: number;
+        next: string | null;
+        previous: string | null;
+      }>(buildQueryUrl(ENDPOINTS.PATIENT.VITALS, params));
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch vital signs:', error);
+      throw new Error('Failed to load vital signs');
+    }
+  }
+
+  /**
+   * Add vital signs
+   */
+  async addVitalSigns(vitalsData: VitalSignsEntry): Promise<VitalSigns> {
+    try {
+      const response = await apiClient.post<VitalSigns>(ENDPOINTS.PATIENT.VITALS, {
+        ...vitalsData,
+        recorded_at: vitalsData.recorded_at || new Date().toISOString()
+      });
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to add vital signs:', error);
+      throw new Error('Failed to save vital signs');
+    }
+  }
+
+  /**
+ * Get patient profile
+ */
+  async getProfile(): Promise<PatientProfile> {
+    try {
+      const response = await apiClient.get<PatientProfile>(ENDPOINTS.PATIENT.PROFILE);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch patient profile:', error);
+      throw new Error('Failed to load profile');
+    }
+  }
+
+  /**
+   * Get emergency contacts
+   */
+  async getEmergencyContacts(): Promise<EmergencyContact[]> {
+    try {
+      const response = await apiClient.get<EmergencyContact[]>(`${ENDPOINTS.PATIENT.PROFILE}/emergency-contacts/`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch emergency contacts:', error);
+      throw new Error('Failed to load emergency contacts');
+    }
+  }
+
+  /**
+   * Get insurance information
+   */
+  async getInsuranceInfo(): Promise<HealthInsurance[]> {
+    try {
+      const response = await apiClient.get<HealthInsurance[]>(`${ENDPOINTS.PATIENT.PROFILE}/insurance/`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch insurance info:', error);
+      throw new Error('Failed to load insurance information');
+    }
+  }
+
+  /**
+   * Update patient profile
+   */
+  async updateProfile(profileData: Partial<PatientProfile>): Promise<PatientProfile> {
+    try {
+      const response = await apiClient.patch<PatientProfile>(ENDPOINTS.PATIENT.UPDATE_PROFILE, profileData);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      throw new Error('Failed to update profile');
+    }
+  }
+
+  /**
+   * Update patient preferences
+   */
+  async updatePreferences(preferences: Partial<PatientPreferences>): Promise<PatientPreferences> {
+    try {
+      const response = await apiClient.patch<PatientPreferences>(
+        `${ENDPOINTS.PATIENT.PROFILE}/preferences/`, 
+        preferences
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to update preferences:', error);
+      throw new Error('Failed to update preferences');
+    }
+  }
+
+  /**
+   * Add emergency contact
+   */
+  async addEmergencyContact(contactData: Partial<EmergencyContact>): Promise<EmergencyContact> {
+    try {
+      const response = await apiClient.post<EmergencyContact>(
+        `${ENDPOINTS.PATIENT.PROFILE}/emergency-contacts/`, 
+        contactData
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to add emergency contact:', error);
+      throw new Error('Failed to add emergency contact');
+    }
+  }
+
+  /**
+   * Update emergency contact
+   */
+  async updateEmergencyContact(contactId: number, contactData: Partial<EmergencyContact>): Promise<EmergencyContact> {
+    try {
+      const response = await apiClient.patch<EmergencyContact>(
+        `${ENDPOINTS.PATIENT.PROFILE}/emergency-contacts/${contactId}/`, 
+        contactData
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to update emergency contact:', error);
+      throw new Error('Failed to update emergency contact');
+    }
+  }
+
+  /**
+   * Delete emergency contact
+   */
+  async deleteEmergencyContact(contactId: number): Promise<void> {
+    try {
+      await apiClient.delete(`${ENDPOINTS.PATIENT.PROFILE}/emergency-contacts/${contactId}/`);
+    } catch (error) {
+      console.error('Failed to delete emergency contact:', error);
+      throw new Error('Failed to delete emergency contact');
+    }
+  }
+
+  /**
+   * Add insurance information
+   */
+  async addInsurance(insuranceData: Partial<HealthInsurance>): Promise<HealthInsurance> {
+    try {
+      const response = await apiClient.post<HealthInsurance>(
+        `${ENDPOINTS.PATIENT.PROFILE}/insurance/`, 
+        insuranceData
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to add insurance:', error);
+      throw new Error('Failed to add insurance');
+    }
+  }
+
+  /**
+   * Update insurance information
+   */
+  async updateInsurance(insuranceId: number, insuranceData: Partial<HealthInsurance>): Promise<HealthInsurance> {
+    try {
+      const response = await apiClient.patch<HealthInsurance>(
+        `${ENDPOINTS.PATIENT.PROFILE}/insurance/${insuranceId}/`, 
+        insuranceData
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to update insurance:', error);
+      throw new Error('Failed to update insurance');
     }
   }
 

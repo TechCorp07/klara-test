@@ -188,7 +188,7 @@ export const usePatientMedications = (
         taken_time: takenTime,
         taken: true,
         notes,
-        data_source: 'self_reported',
+        //data_source: 'self_reported',
       });
 
       // Refresh data to get updated adherence
