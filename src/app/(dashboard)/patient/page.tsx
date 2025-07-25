@@ -25,7 +25,7 @@ import { FamilyHistoryWidget } from './components/dashboard/FamilyHistoryWidget'
 import { EmergencyFeaturesWidget } from './components/dashboard/EmergencyFeaturesWidget';
 import { QuickActionsWidget } from './components/dashboard/QuickActionsWidget';
 
-import { RefreshCw, Menu, X, Bell, Settings, User } from 'lucide-react';
+import { RefreshCw, Menu, X, Bell, User } from 'lucide-react';
 
 function PatientDashboardContent() {
   const { user, getUserRole } = useAuth();

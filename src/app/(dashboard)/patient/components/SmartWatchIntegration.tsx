@@ -1,7 +1,7 @@
-import { enhancedPatientService } from "@/lib/api/services/patient.service";
+// src/app/(dashboard)/patient/components/SmartWatchIntegration.tsx
+import { patientService } from "@/lib/api/services/patient.service";
 import { useState } from "react";
 
-// src/app/(dashboard)/patient/components/SmartWatchIntegration.tsx
 interface SmartWatchIntegrationProps {
     onConnect: () => void;
   }
@@ -17,10 +17,21 @@ interface SmartWatchIntegrationProps {
   
     const [connecting, setConnecting] = useState<string | null>(null);
   
+    
     const connectDevice = async (deviceType: string) => {
       try {
         setConnecting(deviceType);
-        const result = await enhancedPatientService.connectWearableDevice(deviceType);
+        
+        // Find the device to get the proper name
+        const device = availableDevices.find(d => d.type === deviceType);
+        
+        // Create proper WearableDeviceConnection object
+        const deviceConnection = {
+          device_type: deviceType as 'fitbit' | 'apple_watch' | 'garmin' | 'other',
+          device_name: device?.name || deviceType
+        };
+        
+        const result = await patientService.connectWearableDevice(deviceConnection);
         
         if (result.authorization_url) {
           // Open authorization URL in new window

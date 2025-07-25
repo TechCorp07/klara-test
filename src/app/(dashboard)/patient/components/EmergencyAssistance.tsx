@@ -1,7 +1,7 @@
-import { enhancedPatientService } from "@/lib/api/services/patient.service";
-import { useState } from "react";
-
 // src/app/(dashboard)/patient/components/EmergencyAssistance.tsx
+import { useState } from "react";
+import { patientService } from "@/lib/api/services/patient.service";
+
 export function EmergencyAssistance() {
     const [isEmergency, setIsEmergency] = useState(false);
     const [emergencyType, setEmergencyType] = useState<'medical' | 'medication' | 'mental_health'>('medical');
@@ -16,7 +16,7 @@ export function EmergencyAssistance() {
       try {
         setIsEmergency(true);
         
-        const result = await enhancedPatientService.triggerEmergencyNotification(
+        const result = await patientService.triggerEmergencyNotification(
           emergencyType,
           emergencyMessage
         );
