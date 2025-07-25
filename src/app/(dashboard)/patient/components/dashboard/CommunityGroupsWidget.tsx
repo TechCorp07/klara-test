@@ -20,6 +20,13 @@ interface CommunityGroup {
   unread_messages?: number;
 }
 
+interface PaginatedCommunityGroupsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: CommunityGroup[];
+}
+
 interface CommunityGroupsProps {
   onJoinGroup?: (groupId: number) => void;
   onViewGroup?: (groupId: number) => void;
@@ -37,12 +44,22 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
   const fetchCommunityGroups = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/community/groups/');
-      // Community app returns results directly, not in a groups wrapper
-      setGroups((response.data as CommunityGroup[]) || []);
+      const response = await apiClient.get<PaginatedCommunityGroupsResponse | CommunityGroup[]>('/community/groups/');
+      
+      const data = response.data;
+      
+      if (data && typeof data === 'object' && 'results' in data && Array.isArray((data as PaginatedCommunityGroupsResponse).results)) {
+        setGroups((data as PaginatedCommunityGroupsResponse).results);
+      } else if (Array.isArray(data)) {
+        setGroups(data);
+      } else {
+        console.warn('Unexpected response format:', data);
+        setGroups([]);
+      }
     } catch (err) {
       setError('Failed to load community groups');
       console.error('Error fetching community groups:', err);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
@@ -143,7 +160,7 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.slice(0, 4).map((group) => (
+          {Array.isArray(groups) ? groups.slice(0, 4).map((group) => (
             <div
               key={group.id}
               className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors"
@@ -210,7 +227,7 @@ export function CommunityGroupsWidget({ onJoinGroup, onViewGroup }: CommunityGro
                 </div>
               </div>
             </div>
-          ))}
+          )) : null}
         </div>
       )}
 
