@@ -14,6 +14,9 @@ import {
   RegisterRequest, 
   RegisterResponse,
   AdminPermissions,
+  EmergencyAccessSummary,
+  SetupTwoFactorResponse,
+  EmergencyAccessRecord,
 } from '@/types/auth.types';
 import authService from '../api/services/auth.service';
 
@@ -39,7 +42,13 @@ export interface JWTAuthContextType {
   logout: () => Promise<void>;
   logoutAllTabs: () => Promise<void>;
   refreshToken: () => Promise<void>;
-  
+  resetPassword: (data: { token: string; password: string; confirm_password: string }) => Promise<{ detail?: string; success?: boolean; message?: string }>;
+  setupTwoFactor: () => Promise<SetupTwoFactorResponse>;
+  confirmTwoFactor: (code: string) => Promise<{ success: boolean; message: string; backup_codes?: string[] }>;
+  disableTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
+  verifyEmail: (data: { token: string; email?: string }) => Promise<{ success: boolean; message: string; detail?: string }>;
+  requestEmailVerification: () => Promise<{ detail?: string; success?: boolean; message?: string }>;
+
   // Permission checking methods (extracted from JWT)
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
@@ -56,6 +65,12 @@ export interface JWTAuthContextType {
   getUserId: () => number | null;
   getUserRole: () => UserRole | null;
   getSessionId: () => string | null;
+  getEmergencyAccessSummary: () => Promise<EmergencyAccessSummary>;
+  initiateEmergencyAccess: (data: { patient_identifier: string; reason: string; detailed_reason?: string }) => Promise<{ success: boolean; message: string; access_id?: number; expires_in?: number }>;
+  endEmergencyAccess: (accessId: number, reason?: string) => Promise<{ success: boolean; message: string }>;
+  reviewEmergencyAccess: (accessId: number, data: { justified: boolean; notes?: string }) => Promise<{ success: boolean; message: string }>;
+  getEmergencyAccessRecords: (filters?: { reviewed?: boolean; status?: string }) => Promise<EmergencyAccessRecord[]>;
+  updateConsent: (consentType: string, consentValue: boolean) => Promise<{ success: boolean; message: string }>;
 }
 
 // Create the context
@@ -302,8 +317,335 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     await refreshSessionToken();
   };
 
-  // ✅ 8. EIGHTH: Permission methods
-// ✅ NEW: Get permissions from user object
+  const getEmergencyAccessSummary = useCallback(async (): Promise<EmergencyAccessSummary> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/admin/emergency-access/summary', {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch emergency access summary');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch emergency access summary:', error);
+      throw error;
+    }
+  }, []);
+
+  const initiateEmergencyAccess = useCallback(async (data: { patient_identifier: string; reason: string; detailed_reason?: string }): Promise<{ success: boolean; message: string; access_id?: number; expires_in?: number }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/admin/emergency-access/initiate/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to initiate emergency access');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Emergency access initiated successfully',
+        access_id: result.access_id,
+        expires_in: result.expires_in,
+      };
+    } catch (error) {
+      console.error('Failed to initiate emergency access:', error);
+      throw error;
+    }
+  }, []);
+  
+  const endEmergencyAccess = useCallback(async (accessId: number, reason?: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch(`/api/admin/emergency-access/${accessId}/end/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to end emergency access');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Emergency access ended successfully',
+      };
+    } catch (error) {
+      console.error('Failed to end emergency access:', error);
+      throw error;
+    }
+  }, []);
+  
+  const reviewEmergencyAccess = useCallback(async (accessId: number, data: { justified: boolean; notes?: string }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch(`/api/admin/emergency-access/${accessId}/review/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          is_justified: data.justified,  // Convert to backend expected format
+          notes: data.notes,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to review emergency access');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Emergency access reviewed successfully',
+      };
+    } catch (error) {
+      console.error('Failed to review emergency access:', error);
+      throw error;
+    }
+  }, []);
+  
+  const getEmergencyAccessRecords = useCallback(async (filters?: { reviewed?: boolean; status?: string }): Promise<EmergencyAccessRecord[]> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const queryParams = new URLSearchParams();
+      
+      if (filters?.reviewed !== undefined) {
+        queryParams.append('reviewed', filters.reviewed.toString());
+      }
+      if (filters?.status) {
+        queryParams.append('status', filters.status);
+      }
+      
+      const url = `/api/admin/emergency-access/records/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch emergency access records');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch emergency access records:', error);
+      throw error;
+    }
+  }, []);
+
+  const updateConsent = useCallback(async (consentType: string, consentValue: boolean): Promise<{ success: boolean; message: string }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/patient/consent/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          consent_type: consentType,
+          consent_value: consentValue,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update consent');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Consent updated successfully',
+      };
+    } catch (error) {
+      console.error('Failed to update consent:', error);
+      throw error;
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (data: { token: string; password: string; confirm_password: string }): Promise<{ detail?: string; success?: boolean; message?: string }> => {
+    try {
+      const response = await fetch('/api/auth/reset-password/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: data.token,
+          password: data.password,
+          confirm_password: data.confirm_password,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to reset password');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Password reset successfully',
+      };
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+      throw error;
+    }
+  }, []);
+ 
+  const setupTwoFactor = useCallback(async (): Promise<SetupTwoFactorResponse> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/auth/2fa/setup/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to setup two-factor authentication');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to setup 2FA:', error);
+      throw error;
+    }
+  }, []);
+  
+  const confirmTwoFactor = useCallback(async (code: string): Promise<{ success: boolean; message: string; backup_codes?: string[] }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/auth/2fa/confirm/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to confirm two-factor authentication');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Two-factor authentication enabled successfully',
+        backup_codes: result.backup_codes,
+      };
+    } catch (error) {
+      console.error('Failed to confirm 2FA:', error);
+      throw error;
+    }
+  }, []);
+  
+  const disableTwoFactor = useCallback(async (code: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/auth/2fa/disable/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to disable two-factor authentication');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Two-factor authentication disabled successfully',
+      };
+    } catch (error) {
+      console.error('Failed to disable 2FA:', error);
+      throw error;
+    }
+  }, []);
+  
+  const verifyEmail = useCallback(async (data: { token: string; email?: string }): Promise<{ success: boolean; message: string; detail?: string }> => {
+    try {
+      const response = await fetch('/api/auth/verify-email/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: data.token,
+          email: data.email,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to verify email');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || 'Email verified successfully',
+        detail: result.detail || result.message,
+      };
+    } catch (error) {
+      console.error('Failed to verify email:', error);
+      throw error;
+    }
+  }, []);
+
+  const requestEmailVerification = useCallback(async (): Promise<{ detail?: string; success?: boolean; message?: string }> => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch('/api/auth/request-email-verification/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to request email verification');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || result.detail || 'Verification email sent successfully',
+      };
+    } catch (error) {
+      console.error('Failed to request email verification:', error);
+      throw error;
+    }
+  }, []);
+
 const hasPermission = useCallback((permission: string): boolean => {
   if (!user?.permissions) return false;
   
@@ -410,11 +752,23 @@ const hasPermission = useCallback((permission: string): boolean => {
     timeToExpiration,
     tabId,
     isTabAuthenticated,
+    getEmergencyAccessSummary,
+    initiateEmergencyAccess,
+    endEmergencyAccess,
+    reviewEmergencyAccess,
+    getEmergencyAccessRecords,
+    updateConsent,
     login,
     register,
     logout,
     logoutAllTabs,
     refreshToken,
+    resetPassword,
+    setupTwoFactor,
+    confirmTwoFactor,
+    disableTwoFactor,
+    verifyEmail,
+    requestEmailVerification,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,

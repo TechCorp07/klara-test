@@ -137,7 +137,7 @@ export const usePatientAppointments = (
   // Cancel appointment
   const cancelAppointment = useCallback(async (id: number, reason?: string) => {
     try {
-      await patientService.cancelAppointment(id, reason);
+      await patientService.cancelAppointment(id, reason ?? undefined);
       
       // Update local state
       setAppointments(prev =>

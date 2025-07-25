@@ -1,6 +1,9 @@
 // src/lib/api/services/patient.service.ts
+import { HealthRecord, RecordRequest } from '@/hooks/patient/types';
+import { ScheduleAppointmentPayload } from '@/hooks/patient/usePatientAppointments';
 import { apiClient } from '@/lib/api/client';
-import { ENDPOINTS } from '@/lib/api/endpoints';
+import { buildQueryUrl, ENDPOINTS } from '@/lib/api/endpoints';
+import { Appointment } from '@/types/patient.types';
 import { AxiosResponse } from 'axios';
 
 // Helper function to extract data from your existing Axios responses
@@ -361,6 +364,84 @@ class EnhancedPatientService {
     }
   }
 
+    /**
+   * Get patient health records
+   */
+  async getHealthRecords(params?: Record<string, string | number | boolean | undefined>): Promise<{
+    results: HealthRecord[];
+    count: number;
+    next: string | null;
+    previous: string | null;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        results: HealthRecord[];
+        count: number;
+        next: string | null;
+        previous: string | null;
+      }>(buildQueryUrl(`${ENDPOINTS.PATIENT.PROFILE}/health-records/`, params));
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch health records:', error);
+      throw new Error('Failed to load health records');
+    }
+  }
+
+  /**
+   * Download lab result or health record
+   */
+  async downloadLabResult(recordId: number): Promise<Blob> {
+    try {
+      const response = await apiClient.get(`${ENDPOINTS.PATIENT.PROFILE}/health-records/${recordId}/download/`, {
+        responseType: 'blob',
+      });
+      
+      // Type assertion to handle the unknown type
+      return response.data as Blob;
+    } catch (error) {
+      console.error('Failed to download lab result:', error);
+      throw new Error('Failed to download the health record');
+    }
+  }
+
+  /**
+   * Request health records from external providers
+   */
+  async requestHealthRecords(requestData: RecordRequest): Promise<{
+    request_id: string;
+    estimated_completion: string;
+    tracking_number?: string;
+  }> {
+    try {
+      const response = await apiClient.post<{
+        request_id: string;
+        estimated_completion: string;
+        tracking_number?: string;
+      }>(`${ENDPOINTS.PATIENT.PROFILE}/health-records/request/`, requestData);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to request health records:', error);
+      throw new Error('Failed to submit health records request');
+    }
+  }
+
+  /**
+   * Send message (for sharing records or general messaging)
+   */
+  async sendMessage(messageData: {
+    recipient: number;
+    subject: string;
+    message: string;
+    attachments?: string[];
+  }): Promise<void> {
+    try {
+      await apiClient.post(`${ENDPOINTS.PATIENT.PROFILE}/messages/`, messageData);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      throw new Error('Failed to send message');
+    }
+  }
+
   /**
    * Request appointment scheduling
    */
@@ -378,16 +459,74 @@ class EnhancedPatientService {
   }
 
   /**
-   * Cancel an appointment
+   * Get patient appointments
    */
-  async cancelAppointment(appointmentId: number, reason: string): Promise<void> {
+  async getAppointments(params?: Record<string, string | number | boolean | undefined>): Promise<{
+    results: Appointment[];
+    count: number;
+    next: string | null;
+    previous: string | null;
+  }> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.CANCEL_APPOINTMENT(appointmentId), {
-        reason: reason || 'Patient requested cancellation'
+      const response = await apiClient.get<{
+        results: Appointment[];
+        count: number;
+        next: string | null;
+        previous: string | null;
+      }>(buildQueryUrl(ENDPOINTS.PATIENT.APPOINTMENTS, params));
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch appointments:', error);
+      throw new Error('Failed to load appointments');
+    }
+  }
+
+  /**
+   * Schedule a new appointment
+   */
+  async scheduleAppointment(appointmentData: ScheduleAppointmentPayload): Promise<Appointment> {
+    try {
+      const response = await apiClient.post<Appointment>(
+        ENDPOINTS.PATIENT.REQUEST_APPOINTMENT,
+        appointmentData
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to schedule appointment:', error);
+      throw new Error('Failed to schedule appointment');
+    }
+  }
+
+  /**
+   * Cancel appointment
+   */
+  async cancelAppointment(id: number, reason?: string): Promise<void> {
+    try {
+      await apiClient.post(ENDPOINTS.PATIENT.CANCEL_APPOINTMENT(id), {
+        reason: reason || 'Patient cancellation'
       });
     } catch (error) {
       console.error('Failed to cancel appointment:', error);
-      throw new Error('Failed to cancel appointment. Please contact your provider directly.');
+      throw new Error('Failed to cancel appointment');
+    }
+  }
+
+  /**
+   * Reschedule appointment
+   */
+  async rescheduleAppointment(id: number, newDateTime: string): Promise<Appointment> {
+    try {
+      const response = await apiClient.patch<Appointment>(
+        `${ENDPOINTS.PATIENT.APPOINTMENTS}${id}/`,
+        { 
+          preferred_datetime: newDateTime,
+          status: 'rescheduled'
+        }
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to reschedule appointment:', error);
+      throw new Error('Failed to reschedule appointment');
     }
   }
 

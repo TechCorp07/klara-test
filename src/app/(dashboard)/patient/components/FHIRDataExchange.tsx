@@ -1,7 +1,7 @@
-import { enhancedPatientService } from "@/lib/api/services/patient.service";
+// src/app/(dashboard)/patient/components/FHIRDataExchange.tsx
+import { patientService  } from "@/lib/api/services/patient.service";
 import { useState } from "react";
 
-// src/app/(dashboard)/patient/components/FHIRDataExchange.tsx
 export function FHIRDataExchange() {
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -11,7 +11,7 @@ export function FHIRDataExchange() {
       try {
         setIsExporting(true);
         
-        const exportData = await enhancedPatientService.getFHIRData({
+        const exportData = await patientService.getFHIRData({
           resource_type: exportType === 'all' ? 'Patient' : 
                         exportType === 'medications' ? 'MedicationStatement' :
                         exportType === 'conditions' ? 'Condition' : 'Observation',
@@ -48,7 +48,7 @@ export function FHIRDataExchange() {
       try {
         setIsImporting(true);
         
-        const result = await enhancedPatientService.requestExternalRecordsImport(
+        const result = await patientService.requestExternalRecordsImport(
           providerName,
           providerAddress,
           {

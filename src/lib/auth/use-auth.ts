@@ -9,7 +9,10 @@ import {
   LoginCredentials, 
   LoginResponse, 
   RegisterRequest, 
-  RegisterResponse 
+  RegisterResponse,
+  SetupTwoFactorResponse, 
+  EmergencyAccessSummary,
+  EmergencyAccessRecord
 } from '@/types/auth.types';
 
 export interface UseJWTAuthReturn {
@@ -36,10 +39,14 @@ export interface UseJWTAuthReturn {
   refreshToken: () => Promise<void>;
   
   requestPasswordReset?: (email: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
-  resetPassword?: (token: string, password: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
+  resetPassword: (data: { token: string; password: string; confirm_password: string }) => Promise<{ detail?: string; success?: boolean; message?: string }>;
+  setupTwoFactor: () => Promise<SetupTwoFactorResponse>;
+  confirmTwoFactor: (code: string) => Promise<{ success: boolean; message: string; backup_codes?: string[] }>;
+  disableTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
   verifyTwoFactor?: (userId: number, code: string) => Promise<LoginResponse>;
-  verifyEmail?: (token: string) => Promise<{ success: boolean; message: string }>;
-  
+  verifyEmail: (data: { token: string; email?: string }) => Promise<{ success: boolean; message: string; detail?: string }>;
+  requestEmailVerification: () => Promise<{ detail?: string; success?: boolean; message?: string }>;
+
   // Permission methods
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
@@ -56,6 +63,12 @@ export interface UseJWTAuthReturn {
   getUserId: () => number | null;
   getUserRole: () => UserRole | null;
   getSessionId: () => string | null;
+  getEmergencyAccessSummary: () => Promise<EmergencyAccessSummary>;
+  initiateEmergencyAccess: (data: { patient_identifier: string; reason: string; detailed_reason?: string }) => Promise<{ success: boolean; message: string; access_id?: number; expires_in?: number }>;
+  endEmergencyAccess: (accessId: number, reason?: string) => Promise<{ success: boolean; message: string }>;
+  reviewEmergencyAccess: (accessId: number, data: { justified: boolean; notes?: string }) => Promise<{ success: boolean; message: string }>;
+  getEmergencyAccessRecords: (filters?: { reviewed?: boolean; status?: string }) => Promise<EmergencyAccessRecord[]>;
+  updateConsent: (consentType: string, consentValue: boolean) => Promise<{ success: boolean; message: string }>;
 }
 
 /**
@@ -80,7 +93,7 @@ export function useJWTAuth(): UseJWTAuthReturn {
     jwtPayload: context.jwtPayload,
     tokenNeedsRefresh: context.tokenNeedsRefresh,
     timeToExpiration: context.timeToExpiration,
-    
+
     // Tab state
     tabId: context.tabId,
     isTabAuthenticated: context.isTabAuthenticated,
@@ -91,6 +104,12 @@ export function useJWTAuth(): UseJWTAuthReturn {
     logout: context.logout,
     logoutAllTabs: context.logoutAllTabs, // Now properly included
     refreshToken: context.refreshToken,
+    resetPassword: context.resetPassword,
+    setupTwoFactor: context.setupTwoFactor,
+    confirmTwoFactor: context.confirmTwoFactor,
+    disableTwoFactor: context.disableTwoFactor,
+    verifyEmail: context.verifyEmail,
+    requestEmailVerification: context.requestEmailVerification,
     
     // Permission methods
     hasPermission: context.hasPermission,
@@ -108,6 +127,12 @@ export function useJWTAuth(): UseJWTAuthReturn {
     getUserId: context.getUserId,
     getUserRole: context.getUserRole,
     getSessionId: context.getSessionId,
+    getEmergencyAccessSummary: context.getEmergencyAccessSummary,
+    initiateEmergencyAccess: context.initiateEmergencyAccess,
+    endEmergencyAccess: context.endEmergencyAccess,
+    reviewEmergencyAccess: context.reviewEmergencyAccess,
+    getEmergencyAccessRecords: context.getEmergencyAccessRecords,
+    updateConsent: context.updateConsent,
   };
 }
 

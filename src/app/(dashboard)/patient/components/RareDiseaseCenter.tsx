@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { enhancedPatientService } from '@/lib/api/services/patient.service';
+import { patientService } from '@/lib/api/services/patient.service';
 
 interface RareCondition {
   name: string;
@@ -37,7 +37,7 @@ export function RareDiseaseCenter({ rareConditions }: RareDiseaseCenterProps) {
   const loadFamilyHistory = async () => {
     try {
       setIsLoadingFamily(true);
-      const history = await enhancedPatientService.getFamilyMedicalHistory();
+      const history = await patientService.getFamilyMedicalHistory();
       setFamilyHistory(history);
     } catch (error) {
       console.error('Failed to load family history:', error);

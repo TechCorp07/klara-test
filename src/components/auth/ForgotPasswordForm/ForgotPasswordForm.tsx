@@ -57,6 +57,9 @@ const ForgotPasswordForm: React.FC = () => {
       setSuccessMessage(null);
 
       // Submit password reset request
+      if (!requestPasswordReset) {
+        throw new Error('Password reset function is not available.');
+      }
       const response = await requestPasswordReset(data.email);
       
       // Show success message and mark request as complete

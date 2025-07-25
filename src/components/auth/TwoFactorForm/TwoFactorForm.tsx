@@ -20,7 +20,6 @@ const twoFactorCodeSchema = z.object({
     .regex(/^\d+$/, 'Verification code must contain only digits'),
 });
 
-// FIXED: Separate validation schema for disabling 2FA (requires password)
 const disableTwoFactorSchema = z.object({
   password: z
     .string()
@@ -30,18 +29,8 @@ const disableTwoFactorSchema = z.object({
 
 // Type for setup/verification form values
 type TwoFactorCodeFormValues = z.infer<typeof twoFactorCodeSchema>;
-
-// FIXED: Type for disable 2FA form values
 type DisableTwoFactorFormValues = z.infer<typeof disableTwoFactorSchema>;
 
-/**
- * FIXED: Two-factor authentication form component with proper disable flow
- * 
- * Key fixes:
- * - Separate form schemas for setup vs disable flows
- * - Disable 2FA now asks for password (not verification code)
- * - Proper backend field name handling for setup response
- */
 const TwoFactorForm: React.FC = () => {
   // Get auth context for 2FA functions
   const { setupTwoFactor, confirmTwoFactor, disableTwoFactor, user } = useAuth();
