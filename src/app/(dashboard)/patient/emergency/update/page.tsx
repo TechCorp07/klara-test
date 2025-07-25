@@ -111,7 +111,7 @@ export default function UpdateEmergencyInfoPage() {
     });
   };
 
-  const updateEmergencyContact = (index: number, field: string, value: any) => {
+  const updateEmergencyContact = (index: number, field: string, value: string | boolean) => {
     const updatedContacts = [...info.emergency_contacts];
     updatedContacts[index] = { ...updatedContacts[index], [field]: value };
     setInfo({ ...info, emergency_contacts: updatedContacts });

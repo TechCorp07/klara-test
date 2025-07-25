@@ -88,8 +88,6 @@ export default function AddFamilyMemberPage() {
     setIsSubmitting(true);
     
     try {
-      console.log('Adding family member:', member);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -175,7 +173,7 @@ export default function AddFamilyMemberPage() {
                   </label>
                   <select
                     value={member.gender}
-                    onChange={(e) => setMember({...member, gender: e.target.value as any})}
+                    onChange={(e) => setMember({...member, gender: e.target.value as 'male' | 'female'})}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                   >
                     <option value="">Select gender</option>

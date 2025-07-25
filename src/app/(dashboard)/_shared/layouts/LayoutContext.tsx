@@ -9,7 +9,7 @@ interface LayoutContextType {
   toggleSidebar: () => void;
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
-  emergencyAlerts: any[];
+  emergencyAlerts: [];
   isOnline: boolean;
 }
 

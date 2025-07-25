@@ -33,11 +33,13 @@ function PatientDashboardContent() {
   const searchParams = useSearchParams();
   const { addNotification } = useNotifications();
   
-  const { alerts: realTimeAlerts, unreadCount } = useRealTimeAlerts();
+  const { alerts: unreadCount } = useRealTimeAlerts();
   // Mobile sidebar state
   const currentTab = searchParams.get('tab') || 'overview';
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>(currentTab as any || 'overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'health' | 'care' | 'research'>(
+    (currentTab as 'overview' | 'health' | 'care' | 'research') || 'overview'
+  );
   const dashboardInitialized = useRef(false);
   
   // Dashboard data and actions
@@ -77,7 +79,7 @@ function PatientDashboardContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab') || 'overview';
-    setSelectedView(tab as any);
+    setSelectedView(tab as 'overview' | 'health' | 'care' | 'research');
   }, [searchParams]);
   
   // Handle action notifications
@@ -93,7 +95,7 @@ function PatientDashboardContent() {
   }, [actionSuccess, addNotification, clearMessages]);
 
   const handleTabChange = (tabId: string) => {
-    setSelectedView(tabId as any);
+    setSelectedView(tabId as 'overview' | 'health' | 'care' | 'research');
     const newUrl = tabId === 'overview' ? '/patient' : `/patient?tab=${tabId}`;
     router.push(newUrl, { scroll: false });
   };
@@ -217,8 +219,8 @@ function PatientDashboardContent() {
               emergencyInfo={{
                 medical_id: safePatientInfo?.email || 'Not provided',
                 allergies: ['Penicillin', 'Shellfish'], // This would come from patient profile
-                current_medications: safeMedications?.active_medications?.map((m: any) => `${m.name} ${m.dosage}`) || [],
-                medical_conditions: safeRareConditions?.map((c: any) => c.name) || [],
+                current_medications: safeMedications?.active_medications?.map((m) => `${m.name} ${m.dosage}`) || [],
+                medical_conditions: safeRareConditions?.map((c) => c.name) || [],
                 emergency_contacts: [
                   { name: 'Emergency Contact', relationship: 'Spouse', phone: '555-0123', is_primary: true }
                 ],
@@ -384,9 +386,9 @@ function PatientDashboardContent() {
                 {/* Notifications */}
                 <button className="relative p-2 text-gray-400 hover:text-gray-600">
                   <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
+                  {unreadCount.length > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                      {unreadCount.length > 9 ? '9+' : unreadCount.length}
                     </span>
                   )}
                 </button>
@@ -432,7 +434,7 @@ function PatientDashboardContent() {
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-7xl mx-auto">
             {/* Critical alerts banner */}
-            {dashboardData.alerts.some((alert: any) => alert.severity === 'critical' && !alert.acknowledged) && (
+            {dashboardData.alerts.some((alert) => alert.severity === 'critical' && !alert.acknowledged) && (
               <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -445,7 +447,7 @@ function PatientDashboardContent() {
                       Critical Health Alerts Require Attention
                     </h3>
                     <p className="text-sm text-red-700 mt-1">
-                      You have {dashboardData.alerts.filter((alert: any) => alert.severity === 'critical' && !alert.acknowledged).length} critical alerts that need immediate attention.
+                      You have {dashboardData.alerts.filter((alert) => alert.severity === 'critical' && !alert.acknowledged).length} critical alerts that need immediate attention.
                     </p>
                   </div>
                 </div>

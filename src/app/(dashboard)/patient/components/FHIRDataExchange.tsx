@@ -90,7 +90,7 @@ export function FHIRDataExchange() {
             </label>
             <select
               value={exportType}
-              onChange={(e) => setExportType(e.target.value as any)}
+              onChange={(e) => setExportType(e.target.value as 'all' | 'medications' | 'conditions' | 'observations')}
               className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Health Data</option>

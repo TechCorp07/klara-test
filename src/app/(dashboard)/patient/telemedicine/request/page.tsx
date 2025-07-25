@@ -131,7 +131,7 @@ export default function TelemedicineRequestPage() {
                         type="radio"
                         value={value}
                         checked={request.session_type === value}
-                        onChange={(e) => setRequest({...request, session_type: e.target.value as any})}
+                        onChange={(e) => setRequest({...request, session_type: e.target.value as 'video' | 'audio' | 'chat'})}
                         className="mr-2"
                       />
                       <Icon className="w-4 h-4 mr-2" />
@@ -149,7 +149,7 @@ export default function TelemedicineRequestPage() {
                 </label>
                 <select
                   value={request.urgency}
-                  onChange={(e) => setRequest({...request, urgency: e.target.value as any})}
+                  onChange={(e) => setRequest({...request, urgency: e.target.value as 'routine' | 'urgent' | 'emergency'})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                 >
                   <option value="routine">Routine</option>

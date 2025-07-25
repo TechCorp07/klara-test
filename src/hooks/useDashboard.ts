@@ -1,6 +1,6 @@
 // src/hooks/useDashboard.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { PatientDashboardData, patientService } from '@/lib/api/services/patient.service';
+import { PatientDashboardData, patientService, AppointmentRequest, WearableDeviceConnection } from '@/lib/api/services/patient.service';
 
 interface UseDashboardReturn {
   data: PatientDashboardData | null;
@@ -171,7 +171,7 @@ export function usePatientActions() {
     );
   }, [executeAction]);
 
-  const recordVitals = useCallback(async (vitals: any) => {
+  const recordVitals = useCallback(async (vitals: Record<string, unknown>) => {
     return executeAction(
       () => patientService.recordVitalSigns({
         ...vitals,
@@ -188,14 +188,14 @@ export function usePatientActions() {
     );
   }, [executeAction]);
 
-  const requestAppointment = useCallback(async (appointmentData: any) => {
+  const requestAppointment = useCallback(async (appointmentData: AppointmentRequest) => {
     return executeAction(
       () => patientService.requestAppointment(appointmentData),
       'Appointment request submitted successfully'
     );
   }, [executeAction]);
 
-  const connectDevice = useCallback(async (deviceData: any) => {
+  const connectDevice = useCallback(async (deviceData: WearableDeviceConnection) => {
     return executeAction(
       () => patientService.connectWearableDevice(deviceData),
       'Device connection initiated'
@@ -243,15 +243,15 @@ export function useRealTimeAlerts() {
       try {
         // This would be replaced with WebSocket or Server-Sent Events
         const dashboardData = await patientService.getDashboardData();
-        const newAlerts = dashboardData.alerts.filter((alert: any) => !alert.acknowledged);
+        const newAlerts = dashboardData.alerts.filter((alert) => !alert.acknowledged);
         
         setAlerts(newAlerts);
         setUnreadCount(newAlerts.length);
         
         // Show browser notification for critical alerts
         newAlerts
-          .filter((alert: any) => alert.severity === 'critical')
-          .forEach((alert: any) => {
+          .filter((alert) => alert.severity === 'critical')
+          .forEach((alert) => {
             if ('Notification' in window && Notification.permission === 'granted') {
               new Notification(alert.title, {
                 body: alert.message,
@@ -280,8 +280,8 @@ export function useRealTimeAlerts() {
   }, []);
 
   const markAsRead = useCallback((alertId: number) => {
-    setAlerts((prev: any) => prev.filter((alert: any) => alert.id !== alertId));
-    setUnreadCount((prev: any) => Math.max(0, prev - 1));
+    setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
   }, []);
 
   return {

@@ -59,7 +59,7 @@ export function EmergencyAssistance() {
             </label>
             <select
               value={emergencyType}
-              onChange={(e) => setEmergencyType(e.target.value as any)}
+              onChange={(e) => setEmergencyType(e.target.value as 'medical' | 'medication' | 'mental_health')}
               className="block w-full border-red-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500"
             >
               <option value="medical">Medical Emergency</option>

@@ -20,7 +20,7 @@ interface AuthResponse {
   session_token?: string;
   user?: User;
   message?: string;
-  session?: any;
+  session?: string;
   refresh_token?: string;
   success?: boolean;
   detail?: string; 
@@ -58,7 +58,7 @@ class JWTAuthService {
         session_token: data.session_token,
         user: data.user as User,
         requires_2fa: false,
-        session: data.session,
+        session: typeof data.session === 'object' ? data.session : undefined,
         message: data.message,
       };
   

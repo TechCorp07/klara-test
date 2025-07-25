@@ -54,7 +54,7 @@ export interface JWTPayload {
     can_access_patient_data: boolean;
     can_access_research_data: boolean;
     can_emergency_access: boolean;
-    pharmaceutical_tenants: any[];
+    pharmaceutical_tenants: unknown[];
     
     // Additional permissions that might be added
     has_audit_access?: boolean;

@@ -234,7 +234,7 @@ export default function ConnectDevicePage() {
               </label>
               <select
                 value={connection.sync_frequency}
-                onChange={(e) => setConnection({...connection, sync_frequency: e.target.value as any})}
+                onChange={(e) => setConnection({...connection, sync_frequency: e.target.value as 'real-time' | 'hourly' | 'daily'})}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               >
                 <option value="real-time">Real-time (recommended for critical conditions)</option>

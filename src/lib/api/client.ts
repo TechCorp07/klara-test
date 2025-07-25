@@ -79,15 +79,7 @@ class TabAPIClient {
 
     // Response interceptor - Handle auth errors
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => {
-        // Log response timing in development
-        if (process.env.NODE_ENV === 'development') {
-          const extendedConfig = response.config as ExtendedInternalAxiosRequestConfig;
-          if (extendedConfig.metadata) {
-            const duration = Date.now() - extendedConfig.metadata.startTime;
-          }
-        }
-        
+      (response: AxiosResponse) => {  
         return response;
       },
       async (error: AxiosError) => {
@@ -143,7 +135,7 @@ class TabAPIClient {
   async upload<T = unknown>(
     url: string, 
     file: File, 
-    additionalData: Record<string, any> = {}, 
+    additionalData: Record<string, unknown> = {}, 
     onProgress?: (progress: number) => void,
     config?: TabAPIRequestConfig
   ): Promise<AxiosResponse<T>> {
@@ -160,8 +152,9 @@ class TabAPIClient {
         ...config?.headers,
         'Content-Type': 'multipart/form-data',
       },
-      onUploadProgress: onProgress ? (progressEvent: any) => {
-        const progress = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+      onUploadProgress: onProgress ? (progressEvent: unknown) => {
+        const event = progressEvent as { loaded: number; total?: number };
+        const progress = Math.round((event.loaded * 100) / (event.total || 1));
         onProgress(progress);
       } : undefined,
     });
@@ -170,7 +163,7 @@ class TabAPIClient {
   async batch<T = unknown>(requests: Array<{
     method: 'get' | 'post' | 'put' | 'patch' | 'delete';
     url: string;
-    data?: any;
+    data?: unknown;
     config?: TabAPIRequestConfig;
   }>): Promise<AxiosResponse<T>[]> {
     const promises = requests.map(req => {
@@ -198,7 +191,7 @@ class TabAPIClient {
     maxRetries: number = 3,
     delay: number = 1000
   ): Promise<AxiosResponse<T>> {
-    let lastError: any;
+    let lastError: unknown;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -208,10 +201,11 @@ class TabAPIClient {
         
         // Don't retry on 4xx errors (except 429 - too many requests)
         if (error instanceof Error && 'response' in error) {
-          const axiosError = error as any;
-          if (axiosError.response?.status >= 400 && 
-              axiosError.response?.status < 500 && 
-              axiosError.response?.status !== 429) {
+          const axiosError = error as AxiosError;
+          if (axiosError.response && 
+              axiosError.response.status >= 400 && 
+              axiosError.response.status < 500 && 
+              axiosError.response.status !== 429) {
             throw error;
           }
         }
@@ -272,15 +266,16 @@ export function extractDirectData<T>(response: AxiosResponse<T>): T {
 
 export function handleApiError(error: unknown): string {
   if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as any;
-    if (axiosError.response?.data?.message) {
-      return axiosError.response.data.message;
+    const axiosError = error as AxiosError;
+    const data = axiosError.response?.data as any;
+    if (data?.message) {
+      return data.message;
     }
-    if (axiosError.response?.data?.detail) {
-      return axiosError.response.data.detail;
+    if (data?.detail) {
+      return data.detail;
     }
-    if (axiosError.response?.data?.errors?.length) {
-      return axiosError.response.data.errors.join(', ');
+    if (data?.errors?.length) {
+      return data.errors.join(', ');
     }
   }
   
