@@ -9,15 +9,12 @@ import { FormButton, FormAlert } from '@/components/ui/common';
 import { Spinner } from '@/components/ui/spinner';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
-import { patientService } from '@/lib/api/services/patient.service';
 import { 
   Dna, 
   AlertTriangle, 
   Users, 
   FileText, 
   Heart, 
-  Brain, 
-  Activity,
   Shield,
   ArrowLeft,
   Download,
@@ -154,15 +151,6 @@ export default function GeneticsAnalysisPage() {
       case 'moderate': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'low': return 'bg-green-100 text-green-800 border-green-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-
-  const getRiskIcon = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'oncological': return <Heart className="w-4 h-4" />;
-      case 'neurological': return <Brain className="w-4 h-4" />;
-      case 'cardiac': return <Activity className="w-4 h-4" />;
-      default: return <Dna className="w-4 h-4" />;
     }
   };
 

@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
 
     // Forward request to backend
     const backendUrl = `${config.apiBaseUrl}/users/auth/login/`;
-    console.log('🔗 Forwarding tab-specific login to:', backendUrl);
     
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
@@ -66,11 +65,9 @@ export async function POST(request: NextRequest) {
 
     if (!backendResponse.ok) {
       console.error('❌ Backend login failed:', responseData);
-      console.log('🔍 DEBUG - Full responseData:', JSON.stringify(responseData, null, 2)); // DEBUG
       
       // CHECK FOR APPROVAL PENDING - ADD THIS BLOCK
       if (responseData.requires_approval) {
-        console.log('🔍 DEBUG - Approval pending detected, returning structured response'); // DEBUG
         return NextResponse.json({
           requires_approval: true,
           role: responseData.role,
@@ -118,16 +115,6 @@ export async function POST(request: NextRequest) {
         { status: backendResponse.status }
       );
     }
-
-    console.log('✅ Backend tab-specific login successful');
-
-    // ADD THIS DEBUG SECTION:
-    console.log('🔍 BACKEND RESPONSE DEBUG:', {
-      hasAccessToken: !!responseData.access_token,
-      hasSessionToken: !!responseData.session_token,
-      hasRefreshToken: !!responseData.refresh_token,
-      sessionTokenPreview: responseData.session_token?.substring(0, 20) || 'none'
-    });
 
     // Extract JWT token
     const jwtToken = responseData.access_token;

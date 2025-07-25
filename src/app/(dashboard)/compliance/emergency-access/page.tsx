@@ -60,9 +60,6 @@ export default function EmergencyAccessPage() {
       {/* Content */}
       <EmergencyAccessPanel
         mode={activeView}
-        onComplete={(result) => {
-          console.log('Action completed:', result);
-        }}
       />
     </div>
   );

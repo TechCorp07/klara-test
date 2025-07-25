@@ -1,3 +1,5 @@
+import { JWTPayload } from './validator';
+
 // src/lib/auth/index.ts
 export { JWTAuthProvider as AuthProvider } from './auth-provider';
 export type { JWTAuthContextType } from './auth-provider';
@@ -160,25 +162,6 @@ export const TokenUtils = {
  * Development utilities
  */
 export const DevUtils = {
-  /**
-   * Log authentication state for debugging
-   */
-  logAuthState: (jwtPayload: JWTPayload | null): void => {
-    if (process.env.NODE_ENV !== 'development') return;
-    
-    console.group('🔐 JWT Auth Debug');
-    if (jwtPayload) {
-      console.log('User ID:', jwtPayload.user_id);
-      console.log('Email:', jwtPayload.email);
-      console.log('Role:', jwtPayload.role);
-      console.log('Session ID:', jwtPayload.session_id);
-      console.log('Expires:', new Date(jwtPayload.exp * 1000));
-      console.log('Permissions:', jwtPayload.permissions);
-    } else {
-      console.log('No authentication token');
-    }
-    console.groupEnd();
-  },
 
   /**
    * Validate JWT payload structure
@@ -222,13 +205,4 @@ export const AuthConfig = {
       'Race condition sources',
     ],
   }),
-};
-
-// Default export for easy importing
-export default {
-  PermissionUtils,
-  RouteUtils,
-  TokenUtils,
-  DevUtils,
-  AuthConfig,
 };

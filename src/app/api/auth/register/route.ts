@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     
     // Forward request to backend
     const backendUrl = `${config.apiBaseUrl}/users/auth/register/`;
-    console.log('🔗 Forwarding registration to:', backendUrl);
     
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
@@ -43,7 +42,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(responseData, { status: backendResponse.status });
     }
 
-    console.log('✅ Registration successful');
     return NextResponse.json(responseData);
 
   } catch (error) {

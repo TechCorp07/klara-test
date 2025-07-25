@@ -14,7 +14,6 @@ interface ApprovalPendingProps {
 const ApprovalPending: React.FC<ApprovalPendingProps> = ({ 
   userRole, 
   submittedAt, 
-  message 
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -138,7 +137,7 @@ const ApprovalPending: React.FC<ApprovalPendingProps> = ({
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-gray-700">You'll receive an email notification once approved</p>
+                <p className="text-gray-700">You&apos;ll receive an email notification once approved</p>
               </div>
             </div>
           </div>
@@ -146,7 +145,7 @@ const ApprovalPending: React.FC<ApprovalPendingProps> = ({
           {/* Benefits Section */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Once approved, you'll be able to:
+              Once approved, you&apos;ll be able to:
             </h3>
             <div className="grid gap-2">
               {content.benefits.map((benefit, index) => (

@@ -54,17 +54,6 @@ export function RareDiseaseMonitoringWidget({ rareConditions, vitals }: RareDise
     }
   };
 
-  const getTrendIcon = (trend: 'improving' | 'stable' | 'concerning') => {
-    switch (trend) {
-      case 'improving':
-        return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'concerning':
-        return <TrendingDown className="w-4 h-4 text-red-600" />;
-      default:
-        return <Minus className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
   const formatDiagnosisDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 

@@ -190,7 +190,7 @@ export function CareTeamWidget({ careTeam, onContactProvider }: CareTeamProps) {
           <Users className="w-8 h-8 mx-auto mb-2 text-gray-400" />
           <p className="text-sm mb-2">No care team members assigned</p>
           <p className="text-xs text-gray-400">
-            Your healthcare providers and caregivers will appear here once they're connected to your account
+            Your healthcare providers and caregivers will appear here once they&apos;re connected to your account
           </p>
         </div>
       )}

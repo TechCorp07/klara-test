@@ -21,14 +21,6 @@ export interface APIResponse<T = unknown> {
   errors?: string[];
 }
 
-interface ApiError {
-  message: string;
-  status?: number;
-  code?: string;
-  details?: any;
-}
-
-
 class TabAPIClient {
   private client: AxiosInstance;
   private baseURL: string;
@@ -77,11 +69,6 @@ class TabAPIClient {
         // Add request timestamp for debugging
         extendedConfig.metadata = { startTime: Date.now() };
         
-        // Log outgoing requests in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-        }
-        
         return config;
       },
       (error) => {
@@ -98,7 +85,6 @@ class TabAPIClient {
           const extendedConfig = response.config as ExtendedInternalAxiosRequestConfig;
           if (extendedConfig.metadata) {
             const duration = Date.now() - extendedConfig.metadata.startTime;
-            console.log(`✅ API Response: ${response.status} in ${duration}ms`);
           }
         }
         
@@ -109,7 +95,6 @@ class TabAPIClient {
         
         // Handle authentication errors
         if (error.response?.status === 401 && !originalRequest?.skipAuthRefresh) {
-          console.log('🔐 Authentication error detected');
           
           // NEW: Try session token refresh first
           const sessionToken = localStorage.getItem('session_token');

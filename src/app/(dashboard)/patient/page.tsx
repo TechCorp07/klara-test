@@ -28,7 +28,7 @@ import { QuickActionsWidget } from './components/dashboard/QuickActionsWidget';
 import { RefreshCw, Menu, X, Bell, Settings, User } from 'lucide-react';
 
 function PatientDashboardContent() {
-  const { user, getUserRole, hasPermission } = useAuth();
+  const { user, getUserRole } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addNotification } = useNotifications();
@@ -55,14 +55,10 @@ function PatientDashboardContent() {
   }, []);
 
   const {
-    isSubmitting, 
     actionError, 
     actionSuccess, 
     logMedication, 
-    recordVitals, 
     acknowledgeAlert, 
-    requestAppointment, 
-    connectDevice,
     clearMessages 
   } = usePatientActions();
 
@@ -77,15 +73,6 @@ function PatientDashboardContent() {
   }, [userRole, router]);
 
   useEffect(() => {
-    console.log('🔍 Dashboard State:', {
-      isLoading,
-      hasError: !!error,
-      error,
-      hasData: !!dashboardData,
-      dataKeys: dashboardData ? Object.keys(dashboardData) : [],
-      patientInfo: dashboardData?.patient_info?.name,
-      medicationsCount: dashboardData?.medications?.active_medications?.length || 0
-    });
   }, [dashboardData, isLoading, error]);
 
   useEffect(() => {
@@ -124,13 +111,11 @@ function PatientDashboardContent() {
 
   // Loading state
   if (isLoading) {
-    console.log('🔄 Showing loading state');
     return <DashboardLoader />;
   }
 
   // Error state
   if (error) {
-    console.log('❌ Showing error state:', error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="bg-white rounded-lg shadow p-6 max-w-md w-full text-center">
@@ -148,11 +133,8 @@ function PatientDashboardContent() {
   }
 
   if (!dashboardData) {
-    console.log('⚠️ No dashboard data, showing loader');
     return <DashboardLoader />;
   }
-  
-  console.log('✅ Rendering dashboard with data');
 
   const handleLogMedication = async (medicationId: number) => {
     await logMedication(medicationId, true);
@@ -213,7 +195,6 @@ function PatientDashboardContent() {
             />
             <FHIRDataWidget 
               onRequestImport={() => router.push('/patient/fhir/import')}
-              onExportData={() => console.log('FHIR export initiated')}
             />
           </>
         );
@@ -261,12 +242,10 @@ function PatientDashboardContent() {
               onConnectDevice={() => router.push('/patient/devices/connect')}
             />
             <CommunityGroupsWidget 
-              onJoinGroup={(groupId) => console.log('Joining group:', groupId)}
               onViewGroup={(groupId) => router.push(`/patient/community/groups/${groupId}`)}
             />
             <FHIRDataWidget 
               onRequestImport={() => router.push('/patient/fhir/import')}
-              onExportData={() => console.log('FHIR export for research')}
             />
           </>
         );
@@ -289,8 +268,6 @@ function PatientDashboardContent() {
             />
             <QuickActionsWidget quickActions={safeQuickActions} />
             <CommunityGroupsWidget 
-              onJoinGroup={(groupId) => console.log('Joining group:', groupId)}
-              onViewGroup={(groupId) => router.push(`/patient/community/groups/${groupId}`)}
             />
             {safePatientInfo?.has_rare_condition && (
               <RareDiseaseMonitoringWidget 

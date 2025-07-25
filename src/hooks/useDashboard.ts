@@ -23,16 +23,11 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
   const mountedRef = useRef(true);
 
   const fetchData = useCallback(async (isRefresh = false) => {
-    console.log('🎯 FETCH START:', { isRefresh, hasCurrentRequest: !!requestRef.current });
     
     if (requestRef.current && !isRefresh) {
-      console.log('🔄 Request already in progress, waiting...');
       try {
         const dashboardData = await requestRef.current;
-        console.log('🎯 CACHE PATH: Got data, updating state...', !!dashboardData);
         
-        // Remove mountedRef.current check - just update state
-        console.log('✅ Setting dashboard data from cache:', Object.keys(dashboardData));
         setData(dashboardData);
         setLastUpdated(new Date());
         setIsLoading(false);
@@ -40,44 +35,33 @@ export function useDashboard(autoRefreshInterval?: number): UseDashboardReturn {
         
         return dashboardData;
       } catch (err) {
-        console.log('❌ Cache request failed, making new one');
         requestRef.current = null;
       }
     }
 
     try {
-      console.log('🎯 NEW REQUEST PATH: Starting...');
-      
       if (isRefresh) {
         setIsRefreshing(true);
       } else {
         setIsLoading(true);
       }
       setError(null);
-
-      console.log('🔄 Making new dashboard request...');
       
       const requestPromise = patientService.getDashboardData();
       requestRef.current = requestPromise;
       
       const dashboardData = await requestPromise;
-      console.log('🎯 API SUCCESS: Got data', !!dashboardData);
       
-      // Remove mountedRef.current check - just update state
-      console.log('✅ Setting dashboard data:', Object.keys(dashboardData));
       setData(dashboardData);
       setLastUpdated(new Date());
-      console.log('🎯 ABOUT TO SET isLoading to false');
       
       return dashboardData;
     } catch (err) {
-      console.log('❌ API ERROR:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
       setError(errorMessage);
       console.error('❌ Dashboard fetch error:', err);
       throw err;
     } finally {
-      console.log('🎯 FINALLY BLOCK: Setting isLoading to false');
       requestRef.current = null;
       setIsLoading(false);
       setIsRefreshing(false);

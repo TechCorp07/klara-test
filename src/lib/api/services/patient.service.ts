@@ -3,29 +3,6 @@ import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
 import { AxiosResponse } from 'axios';
 
-
-// Helper function for error handling
-const handleError = (error: unknown): string => {
-  if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as any;
-    if (axiosError.response?.data?.message) {
-      return axiosError.response.data.message;
-    }
-    if (axiosError.response?.data?.detail) {
-      return axiosError.response.data.detail;
-    }
-    if (axiosError.response?.data?.errors?.length) {
-      return axiosError.response.data.errors.join(', ');
-    }
-  }
-  
-  if (error instanceof Error) {
-    return error.message;
-  }
-  
-  return 'An unexpected error occurred';
-};
-
 // Helper function to extract data from your existing Axios responses
 const extractData = <T>(response: AxiosResponse<T>): T => {
   return response.data;
@@ -274,7 +251,6 @@ class EnhancedPatientService {
    */
     async getDashboardData(): Promise<PatientDashboardData> {
       try {
-        console.log('🔄 Fetching dashboard data...');
         const response = await apiClient.get<PatientDashboardData>(ENDPOINTS.PATIENT.DASHBOARD);
         const data = extractData(response);
         
@@ -282,15 +258,6 @@ class EnhancedPatientService {
         if (!data.patient_info || !data.medications || !data.appointments) {
           throw new Error('Invalid dashboard data structure received');
         }
-        
-        console.log('✅ Dashboard data received:', {
-          hasPatientInfo: !!data.patient_info,
-          hasHealthSummary: !!data.health_summary,
-          hasMedications: !!data.medications,
-          hasVitals: !!data.vitals,
-          dataKeys: Object.keys(data),
-          patientName: data.patient_info?.name
-        });
         
         return data;
       } catch (error) {

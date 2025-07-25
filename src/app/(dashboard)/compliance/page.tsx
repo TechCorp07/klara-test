@@ -120,18 +120,6 @@ export default function ComplianceDashboard() {
     return `${greeting}, ${user?.first_name || 'Compliance Officer'}`;
   };
 
-  const handleReviewEmergencyAccess = () => {
-    console.log('Opening emergency access review interface...');
-  };
-
-  const handleInvestigateSecurity = () => {
-    console.log('Opening security incident investigation...');
-  };
-
-  const handleGenerateReport = () => {
-    console.log('Generating compliance report...');
-  };
-
   if (isLoading || !user || user.role !== 'compliance') {
     return (
       <div className="flex justify-center items-center h-96">
@@ -174,9 +162,6 @@ export default function ComplianceDashboard() {
                     </ul>
                   </div>
                   <div className="mt-4">
-                    <button onClick={handleReviewEmergencyAccess} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                      Review Emergency Access
-                    </button>
                   </div>
                 </div>
               </div>
@@ -299,7 +284,6 @@ export default function ComplianceDashboard() {
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Compliance Tools</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <button 
-            onClick={handleReviewEmergencyAccess}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Emergency Access Review</h3>
@@ -314,14 +298,12 @@ export default function ComplianceDashboard() {
             <p className="mt-1 text-sm text-gray-500">Track patient consent changes and e-signatures</p>
           </button>
           <button 
-            onClick={handleInvestigateSecurity}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Security Monitoring</h3>
             <p className="mt-1 text-sm text-gray-500">Monitor security incidents and breach attempts</p>
           </button>
           <button 
-            onClick={handleGenerateReport}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Compliance Reports</h3>

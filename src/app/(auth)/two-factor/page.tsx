@@ -11,11 +11,6 @@ const TwoFactorForm = dynamic(() => import('@/components/auth/TwoFactorForm'), {
   ssr: false
 });
 
-const AuthGuard = dynamic(() => import('@/lib/auth/guards/auth-guard').then(mod => mod.AuthGuard), {
-  loading: () => <div className="text-center">Loading...</div>,
-  ssr: false
-});
-
 /**
  * Two-factor authentication setup page component.
  * 
@@ -32,11 +27,9 @@ export default function TwoFactorPage() {
         </div>
         
         <Suspense fallback={<div className="text-center">Loading...</div>}>
-          <AuthGuard>
             <Suspense fallback={<div className="text-center">Loading form...</div>}>
               <TwoFactorForm />
             </Suspense>
-          </AuthGuard>
         </Suspense>
         
         <p className="mt-8 text-center text-sm text-gray-500">

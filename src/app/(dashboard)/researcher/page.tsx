@@ -110,16 +110,8 @@ export default function ResearcherDashboard() {
     return `${greeting}, ${user?.first_name ? `Dr. ${user.first_name}` : 'Researcher'}`;
   };
 
-  const handleIRBRenewal = () => {
-    console.log('Opening IRB renewal interface...');
-  };
-
   const handleDataAccess = () => {
-    console.log('Opening research data access tools...');
-  };
-
-  const handleStudyManagement = () => {
-    console.log('Opening study management interface...');
+    // Handle data access click
   };
 
   if (isLoading || !user || user.role !== 'researcher') {
@@ -292,7 +284,7 @@ export default function ResearcherDashboard() {
         </div>
       </div>
 
-      <div>
+      <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Research Tools</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <button 
@@ -302,10 +294,7 @@ export default function ResearcherDashboard() {
             <h3 className="text-lg font-medium text-gray-900">Research Data Access</h3>
             <p className="mt-1 text-sm text-gray-500">Access anonymized data for your approved studies</p>
           </button>
-          <button 
-            onClick={handleStudyManagement}
-            className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
-          >
+          <button className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors">
             <h3 className="text-lg font-medium text-gray-900">Study Management</h3>
             <p className="mt-1 text-sm text-gray-500">Manage your current research studies and participants</p>
           </button>
@@ -313,10 +302,7 @@ export default function ResearcherDashboard() {
             <h3 className="text-lg font-medium text-gray-900">Analytics Tools</h3>
             <p className="mt-1 text-sm text-gray-500">Statistical analysis tools for research data</p>
           </button>
-          <button 
-            onClick={handleIRBRenewal}
-            className="p-4 bg-yellow-50 border border-yellow-200 shadow rounded-lg hover:bg-yellow-100 text-left transition-colors"
-          >
+          <button className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors">
             <h3 className="text-lg font-medium text-yellow-900">IRB Management</h3>
             <p className="mt-1 text-sm text-yellow-600">Manage IRB approvals and renewals</p>
           </button>
@@ -330,6 +316,6 @@ export default function ResearcherDashboard() {
           </button>
         </div>
       </div>
-    </div>
+        </div>
   );
 }

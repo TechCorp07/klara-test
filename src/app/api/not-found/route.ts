@@ -8,15 +8,6 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 export async function GET(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Only log non-DevTools requests to reduce noise
-  if (!pathname.includes('.well-known') && 
-      !pathname.includes('chrome.devtools') && 
-      !pathname.includes('appspecific')) {
-    console.log('🔍 API not-found route accessed:', pathname);
-  }
-  
   // Return a clean 404 response
   return NextResponse.json(
     { 
@@ -49,17 +40,4 @@ export async function DELETE(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   return GET(request);
-}
-
-export async function HEAD(request: NextRequest) {
-  return new NextResponse(null, { status: 404 });
-}
-
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, { 
-    status: 404,
-    headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
-    }
-  });
 }

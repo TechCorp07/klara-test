@@ -120,19 +120,6 @@ export function FamilyHistoryWidget({ onAddMember, onEditMember, onViewGenetics 
     }
   };
 
-  const getConditionSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'severe':
-        return 'text-red-600';
-      case 'moderate':
-        return 'text-yellow-600';
-      case 'mild':
-        return 'text-green-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">

@@ -128,7 +128,7 @@ interface FeatureFlagProps {
   fallback?: ReactNode;
 }
 
-export function FeatureFlag({ children, feature, enabled = false, fallback = null }: FeatureFlagProps) {
+export function FeatureFlag({ children, enabled = false, fallback = null }: FeatureFlagProps) {
   // For now, just use the enabled prop
   // Later this can be extended to check feature flags from backend
   if (!enabled) {

@@ -1,6 +1,6 @@
 // src/app/(dashboard)/patient/components/dashboard/TelemedicineWidget.tsx
 import React, { useState, useEffect } from 'react';
-import { Video, Calendar, Clock, Monitor, Phone, Mic, MicOff, VideoOff, Settings } from 'lucide-react';
+import { Video, Clock, Monitor, Mic, Settings } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
 

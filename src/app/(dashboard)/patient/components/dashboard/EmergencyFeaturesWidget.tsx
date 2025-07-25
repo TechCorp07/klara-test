@@ -44,7 +44,8 @@ export function EmergencyFeaturesWidget({ emergencyInfo, onUpdateEmergencyInfo }
           });
           location = `${position.coords.latitude},${position.coords.longitude}`;
         } catch (error) {
-          console.log('Location not available');
+          console.error('Geolocation error:', error);
+          location = 'Location not available';
         }
       }
 

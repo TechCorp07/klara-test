@@ -40,29 +40,24 @@ export default function LoginContent() {
     
     // Check if returnUrl contains any dangerous patterns
     if (dangerousPatterns.some(pattern => returnUrl.toLowerCase().includes(pattern.toLowerCase()))) {
-      console.log('🚫 Dangerous returnUrl pattern detected:', returnUrl);
       return '/dashboard';
     }
     
     // Check URL length
     if (returnUrl.length > 100) {
-      console.log('🚫 ReturnUrl too long:', returnUrl.length);
       return '/dashboard';
     }
     
     // Must start with / and be a simple path
     if (!returnUrl.startsWith('/') || returnUrl.includes('//')) {
-      console.log('🚫 Invalid returnUrl format:', returnUrl);
       return '/dashboard';
     }
     
     // Only allow simple alphanumeric paths with basic separators
     if (!/^\/[a-zA-Z0-9/_-]*$/.test(returnUrl)) {
-      console.log('🚫 ReturnUrl contains invalid characters:', returnUrl);
       return '/dashboard';
     }
     
-    console.log('✅ Allowing returnUrl:', returnUrl);
     return returnUrl;
   };
   
@@ -71,7 +66,6 @@ export default function LoginContent() {
   useEffect(() => {
     // Only execute redirect logic if auth is initialized
     if (!isInitialized) {
-      console.log('⏳ Auth not initialized yet, waiting...');
       return;
     }
   
@@ -114,7 +108,6 @@ export default function LoginContent() {
         ? sanitizedReturnUrl 
         : redirectUrl;
   
-      console.log(`✅ User authenticated as ${userRole}, redirecting to:`, finalRedirectUrl);
       hasRedirectedRef.current = true;
   
       setTimeout(() => {
@@ -122,8 +115,6 @@ export default function LoginContent() {
       }, 100);
   
       return;
-    } else if (isInitialized && !isAuthenticated) {
-      console.log('🔑 User not authenticated, showing login form');
     }
   }, [isInitialized, isAuthenticated, user, sanitizedReturnUrl, router]);
   

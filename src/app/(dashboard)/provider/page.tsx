@@ -98,14 +98,6 @@ export default function ProviderDashboard() {
     return `${greeting}, Dr. ${user?.last_name || user?.first_name || 'Doctor'}`;
   };
 
-  const handleEmergencyAccess = () => {
-    console.log('Initiating emergency access...');
-  };
-
-  const handleVerifyPatient = (patientId: number) => {
-    console.log(`Verifying patient identity: ${patientId}`);
-  };
-
   if (isLoading || !user || user.role !== 'provider') {
     return (
       <div className="flex justify-center items-center h-96">
@@ -212,14 +204,12 @@ export default function ProviderDashboard() {
                   <div>
                     {activity.type === 'emergency' ? (
                       <button
-                        onClick={handleEmergencyAccess}
                         className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
                       >
                         Manage
                       </button>
                     ) : activity.type === 'verification' ? (
                       <button
-                        onClick={() => handleVerifyPatient(activity.patient_id || 0)}
                         className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200"
                       >
                         Verify
@@ -257,7 +247,6 @@ export default function ProviderDashboard() {
             <p className="mt-1 text-sm text-gray-500">Start or join a virtual appointment with a patient</p>
           </button>
           <button 
-            onClick={handleEmergencyAccess}
             className="p-4 bg-red-50 border border-red-200 shadow rounded-lg hover:bg-red-100 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-red-900">Emergency Access</h3>

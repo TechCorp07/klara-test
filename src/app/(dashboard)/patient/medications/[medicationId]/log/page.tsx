@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { FormButton, FormAlert } from '@/components/ui/common';
 import { Spinner } from '@/components/ui/spinner';
@@ -11,12 +10,11 @@ import { usePatientMedications } from '@/hooks/patient/usePatientMedications';
 import type { Prescription } from '@/types/patient.types';
 
 export default function LogMedicationPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
   const medicationId = Number(params.medicationId);
   
-  const { medications, markDoseAsTaken, logMedicationTaken } = usePatientMedications();
+  const { medications, logMedicationTaken } = usePatientMedications();
   
   const [medication, setMedication] = useState<Prescription | null>(null);
   const [takenTime, setTakenTime] = useState(new Date().toISOString().slice(0, 16));

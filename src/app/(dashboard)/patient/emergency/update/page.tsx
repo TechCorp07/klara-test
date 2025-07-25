@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, AlertCircle, Phone, Heart } from 'lucide-react';
+import { Shield, AlertCircle, Phone } from 'lucide-react';
 
 interface EmergencyInfo {
   medical_id: string;
@@ -122,8 +122,6 @@ export default function UpdateEmergencyInfoPage() {
     setIsSubmitting(true);
     
     try {
-      console.log('Updating emergency information:', info);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       

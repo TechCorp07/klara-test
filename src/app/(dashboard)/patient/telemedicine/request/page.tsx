@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Video, Calendar, Clock, Phone, MessageSquare } from 'lucide-react';
+import { Video, Phone, MessageSquare } from 'lucide-react';
 
 interface TelemedicineRequest {
   provider_id: string;
@@ -56,9 +56,6 @@ export default function TelemedicineRequestPage() {
     setIsSubmitting(true);
     
     try {
-      // API call to submit telemedicine request
-      console.log('Submitting telemedicine request:', request);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       

@@ -157,16 +157,7 @@ export default function CaregiverDashboard() {
     return permissions[accessLevel as keyof typeof permissions]?.includes(feature) || false;
   };
 
-  const handleMedicationReminder = (patientId: number) => {
-    console.log(`Managing medication for patient ${patientId}`);
-  };
-
-  const handleScheduleAppointment = (patientId: number) => {
-    console.log(`Scheduling appointment for patient ${patientId}`);
-  };
-
   const handleEmergencyContact = () => {
-    console.log('Initiating emergency contact...');
   };
 
   if (isLoading || !user || user.role !== 'caregiver') {
@@ -245,14 +236,12 @@ export default function CaregiverDashboard() {
                   </div>
                   <div className="mt-4 flex space-x-2">
                     <button 
-                      onClick={() => console.log(`View patient ${patient.id}`)}
                       className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200"
                     >
                       View Profile
                     </button>
                     {canAccessFeature('medications', patient.access_level) && (
                       <button 
-                        onClick={() => handleMedicationReminder(patient.id)}
                         className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm hover:bg-green-200"
                       >
                         Medications
@@ -324,14 +313,12 @@ export default function CaregiverDashboard() {
             <p className="mt-1 text-sm text-gray-500">View health information for your patients</p>
           </button>
           <button 
-            onClick={() => handleMedicationReminder(0)}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Medication Management</h3>
             <p className="mt-1 text-sm text-gray-500">Track and manage patient medications</p>
           </button>
           <button 
-            onClick={() => handleScheduleAppointment(0)}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Appointment Scheduling</h3>

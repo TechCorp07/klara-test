@@ -123,7 +123,7 @@ export function SmartWatchDataWidget({ wearableData, onConnectDevice }: SmartWat
 
           {/* Today's Activity Summary */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-3">Today's Activity</h4>
+            <h4 className="font-medium text-gray-900 mb-3">Today&apos;s Activity</h4>
             <div className="grid grid-cols-2 gap-3">
               {/* Steps */}
               <div className="bg-blue-50 p-3 rounded-lg">

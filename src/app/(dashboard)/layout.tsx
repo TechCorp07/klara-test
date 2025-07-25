@@ -237,7 +237,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">No Dashboard Access</h1>
           <p className="text-gray-600 mb-4">
-            You don't have permission to access any dashboard features.
+            You don&apos;t have permission to access any dashboard features.
           </p>
           <p className="text-sm text-gray-500">
             Role: {userRole} | Email: {user?.email}

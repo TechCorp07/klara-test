@@ -106,18 +106,6 @@ export default function PharmcoDashboard() {
     return `${greeting}, ${user?.first_name || 'Pharmaceutical Researcher'}`;
   };
 
-  const handleAdverseEvent = () => {
-    console.log('Opening adverse event investigation...');
-  };
-
-  const handleRegulatorySubmission = () => {
-    console.log('Opening regulatory submission interface...');
-  };
-
-  const handleDataAnalysis = () => {
-    console.log('Opening data analysis tools...');
-  };
-
   if (isLoading || !user || user.role !== 'pharmco') {
     return (
       <div className="flex justify-center items-center h-96">
@@ -157,16 +145,6 @@ export default function PharmcoDashboard() {
                     </ul>
                   </div>
                   <div className="mt-4 flex space-x-3">
-                    {stats.adverse_events > 0 && (
-                      <button onClick={handleAdverseEvent} className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Review Adverse Events
-                      </button>
-                    )}
-                    {stats.regulatory_submissions > 0 && (
-                      <button onClick={handleRegulatorySubmission} className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Review Submissions
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -303,21 +281,18 @@ export default function PharmcoDashboard() {
             <p className="mt-1 text-sm text-gray-500">Track real-world medication adherence and outcomes</p>
           </button>
           <button 
-            onClick={handleAdverseEvent}
             className="p-4 bg-red-50 border border-red-200 shadow rounded-lg hover:bg-red-100 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-red-900">Adverse Event Reporting</h3>
             <p className="mt-1 text-sm text-red-600">Report and investigate adverse drug reactions</p>
           </button>
           <button 
-            onClick={handleRegulatorySubmission}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Regulatory Compliance</h3>
             <p className="mt-1 text-sm text-gray-500">Manage FDA submissions and regulatory requirements</p>
           </button>
           <button 
-            onClick={handleDataAnalysis}
             className="p-4 bg-white shadow rounded-lg hover:bg-gray-50 text-left transition-colors"
           >
             <h3 className="text-lg font-medium text-gray-900">Data Analytics</h3>

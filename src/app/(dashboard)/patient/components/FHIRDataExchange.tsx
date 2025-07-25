@@ -115,7 +115,7 @@ export function FHIRDataExchange() {
           
           <p className="text-sm text-gray-600 mb-4">
             Request your medical records from previous healthcare providers. 
-            We'll help facilitate the transfer using secure FHIR standards.
+            We&apos;ll help facilitate the transfer using secure FHIR standards.
           </p>
   
           <button

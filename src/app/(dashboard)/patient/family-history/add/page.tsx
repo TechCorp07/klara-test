@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Plus, AlertTriangle } from 'lucide-react';
+import { Users, AlertTriangle } from 'lucide-react';
 
 interface FamilyMember {
   name: string;

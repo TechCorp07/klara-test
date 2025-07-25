@@ -3,11 +3,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
 
 export default function RecordVitalsPage() {
   const router = useRouter();
-  const { user } = useAuth();
   const [vitals, setVitals] = useState({
     blood_pressure_systolic: '',
     blood_pressure_diastolic: '',
@@ -24,7 +22,6 @@ export default function RecordVitalsPage() {
     e.preventDefault();
     try {
       // API call to save vitals
-      console.log('Recording vitals:', vitals);
       router.push('/patient?tab=health');
     } catch (error) {
       console.error('Failed to record vitals:', error);

@@ -57,10 +57,6 @@ export default function ProviderEmergencyAccessPage() {
       
       <EmergencyAccessPanel
         mode="initiate"
-        onComplete={(result) => {
-          console.log('Emergency access initiated:', result);
-          // In a real implementation, you might redirect to the patient's record here
-        }}
       />
     </div>
   );

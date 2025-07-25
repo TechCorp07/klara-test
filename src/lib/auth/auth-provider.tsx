@@ -3,7 +3,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { JWTValidator, JWTPayload } from './validator';
+import { JWTPayload } from './validator';
 import { TabAuthManager } from './tab-auth-utils';
 import { config } from '@/lib/config';
 import { 
@@ -15,7 +15,6 @@ import {
   RegisterResponse,
   AdminPermissions,
 } from '@/types/auth.types';
-import apiClient from '../api/client';
 import authService from '../api/services/auth.service';
 
 export interface JWTAuthContextType {
@@ -62,80 +61,6 @@ export interface JWTAuthContextType {
 // Create the context
 export const JWTAuthContext = createContext<JWTAuthContextType | null>(null);
 
-// Public routes that don't require authentication
-const PUBLIC_ROUTES = [
-  '/',
-  '/login',
-  '/register',
-  '/verify-email',
-  '/reset-password',
-  '/forgot-password',
-  '/two-factor',
-  '/approval-pending',
-  '/unauthorized',
-  '/compliance-violation',
-  '/terms-of-service',
-  '/privacy-policy',
-  '/hipaa-notice',
-  '/contact',
-  '/about',
-  '/help',
-  '/support',
-];
-
-/**
- * Convert JWT payload to User object
- */
-function jwtPayloadToUser(payload: JWTPayload): User {
-  const permissions: AdminPermissions = {
-    // Core admin permissions - using backend permission names
-    has_admin_access: payload.permissions?.can_access_admin ?? false,
-    has_user_management_access: payload.permissions?.can_manage_users ?? false,
-    has_system_settings_access: payload.permissions?.can_access_admin ?? false,
-    has_audit_access: payload.permissions?.has_audit_access ?? false,
-    has_compliance_access: payload.permissions?.has_compliance_access ?? false,
-    has_export_access: payload.permissions?.has_export_access ?? false,
-    has_dashboard_access: payload.permissions?.can_access_admin ?? false,
-    has_compliance_reports_access: payload.permissions?.has_compliance_access ?? false,
-    has_approval_permissions: payload.permissions?.can_manage_users ?? false,
-    
-    // Healthcare permissions - default to false for security
-    has_patient_data_access: payload.role === 'provider' || payload.role === 'admin' || payload.role === 'superadmin',
-    has_medical_records_access: payload.role === 'provider' || payload.role === 'admin' || payload.role === 'superadmin',
-    can_manage_appointments: payload.role === 'provider' || payload.role === 'admin' || payload.role === 'superadmin',
-    can_access_telemedicine: payload.role === 'provider' || payload.role === 'admin' || payload.role === 'superadmin',
-    can_manage_medications: payload.role === 'provider' || payload.role === 'pharmco' || payload.role === 'admin' || payload.role === 'superadmin',
-    can_view_research_data: payload.role === 'researcher' || payload.role === 'admin' || payload.role === 'superadmin',
-    can_access_clinical_trials: payload.role === 'researcher' || payload.role === 'provider' || payload.role === 'admin' || payload.role === 'superadmin',
-    
-    // User permissions - everyone can view/edit their own data
-    can_view_own_data: true,
-    can_edit_own_profile: true,
-    
-    // Role info
-    user_role: payload.role,
-    is_superadmin: payload.role === 'superadmin' || payload.permissions?.is_superadmin === true,
-  };
-
-  return {
-    id: payload.user_id,
-    username: payload.username || payload.email,
-    email: payload.email,
-    first_name: '', 
-    last_name: '',
-    role: payload.role,
-    is_approved: true,
-    is_active: true,
-    is_staff: payload.role === 'admin' || payload.role === 'superadmin',
-    is_superuser: payload.role === 'superadmin',
-    email_verified: true,
-    two_factor_enabled: false,
-    date_joined: new Date().toISOString(),
-    phone_verified: false,
-    permissions,
-  };
-}
-
 /**
  * JWT Authentication Provider with Tab Isolation
  */
@@ -156,7 +81,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   // ✅ 2. SECOND: Define logout first (no dependencies)
   const logout = useCallback(async () => {
     try {
-      console.log('🚪 Logging out user...');
       
       // Clear all authentication state
       setUser(null);
@@ -194,7 +118,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     const sessionToken = localStorage.getItem('session_token');
     
     if (!sessionToken) {
-      console.log('❌ No session token, redirecting to login');
       logout();
       return;
     }
@@ -210,17 +133,8 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         
-        // ✅ COMPREHENSIVE DEBUGGING
-        console.log('🔍 RAW BACKEND RESPONSE:', userData);
-        console.log('🔍 Response keys:', Object.keys(userData));
-        console.log('🔍 userData.user exists:', !!userData.user);
-        console.log('🔍 userData.user keys:', userData.user ? Object.keys(userData.user) : 'no user object');
-        console.log('🔍 userData.user.role:', userData.user?.role);
-        console.log('🔍 userData.user.email:', userData.user?.email);
-        console.log('🔍 userData.permissions:', userData.permissions);
-        
         // ✅ EXTRACT USER WITH FALLBACKS
-        let userObject = userData.user;
+        const userObject = userData.user;
         
         if (!userObject) {
           console.error('❌ No user object in response!');
@@ -230,7 +144,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         
         if (!userObject.role) {
           console.error('❌ User object missing role property!');
-          console.log('🔍 Available user properties:', Object.keys(userObject));
           logout();
           return;
         }
@@ -240,16 +153,11 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           userObject.permissions = userData.permissions;
         }
         
-        console.log('✅ Final user object to set:', userObject);
-        console.log('✅ User role confirmed:', userObject.role);
-        
         setUser(userObject);
         setIsTabAuthenticated(true);
       } else if (response.status === 401) {
-        console.log('🔄 Session expired, attempting refresh...');
         const refreshResult = await refreshSessionToken();
         if (!refreshResult) {
-          console.log('❌ Session refresh failed, logging out');
           logout();
         }
       } else {
@@ -283,7 +191,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Session token refreshed successfully');
         localStorage.setItem('session_token', data.session_token);
         
         // Update user data after refresh
@@ -303,19 +210,16 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ 5. FIFTH: Define setupSessionRefresh (depends on checkSessionHealth and refreshSessionToken)
   const setupSessionRefresh = useCallback(() => {
-    console.log('🔄 Setting up session monitoring...');
     
     if (sessionRefreshInterval.current) {
       clearInterval(sessionRefreshInterval.current);
     }
     
     const healthCheckInterval = setInterval(() => {
-      console.log('🔍 Performing session health check...');
       checkSessionHealth();
     }, 10 * 60 * 1000);
     
     const refreshInterval = setInterval(() => {
-      console.log('🔄 Auto-refreshing session token...');
       refreshSessionToken();
     }, 50 * 60 * 1000);
     
@@ -334,25 +238,17 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const response = await authService.login(credentials);
       
       if (response.token && response.session_token) {
-        console.log('✅ Login successful, switching to session token immediately');
-        
         // ✅ Store ONLY session token, discard JWT immediately
         localStorage.setItem('session_token', response.session_token);
         
         // ✅ Remove any stored JWT tokens
         TabAuthManager.clearTabSession();
         
-        // ✅ DEBUG: Log user data from login response
-        console.log('🔍 LOGIN RESPONSE USER:', response.user);
-        console.log('🔍 LOGIN USER ROLE:', response.user?.role);
-        
         // ✅ Ensure user has role property
         const userWithRole = {
           ...response.user,
           role: response.user.role || 'patient', // ✅ Fallback to patient if missing
         };
-        
-        console.log('🔍 USER WITH ROLE:', userWithRole);
         
         // ✅ Set user state with confirmed role
         setUser(userWithRole);
@@ -461,16 +357,12 @@ const hasPermission = useCallback((permission: string): boolean => {
   // ✅ 9. NINTH: Now all useEffect hooks AFTER all functions are defined
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log(`🔐 Initializing tab authentication for tab: ${tabId}`);
-      
       try {
         const sessionToken = localStorage.getItem('session_token');
         
         if (sessionToken) {
-          console.log('🔄 Found session token, validating...');
           await checkSessionHealth();
         } else {
-          console.log('❌ No session token found');
           setIsTabAuthenticated(false);
         }
       } catch (error) {
@@ -489,7 +381,6 @@ const hasPermission = useCallback((permission: string): boolean => {
 
   useEffect(() => {
     if (isTabAuthenticated) {
-      console.log('✅ User authenticated, setting up session monitoring');
       const cleanup = setupSessionRefresh();
       return cleanup;
     }
@@ -506,13 +397,6 @@ const hasPermission = useCallback((permission: string): boolean => {
 
   // Debug effect
   useEffect(() => {
-    console.log('🔍 USER STATE CHANGE DEBUG:', {
-      hasUser: !!user,
-      userEmail: user?.email,
-      userRole: user?.role,
-      isTabAuthenticated,
-      hasSessionToken: !!localStorage.getItem('session_token')
-    });
   }, [user, isTabAuthenticated]);
 
   // ✅ 10. TENTH: Context value and provider

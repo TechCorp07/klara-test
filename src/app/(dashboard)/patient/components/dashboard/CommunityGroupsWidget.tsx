@@ -1,8 +1,7 @@
 // src/app/(dashboard)/patient/components/dashboard/CommunityGroupsWidget.tsx
 import React, { useState, useEffect } from 'react';
-import { Users, MessageCircle, Lock, Globe, ChevronRight, Plus, Crown } from 'lucide-react';
+import { Users, MessageCircle, Lock, Globe, Plus, Crown } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
-import { ENDPOINTS } from '@/lib/api/endpoints';
 
 interface CommunityGroup {
   id: number;

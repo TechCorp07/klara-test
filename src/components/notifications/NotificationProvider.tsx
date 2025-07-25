@@ -258,7 +258,6 @@ export function MedicationReminder({
 // Real-time vital signs alerts
 export function VitalSignsAlert({ 
   alert,
-  onDismiss 
 }: {
   alert: {
     id: string;

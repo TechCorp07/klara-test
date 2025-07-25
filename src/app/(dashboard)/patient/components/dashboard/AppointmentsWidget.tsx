@@ -1,6 +1,6 @@
 // src/app/(dashboard)/patient/components/dashboard/AppointmentsWidget.tsx
 import React from 'react';
-import { Calendar, Clock, Video, MapPin, Phone } from 'lucide-react';
+import { Calendar, Video, MapPin, Phone } from 'lucide-react';
 
 interface AppointmentsProps {
   appointments?: {

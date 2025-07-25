@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Watch, Smartphone, Activity, Heart, Thermometer, Scale } from 'lucide-react';
+import { Watch, Activity, Heart, Thermometer, Scale } from 'lucide-react';
 
 interface DeviceConnection {
   device_type: string;
@@ -101,9 +101,6 @@ export default function ConnectDevicePage() {
     setIsConnecting(true);
     
     try {
-      // Simulate device connection process
-      console.log('Connecting device:', connection);
-      
       // Simulate API calls
       await new Promise(resolve => setTimeout(resolve, 2000));
       

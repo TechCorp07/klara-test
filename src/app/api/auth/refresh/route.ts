@@ -10,7 +10,6 @@ import { config } from '@/lib/config';
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Token refresh API: Starting refresh...');
     
     const body = await request.json();
     const refreshToken = body.refresh_token;
@@ -25,12 +24,9 @@ export async function POST(request: NextRequest) {
 
     // Forward refresh request to backend
     const backendUrl = `${config.apiBaseUrl}/users/auth/refresh/`;
-    console.log('🔗 Calling backend refresh:', backendUrl);
 
     // GET THE AUTHORIZATION HEADER FROM THE INCOMING REQUEST
     const authHeader = request.headers.get('authorization');
-
-    console.log('🔑 Auth header present:', !!authHeader);
 
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
@@ -67,8 +63,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log('✅ Token refresh successful');
 
     // Return new tokens (no cookies set)
     const refreshResponse = {

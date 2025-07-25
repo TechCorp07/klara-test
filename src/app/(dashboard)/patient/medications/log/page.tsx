@@ -1,9 +1,8 @@
 //src/app/(dashboard)/patient/medications/log/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { FormButton, FormAlert } from '@/components/ui/common';
 import { Spinner } from '@/components/ui/spinner';
@@ -11,7 +10,6 @@ import { usePatientMedications } from '@/hooks/patient/usePatientMedications';
 import type { Prescription } from '@/types/patient.types';
 
 export default function MedicationLogPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const { medications, loading, todaySchedule } = usePatientMedications();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -42,7 +40,7 @@ export default function MedicationLogPage() {
 
       {/* Today's Schedule */}
       <Card className="mb-6 p-6">
-        <h2 className="text-xl font-semibold mb-4">Today's Medications</h2>
+        <h2 className="text-xl font-semibold mb-4">Today&apos;s Medications</h2>
         {todaySchedule.length === 0 ? (
           <p className="text-gray-500">No medications scheduled for today</p>
         ) : (

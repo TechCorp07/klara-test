@@ -30,7 +30,8 @@ interface AppConfig {
   privacyUrl: string;
   hipaaNoticeUrl: string;
   supportUrl: string;
-  
+  supportEmail: string;
+
   // Feature Flags
   features: {
     enableTokenRefresh: boolean;
@@ -77,6 +78,7 @@ function createConfig(): AppConfig {
     privacyUrl: process.env.NEXT_PUBLIC_PRIVACY_URL || '/privacy-policy',
     hipaaNoticeUrl: process.env.NEXT_PUBLIC_HIPAA_URL || '/hipaa-notice',
     supportUrl: process.env.NEXT_PUBLIC_SUPPORT_URL || '/support',
+    supportEmail: 'support@example.com',
     
     // Feature Flags
     features: {

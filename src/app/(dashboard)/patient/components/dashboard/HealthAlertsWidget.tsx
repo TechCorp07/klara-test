@@ -1,6 +1,6 @@
 // src/app/(dashboard)/patient/components/dashboard/HealthAlertsWidget.tsx
 import React from 'react';
-import { AlertTriangle, Bell, X, CheckCircle, Clock, Calendar, Pill, Activity } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle, Clock, Calendar, Pill, Activity } from 'lucide-react';
 
 interface HealthAlertsProps {
   alerts: Array<{

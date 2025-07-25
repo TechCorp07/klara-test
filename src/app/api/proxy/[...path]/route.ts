@@ -34,8 +34,6 @@ async function handler(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const apiPath = pathname.replace('/api/proxy/', '');
     
-    console.log(`🔄 Proxying request to: ${apiPath}`);
-    
     // Security check: Ensure the path is allowed
     if (!isPathAllowed(apiPath)) {
       console.error(`❌ Blocked unauthorized path: ${apiPath}`);
@@ -50,7 +48,6 @@ async function handler(request: NextRequest) {
     const token = authHeader?.replace('Bearer ', '');
     
     if (!token) {
-      console.log('❌ No authentication token found in proxy');
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -78,7 +75,6 @@ async function handler(request: NextRequest) {
     
     // Build the full backend URL
     const backendUrl = `${config.apiBaseUrl}/${apiPath}`;
-    console.log(`📤 Forwarding to backend: ${request.method} ${backendUrl}`);
     
     // Prepare request options
     const requestOptions: RequestInit = {
@@ -118,7 +114,6 @@ async function handler(request: NextRequest) {
     // Get response body
     const responseBody = await backendResponse.text();
     
-    console.log(`📨 Backend response: ${backendResponse.status}`);
     
     // Create Next.js response with same status and headers
     const response = new NextResponse(responseBody, {

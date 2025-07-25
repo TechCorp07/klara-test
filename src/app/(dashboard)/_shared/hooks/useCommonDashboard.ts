@@ -26,7 +26,7 @@ interface UseCommonDashboardReturn extends CommonDashboardState {
 }
 
 export function useCommonDashboard(): UseCommonDashboardReturn {
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: { role: string; email?: string; days_until_verification_required?: number; profile?: { days_until_verification_required?: number } | null } | null };
   const [state, setState] = useState<CommonDashboardState>({
     isLoading: true,
     error: null,
@@ -116,9 +116,7 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
     switch (user.role) {
       case 'patient':
         // Check for identity verification deadline
-        if (user.profile?.days_until_verification_required !== null && 
-            user.profile?.days_until_verification_required !== undefined && 
-            user.profile?.days_until_verification_required <= 3) {
+        if (user.days_until_verification_required !== undefined && user.days_until_verification_required <= 3) {
           setState(prev => ({
             ...prev,
             error: {
@@ -151,12 +149,8 @@ export function useCommonDashboard(): UseCommonDashboardReturn {
 
   // Initial data fetch
   useEffect(() => {
-    // CRITICAL: Only fetch data when we have a real authenticated user
-    if (user && user.email !== 'middleware-validated-user') {
-      console.log('📊 Fetching dashboard data for:', user.email);
+    if (user && user.email && user.email !== 'middleware-validated-user') {
       fetchCommonData();
-    } else {
-      console.log('⏳ Waiting for real user before fetching dashboard data');
     }
   }, [user, fetchCommonData]);
 

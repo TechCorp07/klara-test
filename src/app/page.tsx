@@ -10,18 +10,9 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('🏠 Home page redirect logic:', { 
-      isAuthenticated, 
-      isInitialized, 
-      hasUser: !!user, 
-      userRole: user?.role 
-    });
-  
     if (isInitialized) {
       if (isAuthenticated && user) {
         const userRole = getUserRole();
-        console.log(`✅ User authenticated as ${userRole}, redirecting to role-specific dashboard`);
-        
         // Redirect to role-specific dashboard
         switch (userRole) {
           case 'patient':
@@ -52,11 +43,8 @@ export default function Home() {
             break;
         }
       } else {
-        console.log('❌ User not authenticated, redirecting to login');
         router.push('/login');
       }
-    } else {
-      console.log('⏳ Auth not initialized yet, waiting...');
     }
   }, [isInitialized, isAuthenticated, user, getUserRole, router]);
 

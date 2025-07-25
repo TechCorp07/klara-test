@@ -129,7 +129,7 @@ export const ENDPOINTS = {
     JOIN_CHAT_GROUP: (id: number) => `/community/groups/${id}/join/`,
     LEAVE_CHAT_GROUP: (id: number) => `/community/groups/${id}/leave/`,
     CHAT_MESSAGES: (groupId: number) => `/community/posts/?group=${groupId}`,
-    SEND_MESSAGE: (groupId: number) => `/community/posts/`,
+    //SEND_MESSAGE: (groupId: number) => `/community/posts/`,
     GROUP_MEMBERS: (groupId: number) => `/community/groups/${groupId}/members/`,
     
     // Emergency Features

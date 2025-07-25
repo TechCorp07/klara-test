@@ -26,17 +26,6 @@ interface AuthResponse {
   detail?: string; 
 }
 
-interface RefreshResponse {
-  success: boolean;
-  token?: string;
-  expires_in?: number;
-}
-
-interface LogoutResponse {
-  success: boolean;
-  message?: string;
-}
-
 /**
  * JWT Authentication Service Class
  */

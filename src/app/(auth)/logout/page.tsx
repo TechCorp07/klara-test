@@ -12,7 +12,6 @@ export default function LogoutPage() {
   useEffect(() => {
     const performLogout = async () => {
       try {
-        console.log('🚪 Logout page accessed, performing logout...');
         
         // Use the auth context logout method which handles everything
         await logout();

@@ -17,14 +17,12 @@ export default function DashboardRedirect() {
 
     if (!isAuthenticated || !user) {
       // Not authenticated, redirect to login
-      console.log('❌ User not authenticated, redirecting to login');
       router.push('/login');
       return;
     }
 
     // Get user role and redirect to appropriate dashboard
     const userRole = getUserRole();
-    console.log(`🎯 Redirecting ${userRole} to role-specific dashboard`);
 
     switch (userRole) {
       case 'patient':

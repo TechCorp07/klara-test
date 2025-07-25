@@ -39,18 +39,6 @@ const EXCLUDED_PATHS = [
   '/manifest.json',
 ];
 
-// Role-based route access mapping
-const ROLE_ROUTES: Record<UserRole, string[]> = {
-  patient: ['/patient', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/telemedicine', '/research', '/clinical-trials', '/medications'],
-  provider: ['/provider', '/profile', '/settings', '/messages', '/clinical-trials', '/patients', '/health-records', '/appointments', '/telemedicine', '/medications'],
-  admin: ['/admin', '/profile', '/settings', '/messages', '/users', '/reports', '/approvals', '/audit-logs', '/system-settings', '/monitoring'],
-  pharmco: ['/pharmco', '/profile', '/settings', '/messages', '/medications', '/clinical-trials', '/reports', '/research'],
-  caregiver: ['/caregiver', '/profile', '/settings', '/messages', '/health-records', '/appointments', '/patients'],
-  researcher: ['/researcher', '/profile', '/settings', '/messages', '/research', '/clinical-trials', '/studies', '/data-analysis'],
-  superadmin: ['/admin', '/patient', '/provider', '/pharmco', '/caregiver', '/researcher', '/compliance'],
-  compliance: ['/compliance', '/profile', '/settings', '/messages', '/audit-logs', '/emergency-access', '/consent-management', '/reports'],
-};
-
 /**
  * JWT Token Structure Interface for local validation
  */
@@ -160,29 +148,6 @@ function decodeJWTPayload(payloadBase64: string): JWTPayload | null {
 }
 
 /**
- * Check if user role has access to the requested route
- */
-function hasRouteAccess(
-  role: UserRole, 
-  pathname: string, 
-  permissions?: JWTPayload['permissions']
-): boolean {
-  // Superadmin has access to everything
-  if (role === 'superadmin' || permissions?.is_superadmin) {
-    return true;
-  }
-
-  // Check admin routes with permission-based access
-  if (pathname.startsWith('/admin')) {
-    return permissions?.has_admin_access === true;
-  }
-
-  // Check role-based access for other routes
-  const allowedRoutes = ROLE_ROUTES[role] || [];
-  return allowedRoutes.some(route => pathname.startsWith(route));
-}
-
-/**
  * Check if the path should be excluded from middleware processing
  */
 function shouldExcludePath(pathname: string): boolean {
@@ -205,15 +170,12 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (shouldExcludePath(pathname)) {
-    console.log('✅ Excluding path:', pathname);
     return NextResponse.next();
   }
   if (isPublicRoute(pathname)) {
-    console.log('✅ Public route allowed:', pathname);
     return NextResponse.next();
   }
 
-  console.log('🔒 Private route, checking auth:', pathname);
 
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
     const token = getAuthToken(request);

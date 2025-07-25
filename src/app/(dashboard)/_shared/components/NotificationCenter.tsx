@@ -190,10 +190,6 @@ export default function NotificationCenter() {
                     if (!notification.read) {
                       markAsRead(notification.id);
                     }
-                    if (notification.actionUrl) {
-                      // In real implementation: router.push(notification.actionUrl);
-                      console.log(`Navigate to: ${notification.actionUrl}`);
-                    }
                     setIsOpen(false);
                   }}
                 >
@@ -241,8 +237,6 @@ export default function NotificationCenter() {
           <div className="p-3 border-t border-gray-200">
             <button 
               onClick={() => {
-                // In real implementation: router.push('/dashboard/notifications');
-                console.log('Navigate to full notifications page');
                 setIsOpen(false);
               }}
               className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"

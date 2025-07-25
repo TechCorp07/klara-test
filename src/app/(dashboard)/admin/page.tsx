@@ -306,7 +306,7 @@ export default function AdminDashboardPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">
-            You don't have permission to access the admin dashboard.
+            You don&apos;t have permission to access the admin dashboard.
           </p>
           <p className="text-sm text-gray-500">
             Current role: {getUserRole()} | User: {user?.email}

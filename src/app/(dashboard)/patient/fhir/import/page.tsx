@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Download, Upload } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 export default function FHIRImportPage() {
   const router = useRouter();
@@ -34,10 +34,10 @@ export default function FHIRImportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Submitting FHIR import request:', importRequest);
       router.push('/patient?tab=health');
     } catch (error) {
       console.error('Failed to submit import request:', error);
+      alert('Failed to submit import request. Please try again.');
     }
   };
 
@@ -61,9 +61,9 @@ export default function FHIRImportPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <h3 className="font-medium text-blue-900 mb-2">How it works</h3>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• We'll contact your previous healthcare provider on your behalf</li>
+              <li>• We&apos;ll contact your previous healthcare provider on your behalf</li>
               <li>• Your records will be securely transferred using FHIR standards</li>
-              <li>• You'll be notified when the import is complete</li>
+              <li>• You&apos;ll be notified when the import is complete</li>
               <li>• All data transfers are HIPAA compliant and encrypted</li>
             </ul>
           </div>

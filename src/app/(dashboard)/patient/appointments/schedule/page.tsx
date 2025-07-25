@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Video, MapPin } from 'lucide-react';
+import { Video } from 'lucide-react';
 
 export default function ScheduleAppointmentPage() {
   const router = useRouter();
@@ -20,7 +20,6 @@ export default function ScheduleAppointmentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Scheduling appointment:', appointment);
       router.push('/patient?tab=care');
     } catch (error) {
       console.error('Failed to schedule appointment:', error);
