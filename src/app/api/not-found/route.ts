@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * and reduces 404 noise in logs
  */
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   // Return a clean 404 response
   return NextResponse.json(
     { 

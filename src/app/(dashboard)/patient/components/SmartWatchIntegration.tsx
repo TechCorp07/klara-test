@@ -7,7 +7,7 @@ interface SmartWatchIntegrationProps {
   }
   
   export function SmartWatchIntegration({ onConnect }: SmartWatchIntegrationProps) {
-    const [availableDevices, setAvailableDevices] = useState([
+    const [availableDevices, _setAvailableDevices] = useState([
       { type: 'apple_watch', name: 'Apple Watch', supported: true, icon: '⌚' },
       { type: 'fitbit', name: 'Fitbit', supported: true, icon: '📱' },
       { type: 'garmin', name: 'Garmin', supported: true, icon: '⌚' },

@@ -117,7 +117,7 @@ export const usePatientVitals = (
         params.end_date = filters.dateRange.end;
       }
 
-      const [vitalsData, latestResponse] = await Promise.all([
+      const [vitalsData] = await Promise.all([
         patientService.getVitalSigns(params),
         patientService.getLatestVitals(),
       ]);

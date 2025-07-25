@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * POST /api/auth/logout-all
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Create response with success
     const response = NextResponse.json({

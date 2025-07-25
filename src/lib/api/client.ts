@@ -19,6 +19,7 @@ export interface APIResponse<T = unknown> {
   success: boolean;
   message?: string;
   errors?: string[];
+  detail?: string;
 }
 
 class TabAPIClient {
@@ -267,7 +268,7 @@ export function extractDirectData<T>(response: AxiosResponse<T>): T {
 export function handleApiError(error: unknown): string {
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as AxiosError;
-    const data = axiosError.response?.data as any;
+    const data = axiosError.response?.data as APIResponse;
     if (data?.message) {
       return data.message;
     }
