@@ -1,9 +1,9 @@
 // src/app/(dashboard)/patient/appointments/schedule/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Video, Calendar, User, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Video, Calendar, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { patientService } from '@/lib/api/services/patient.service';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
 
@@ -24,6 +24,13 @@ interface SubmissionState {
   success: boolean;
   error: string | null;
   appointmentDetails: any | null;
+}
+
+interface ConsentState {
+  loading: boolean;
+  hasConsent: boolean;
+  needsConsent: boolean;
+  providing: boolean;
 }
 
 export default function ScheduleAppointmentPage() {
@@ -48,12 +55,71 @@ export default function ScheduleAppointmentPage() {
     appointmentDetails: null
   });
 
+  const [consentState, setConsentState] = useState<ConsentState>({
+    loading: true,
+    hasConsent: false,
+    needsConsent: false,
+    providing: false
+  });
+
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const { scheduleAppointment: hookScheduleAppointment, refetch } = usePatientAppointments({
+  const { scheduleAppointment: hookScheduleAppointment } = usePatientAppointments({
     autoRefresh: true,
     refreshInterval: 30000
   });
+
+  // Check consent status on component mount
+  useEffect(() => {
+    checkConsentStatus();
+  }, []);
+  
+  const checkConsentStatus = async () => {
+    try {
+      setConsentState(prev => ({ ...prev, loading: true }));
+      const consentStatus = await patientService.getTelemedicineConsentStatus();
+      
+      setConsentState(prev => ({
+        ...prev,
+        loading: false,
+        hasConsent: consentStatus.has_consent,
+        needsConsent: !consentStatus.has_consent
+      }));
+    } catch (error) {
+      console.error('Failed to check consent status:', error);
+      setConsentState(prev => ({
+        ...prev,
+        loading: false,
+        hasConsent: false,
+        needsConsent: true
+      }));
+    }
+  };
+
+  const handleProvideConsent = async () => {
+    try {
+      setConsentState(prev => ({ ...prev, providing: true }));
+      
+      await patientService.provideTelemedicineConsent({
+        consented: true,
+        document_version: '1.0'
+      });
+      
+      setConsentState(prev => ({
+        ...prev,
+        providing: false,
+        hasConsent: true,
+        needsConsent: false
+      }));
+      
+      alert('Consent provided successfully! You can now schedule appointments.');
+      
+    } catch (error) {
+      console.error('Failed to provide consent:', error);
+      setConsentState(prev => ({ ...prev, providing: false }));
+      alert('Failed to provide consent. Please try again.');
+    }
+  };
 
   // Validate form before submission
   const validateForm = (): boolean => {
@@ -93,6 +159,12 @@ export default function ScheduleAppointmentPage() {
       return;
     }
 
+    // Check consent before proceeding
+    if (consentState.needsConsent) {
+      alert('Please provide telemedicine consent first.');
+      return;
+    }
+
     setSubmissionState(prev => ({ 
       ...prev, 
       isSubmitting: true, 
@@ -126,14 +198,38 @@ export default function ScheduleAppointmentPage() {
         appointmentDetails: response
       });
       
+      const appointmentId = response.id;
+
       // Auto-redirect after showing success for 3 seconds
       setTimeout(() => {
-        router.push(`/patient/appointments/${response.id}`);
+        if (appointmentId && !isNaN(appointmentId)) {
+          router.push(`/patient/appointments/${appointmentId}`);
+        } else {
+          router.push('/patient/appointments');
+        }
       }, 3000);
 
     } catch (error: unknown) {
       console.error('Failed to schedule appointment:', error);
       
+      // Check for consent errors
+      if (error && typeof error === 'object' && 'response' in error &&
+          error.response && typeof error.response === 'object' && 'status' in error.response &&
+          error.response.status === 403 && 
+          'data' in error.response && error.response.data && 
+          typeof error.response.data === 'object' && 'detail' in error.response.data &&
+          typeof error.response.data.detail === 'string' &&
+          error.response.data.detail.includes('telemedicine services')) {
+        setConsentState(prev => ({ ...prev, needsConsent: true, hasConsent: false }));
+        setSubmissionState({
+          isSubmitting: false,
+          success: false,
+          error: 'You need to provide consent for telemedicine services first.',
+          appointmentDetails: null
+        });
+        return;
+      }
+
       let errorMessage = 'Failed to schedule appointment. Please try again.';
 
       // Handle specific error types
@@ -159,6 +255,80 @@ export default function ScheduleAppointmentPage() {
     }
   };
 
+  // Show loading state while checking consent
+  if (consentState.loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <Loader2 className="w-8 h-8 text-blue-600 mx-auto mb-4 animate-spin" />
+            <p className="text-gray-600">Checking consent status...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show consent requirement if needed
+  if (consentState.needsConsent) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-center">
+              <FileText className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                Telemedicine Consent Required
+              </h1>
+              <p className="text-gray-600 mb-6">
+                Before scheduling appointments, you need to provide consent for telemedicine services. 
+                This is required for HIPAA compliance and ensures we can provide you with the best care possible.
+              </p>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                <h3 className="font-semibold text-blue-900 mb-2">Telemedicine Services Include:</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Video consultations with healthcare providers</li>
+                  <li>• Remote monitoring of your health data</li>
+                  <li>• Digital sharing of medical information</li>
+                  <li>• Electronic prescription management</li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleProvideConsent}
+                  disabled={consentState.providing}
+                  className={`w-full py-3 px-6 rounded-md text-white font-medium ${
+                    consentState.providing
+                      ? 'bg-blue-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {consentState.providing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
+                      Providing Consent...
+                    </>
+                  ) : (
+                    'I Consent to Telemedicine Services'
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => router.back()}
+                  className="w-full py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Success state
   if (submissionState.success && submissionState.appointmentDetails) {
     const details = submissionState.appointmentDetails;
@@ -166,6 +336,26 @@ export default function ScheduleAppointmentPage() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-2xl mx-auto px-4">
           <div className="bg-white rounded-lg shadow p-6">
+          {/* Consent status indicator */}
+          {consentState.hasConsent && (
+            <div className="mb-4 bg-green-50 border border-green-200 rounded-md p-3">
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+                <span className="text-sm text-green-800">Telemedicine consent provided</span>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Schedule Appointment</h1>
+            <button
+              onClick={() => router.back()}
+              className="text-gray-600 hover:text-gray-800"
+              disabled={submissionState.isSubmitting}
+            >
+              ← Back
+            </button>
+          </div>
+
             <div className="text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 mb-2">

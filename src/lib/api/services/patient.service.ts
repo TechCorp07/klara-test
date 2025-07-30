@@ -532,6 +532,59 @@ class EnhancedPatientService {
   }
 
   /**
+   * Provide telemedicine consent
+   */
+  async provideTelemedicineConsent(consentData: {
+    consented: boolean;
+    document_version?: string;
+  }): Promise<{ detail: string; consent_id: number }> {
+    try {
+      const response = await apiClient.post<{ detail: string; consent_id: number }>('/users/consent-records/', {
+        consent_type: 'TELEMEDICINE_SERVICES', // or whatever the exact type is
+        consented: consentData.consented,
+        document_version: consentData.document_version || '1.0',
+        signature_ip: '', // Will be set by backend
+        signature_user_agent: navigator.userAgent
+      });
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to provide telemedicine consent:', error);
+      throw new Error('Failed to provide consent');
+    }
+  }
+
+  /**
+   * Check current telemedicine consent status
+   */
+  async getTelemedicineConsentStatus(): Promise<{
+    has_consent: boolean;
+    consent_date?: string;
+    consent_id?: number;
+  }> {
+    try {
+      const response = await apiClient.get('/users/consent-records/', {
+        params: {
+          consent_type: 'TELEMEDICINE_SERVICES'
+        }
+      });
+      const data = extractData(response) as { results?: Array<{ id: number; consented: boolean; revoked?: boolean; signature_timestamp?: string }> };
+      
+      const activeConsent = data.results?.find(
+        (consent) => consent.consented && !consent.revoked
+      );
+      
+      return {
+        has_consent: !!activeConsent,
+        consent_date: activeConsent?.signature_timestamp,
+        consent_id: activeConsent?.id
+      };
+    } catch (error) {
+      console.error('Failed to check consent status:', error);
+      return { has_consent: false };
+    }
+  }
+
+  /**
    * Get available research studies
    */
   async getAvailableResearchStudies(): Promise<PatientDashboardData['research_participation']['available_studies']> {
