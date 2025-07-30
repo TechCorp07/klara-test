@@ -539,7 +539,7 @@ class EnhancedPatientService {
   }): Promise<{ detail: string }> {
     try {
       const response = await apiClient.post<{ detail: string }>('/healthcare/health-data-consents/update_consent/', {
-        consent_type: 'provider_access', // or 'data_sharing' 
+        consent_type: 'data_sharing',
         consented: consentData.consented,
       });
       return extractData(response);
