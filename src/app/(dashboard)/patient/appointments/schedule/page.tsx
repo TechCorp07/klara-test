@@ -115,6 +115,8 @@ export default function ScheduleAppointmentPage() {
 
       // Make API call
       const response = await hookScheduleAppointment(appointmentData);
+      // LOG THE RESPONSE TO SEE ITS STRUCTURE
+      console.log('Appointment creation response:', response);
       
       // Store the response for display
       setSubmissionState({
@@ -123,7 +125,7 @@ export default function ScheduleAppointmentPage() {
         error: null,
         appointmentDetails: response
       });
-
+      
       // Auto-redirect after showing success for 3 seconds
       setTimeout(() => {
         router.push(`/patient/appointments/${response.id}`);
