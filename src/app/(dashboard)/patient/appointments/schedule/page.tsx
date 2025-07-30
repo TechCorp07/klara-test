@@ -102,7 +102,6 @@ export default function ScheduleAppointmentPage() {
       
       await patientService.provideTelemedicineConsent({
         consented: true,
-        document_version: '1.0'
       });
       
       setConsentState(prev => ({
