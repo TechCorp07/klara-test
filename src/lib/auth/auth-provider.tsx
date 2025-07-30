@@ -92,8 +92,9 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
   const router = useRouter();
   const sessionRefreshInterval = useRef<NodeJS.Timeout | null>(null);
+  const refreshSessionTokenRef = useRef<(() => Promise<{ success: boolean; userData?: unknown }>) | null>(null);
+  const checkSessionHealthRef = useRef<(() => Promise<void>) | null>(null);
 
-  // ✅ 2. SECOND: Define logout first (no dependencies)
   const logout = useCallback(async () => {
     try {
       
@@ -128,7 +129,38 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
-  // ✅ 3. THIRD: Define checkSessionHealth (depends on logout)
+  const refreshSessionToken = useCallback(async () => {
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) {
+        throw new Error('No session token to refresh');
+      }
+  
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/refresh-session/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Session ${sessionToken}`,
+        },
+        body: JSON.stringify({ session_token: sessionToken }),
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('session_token', data.session_token);
+        return { success: true, userData: data.user };
+      } else {
+        console.error('❌ Session refresh failed:', response.status);
+        logout();
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('❌ Session refresh error:', error);
+      logout();
+      return { success: false };
+    }
+  }, [logout]);
+
   const checkSessionHealth = useCallback(async () => {
     const sessionToken = localStorage.getItem('session_token');
     
@@ -148,7 +180,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         
-        // ✅ EXTRACT USER WITH FALLBACKS
         const userObject = userData.user;
         
         if (!userObject) {
@@ -163,7 +194,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        // ✅ ADD PERMISSIONS TO USER OBJECT IF MISSING
         if (userData.permissions && !userObject.permissions) {
           userObject.permissions = userData.permissions;
         }
@@ -171,14 +201,24 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         setUser(userObject);
         setIsTabAuthenticated(true);
       } else if (response.status === 401) {
-        const refreshResult = await refreshSessionToken();
-        if (!refreshResult) {
+        if (refreshSessionTokenRef.current) {
+          const refreshResult = await refreshSessionTokenRef.current();
+          if (refreshResult.success && refreshResult.userData) {
+            const userData = refreshResult.userData as User;
+            const userWithRole = {
+              ...userData,
+              role: userData.role || 'patient',
+            };
+            setUser(userWithRole);
+            setIsTabAuthenticated(true);
+          } else {
+            logout();
+          }
+        } else {
           logout();
         }
       } else {
         console.error('❌ Session check failed:', response.status);
-        const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
         logout();
       }
     } catch (error) {
@@ -187,55 +227,21 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  // ✅ 4. FOURTH: Define refreshSessionToken (depends on logout and checkSessionHealth)
-  const refreshSessionToken = useCallback(async () => {
-    try {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) {
-        throw new Error('No session token to refresh');
-      }
-
-      const response = await fetch(`${config.apiBaseUrl}/users/auth/refresh-session/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Session ${sessionToken}`,
-        },
-        body: JSON.stringify({ session_token: sessionToken }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('session_token', data.session_token);
-        
-        // Update user data after refresh
-        await checkSessionHealth();
-        return true;
-      } else {
-        console.error('❌ Session refresh failed:', response.status);
-        logout();
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Session refresh error:', error);
-      logout();
-      return false;
-    }
-  }, [logout, checkSessionHealth]);
-
-  // ✅ 5. FIFTH: Define setupSessionRefresh (depends on checkSessionHealth and refreshSessionToken)
   const setupSessionRefresh = useCallback(() => {
-    
     if (sessionRefreshInterval.current) {
       clearInterval(sessionRefreshInterval.current);
     }
     
     const healthCheckInterval = setInterval(() => {
-      checkSessionHealth();
+      if (checkSessionHealthRef.current) {
+        checkSessionHealthRef.current();
+      }
     }, 10 * 60 * 1000);
     
     const refreshInterval = setInterval(() => {
-      refreshSessionToken();
+      if (refreshSessionTokenRef.current) {
+        refreshSessionTokenRef.current();
+      }
     }, 50 * 60 * 1000);
     
     sessionRefreshInterval.current = refreshInterval;
@@ -244,7 +250,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       clearInterval(healthCheckInterval);
       clearInterval(refreshInterval);
     };
-  }, [checkSessionHealth, refreshSessionToken]);
+  }, []);
 
   useEffect(() => {
     if (isTabAuthenticated) {
@@ -253,7 +259,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isTabAuthenticated, setupSessionRefresh]);
 
-  // ✅ 6. SIXTH: Define login (depends on setupSessionRefresh)
   const login = useCallback(async (credentials: LoginCredentials): Promise<LoginResponse> => {
     try {
       setIsLoading(true);
@@ -320,9 +325,11 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     await logout();
   };
 
-  const refreshToken = async () => {
-    await refreshSessionToken();
-  };
+  const refreshToken = useCallback(async () => {
+    if (refreshSessionTokenRef.current) {
+      await refreshSessionTokenRef.current();
+    }
+  }, []);
 
   const getEmergencyAccessSummary = useCallback(async (): Promise<EmergencyAccessSummary> => {
     try {
@@ -703,6 +710,14 @@ const hasPermission = useCallback((permission: string): boolean => {
     return sessionToken ? 'session-based' : null;
   }, []);
 
+  useEffect(() => {
+    refreshSessionTokenRef.current = refreshSessionToken;
+  }, [refreshSessionToken]);
+  
+  useEffect(() => {
+    checkSessionHealthRef.current = checkSessionHealth;
+  }, [checkSessionHealth]);
+  
   // ✅ 9. NINTH: Now all useEffect hooks AFTER all functions are defined
   useEffect(() => {
     const initializeAuth = async () => {
