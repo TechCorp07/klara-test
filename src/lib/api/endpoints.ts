@@ -91,10 +91,10 @@ export const ENDPOINTS = {
     DISCONNECT_DEVICE: (id: number) => `/users/patient/wearable-devices/${id}/disconnect/`,
     
     // Appointments
-    APPOINTMENTS: '/users/patient/appointments/',
-    REQUEST_APPOINTMENT: '/users/patient/appointments/request/',
-    CANCEL_APPOINTMENT: (id: number) => `/users/patient/appointments/${id}/cancel/`,
-    
+    APPOINTMENTS: '/telemedicine/appointments/',
+    REQUEST_APPOINTMENT: '/telemedicine/appointments/',
+    CANCEL_APPOINTMENT: (id: number) => `/telemedicine/appointments/${id}/cancel/`,
+      
     // Health alerts
     ALERTS: '/users/patient/alerts/',
     ACKNOWLEDGE_ALERT: (id: number) => `/users/patient/alerts/${id}/acknowledge/`,
@@ -322,8 +322,14 @@ export const ENDPOINTS = {
   },
 
   TELEMEDICINE: {
-    BASE: '/telemedicine/',
-    // Add specific telemedicine endpoints as needed
+    APPOINTMENTS: '/telemedicine/appointments/',
+    APPOINTMENT_DETAIL: (id: number) => `/telemedicine/appointments/${id}/`,
+    SCHEDULE_APPOINTMENT: '/telemedicine/appointments/',
+    CANCEL_APPOINTMENT: (id: number) => `/telemedicine/appointments/${id}/cancel/`,
+    RESCHEDULE_APPOINTMENT: (id: number) => `/telemedicine/appointments/${id}/reschedule/`,
+    UPCOMING_APPOINTMENTS: '/telemedicine/appointments/upcoming/',
+    PAST_APPOINTMENTS: '/telemedicine/appointments/past/',
+    DASHBOARD: '/telemedicine/appointments/dashboard/',
   },
 
   MEDICATION: {

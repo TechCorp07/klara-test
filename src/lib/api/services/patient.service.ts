@@ -474,7 +474,7 @@ class EnhancedPatientService {
         count: number;
         next: string | null;
         previous: string | null;
-      }>(buildQueryUrl(ENDPOINTS.PATIENT.APPOINTMENTS, params));
+      }>(buildQueryUrl(ENDPOINTS.TELEMEDICINE.APPOINTMENTS, params));
       return extractData(response);
     } catch (error) {
       console.error('Failed to fetch appointments:', error);
@@ -488,7 +488,7 @@ class EnhancedPatientService {
   async scheduleAppointment(appointmentData: ScheduleAppointmentPayload): Promise<Appointment> {
     try {
       const response = await apiClient.post<Appointment>(
-        ENDPOINTS.PATIENT.REQUEST_APPOINTMENT,
+        ENDPOINTS.TELEMEDICINE.SCHEDULE_APPOINTMENT,
         appointmentData
       );
       return extractData(response);
@@ -503,7 +503,7 @@ class EnhancedPatientService {
    */
   async cancelAppointment(id: number, reason?: string): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.CANCEL_APPOINTMENT(id), {
+      await apiClient.post(ENDPOINTS.TELEMEDICINE.CANCEL_APPOINTMENT(id), {
         reason: reason || 'Patient cancellation'
       });
     } catch (error) {
@@ -518,7 +518,7 @@ class EnhancedPatientService {
   async rescheduleAppointment(id: number, newDateTime: string): Promise<Appointment> {
     try {
       const response = await apiClient.patch<Appointment>(
-        `${ENDPOINTS.PATIENT.APPOINTMENTS}${id}/`,
+        ENDPOINTS.TELEMEDICINE.RESCHEDULE_APPOINTMENT(id),
         { 
           preferred_datetime: newDateTime,
           status: 'rescheduled'
