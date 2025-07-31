@@ -472,7 +472,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const updateConsent = useCallback(async (consentType: string, consentValue: boolean): Promise<{ success: boolean; message: string }> => {
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch('/api/patient/consent/', {
+      const response = await fetch('/api/healthcare/health-data-consents/update_consent/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
@@ -480,7 +480,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({
           consent_type: consentType,
-          consent_value: consentValue,
+          consented: consentValue,
         }),
       });
       
