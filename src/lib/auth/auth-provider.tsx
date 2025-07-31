@@ -470,31 +470,75 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateConsent = useCallback(async (consentType: string, consentValue: boolean): Promise<{ success: boolean; message: string }> => {
+    console.log('🔍 [updateConsent] Starting consent update:', {
+      consentType,
+      consentValue,
+      timestamp: new Date().toISOString()
+    });
+
     try {
       const sessionToken = localStorage.getItem('session_token');
+      console.log('🔍 [updateConsent] Session token exists:', !!sessionToken);
+      
+      if (!sessionToken) {
+        console.error('❌ [updateConsent] No session token found');
+        throw new Error('No authentication token found');
+      }
+
+      const requestPayload = {
+        consent_type: consentType,
+        consented: consentValue,
+      };
+
+      console.log('🔍 [updateConsent] Request payload:', requestPayload);
+      console.log('🔍 [updateConsent] Making request to:', '/api/healthcare/health-data-consents/update_consent/');
+
       const response = await fetch('/api/healthcare/health-data-consents/update_consent/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          consent_type: consentType,
-          consented: consentValue,
-        }),
+        body: JSON.stringify(requestPayload),
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to update consent');
+      console.log('🔍 [updateConsent] Response status:', response.status);
+      console.log('🔍 [updateConsent] Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      // Get response text first to log it
+      const responseText = await response.text();
+      console.log('🔍 [updateConsent] Raw response:', responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+        console.log('🔍 [updateConsent] Parsed response data:', responseData);
+      } catch (parseError) {
+        console.error('❌ [updateConsent] Failed to parse response as JSON:', parseError);
+        responseData = { error: 'Invalid JSON response', raw: responseText };
       }
       
-      const result = await response.json();
+      if (!response.ok) {
+        console.error('❌ [updateConsent] Request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData
+        });
+        throw new Error(`HTTP ${response.status}: ${JSON.stringify(responseData)}`);
+      }
+      
+      console.log('✅ [updateConsent] Request successful:', responseData);
       return {
         success: true,
-        message: result.message || 'Consent updated successfully',
+        message: responseData.message || 'Consent updated successfully',
       };
     } catch (error) {
-      console.error('Failed to update consent:', error);
+      console.error('❌ [updateConsent] Caught error:', error);
+      console.error('❌ [updateConsent] Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }, []);

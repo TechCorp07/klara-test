@@ -80,26 +80,42 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
   
   // Handle form submission
   const onSubmit = async (data: HipaaConsentFormValues) => {
+    console.log('🔍 [HipaaConsentForm] Form submission started:', {
+      data,
+      timestamp: new Date().toISOString()
+    });
+
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
       setSuccessMessage(null);
       
-      // Call APIs to update various consent types
-      // In a real application, you would make separate API calls for each consent type
+      console.log('🔍 [HipaaConsentForm] Processing consent updates...');
+      
+      // Call APIs to update various consent types with valid backend consent types
+      console.log('🔍 [HipaaConsentForm] Updating provider_access consent...');
       await updateConsent('provider_access', data.hipaa_acknowledgment);
+      console.log('✅ [HipaaConsentForm] Provider access consent updated successfully');
       
       if (data.data_sharing_consent !== undefined) {
+        console.log('🔍 [HipaaConsentForm] Updating data_sharing consent...');
         await updateConsent('data_sharing', data.data_sharing_consent);
+        console.log('✅ [HipaaConsentForm] Data sharing consent updated successfully');
       }
       
       if (data.research_consent !== undefined) {
+        console.log('🔍 [HipaaConsentForm] Updating research consent...');
         await updateConsent('research', data.research_consent);
+        console.log('✅ [HipaaConsentForm] Research consent updated successfully');
       }
       
       if (data.communication_consent !== undefined) {
+        console.log('🔍 [HipaaConsentForm] Updating communication consent (mapped to provider_access)...');
         await updateConsent('provider_access', data.communication_consent);
+        console.log('✅ [HipaaConsentForm] Communication consent updated successfully');
       }
+      
+      console.log('✅ [HipaaConsentForm] All consent updates completed successfully');
       
       // Show success message
       setSuccessMessage('Your consent preferences have been saved successfully.');
@@ -107,9 +123,12 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
       
       // Call onComplete callback if provided
       if (onComplete) {
+        console.log('🔍 [HipaaConsentForm] Calling onComplete callback');
         onComplete();
       }
     } catch (error: unknown) {
+      console.error('❌ [HipaaConsentForm] Form submission failed:', error);
+      
       if (error && typeof error === 'object') {
         const err = error as {
           response?: {
@@ -121,6 +140,12 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
           message?: string;
         };
     
+        console.error('❌ [HipaaConsentForm] Detailed error analysis:', {
+          hasResponse: !!err.response,
+          responseData: err.response?.data,
+          errorMessage: err.message
+        });
+
         if (err.response?.data?.detail) {
           setErrorMessage(err.response.data.detail);
         } else if (err.response?.data?.error) {
@@ -134,10 +159,12 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
           setErrorMessage('An unexpected error occurred. Please try again later.');
         }
       } else {
+        console.error('❌ [HipaaConsentForm] Unknown error type:', typeof error);
         setErrorMessage('An unknown error occurred. Please try again later.');
       }
     } finally {
       setIsSubmitting(false);
+      console.log('🔍 [HipaaConsentForm] Form submission completed, isSubmitting set to false');
     }
   };
   
