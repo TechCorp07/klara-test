@@ -87,7 +87,7 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
       
       // Call APIs to update various consent types
       // In a real application, you would make separate API calls for each consent type
-      await updateConsent('hipaa_acknowledgment', data.hipaa_acknowledgment);
+      await updateConsent('provider_access', data.hipaa_acknowledgment);
       
       if (data.data_sharing_consent !== undefined) {
         await updateConsent('data_sharing', data.data_sharing_consent);
@@ -98,7 +98,7 @@ export default function HipaaConsentForm({ onComplete, isInitialSetup = false }:
       }
       
       if (data.communication_consent !== undefined) {
-        await updateConsent('communication', data.communication_consent);
+        await updateConsent('provider_access', data.communication_consent);
       }
       
       // Show success message
