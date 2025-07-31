@@ -539,7 +539,7 @@ class EnhancedPatientService {
   }): Promise<{ detail: string }> {
     try {
       const response = await apiClient.post<{ detail: string }>('/healthcare/health-data-consents/update_consent/', {
-        consent_type: 'data_sharing',
+        consent_type: 'telemedicine_services',
         consented: consentData.consented,
       });
       return extractData(response);
@@ -552,38 +552,37 @@ class EnhancedPatientService {
   /**
    * Check current telemedicine consent status
    */
-async getTelemedicineConsentStatus(): Promise<{
-  has_consent: boolean;
-  consent_date?: string;
-  consent_id?: number;
-}> {
-  try {
-    const response = await apiClient.get<{
-      consents?: Array<{
-        id: number;
-        consent_type: string;
-        consented: boolean;
-        consented_at?: string;
-      }>;
-    }>('/healthcare/health-data-consents/my_consents/');
-    const data = extractData(response);
-    
-    // Look for provider access or data sharing consent
-    const telemedicineConsent = data.consents?.find((consent) => 
-      (consent.consent_type === 'provider_access' || consent.consent_type === 'data_sharing') && 
-      consent.consented
-    );
-    
-    return {
-      has_consent: !!telemedicineConsent,
-      consent_date: telemedicineConsent?.consented_at,
-      consent_id: telemedicineConsent?.id
-    };
-  } catch (error) {
-    console.error('Failed to check consent status:', error);
-    return { has_consent: false };
+  async getTelemedicineConsentStatus(): Promise<{
+    has_consent: boolean;
+    consent_date?: string;
+    consent_id?: number;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        consents?: Array<{
+          id: number;
+          consent_type: string;
+          consented: boolean;
+          consented_at?: string;
+        }>;
+      }>('/healthcare/health-data-consents/my_consents/');
+      const data = extractData(response);
+      
+      // Look for telemedicine services consent
+      const telemedicineConsent = data.consents?.find((consent) => 
+        consent.consent_type === 'telemedicine_services' && consent.consented
+      );
+      
+      return {
+        has_consent: !!telemedicineConsent,
+        consent_date: telemedicineConsent?.consented_at,
+        consent_id: telemedicineConsent?.id
+      };
+    } catch (error) {
+      console.error('Failed to check consent status:', error);
+      return { has_consent: false };
+    }
   }
-}
 
   /**
    * Get available research studies
