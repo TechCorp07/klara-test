@@ -502,15 +502,67 @@ async getAppointmentById(id: number): Promise<Appointment> {
    */
   async scheduleAppointment(appointmentData: ScheduleAppointmentPayload): Promise<Appointment> {
     try {
+      // Transform frontend data to match backend requirements
+      const transformedData = {
+        // Required fields
+        provider: appointmentData.provider,
+        scheduled_time: appointmentData.preferred_datetime,
+        end_time: this.calculateEndTime(appointmentData.preferred_datetime, appointmentData.duration_minutes || 30),
+        reason: appointmentData.reason_for_visit, // Backend expects 'reason', not 'reason_for_visit'
+        
+        // Map appointment type correctly
+        appointment_type: this.mapAppointmentType(appointmentData.appointment_type, appointmentData.is_telemedicine),
+        
+        // Map urgency to priority
+        priority: appointmentData.urgency === 'emergency' ? 'emergency' : 
+                  appointmentData.urgency === 'urgent' ? 'urgent' : 'routine',
+        
+        // Optional fields
+        duration_minutes: appointmentData.duration_minutes || 30,
+        ...(appointmentData.symptoms && { notes: appointmentData.symptoms }),
+        
+        // Default values
+        status: 'scheduled',
+        reminders_enabled: true,
+      };
+
       const response = await apiClient.post<Appointment>(
         ENDPOINTS.TELEMEDICINE.SCHEDULE_APPOINTMENT,
-        appointmentData
+        transformedData
       );
       return extractData(response);
     } catch (error) {
       console.error('Failed to schedule appointment:', error);
       throw new Error('Failed to schedule appointment');
     }
+  }
+
+  /**
+   * Helper method to calculate end time
+   */
+  private calculateEndTime(startTime: string, durationMinutes: number): string {
+    const start = new Date(startTime);
+    const end = new Date(start.getTime() + (durationMinutes * 60 * 1000));
+    return end.toISOString();
+  }
+
+  /**
+   * Helper method to map appointment type
+   */
+  private mapAppointmentType(frontendType: string, isTelemedicine: boolean): string {
+    // Map frontend appointment types to backend valid choices
+    if (isTelemedicine) {
+      return frontendType === 'phone_consultation' ? 'phone_consultation' : 'video_consultation';
+    }
+    
+    const typeMap: Record<string, string> = {
+      'consultation': 'initial_consultation',
+      'follow_up': 'follow_up',
+      'emergency': 'initial_consultation', // Emergency is handled by priority
+      'screening': 'initial_consultation',
+    };
+    
+    return typeMap[frontendType] || 'in_person';
   }
 
   /**

@@ -10,6 +10,8 @@ export interface ScheduleAppointmentPayload {
   visit_type: string;
   preferred_datetime: string;
   reason_for_visit: string;
+  duration_minutes: number;
+  is_telemedicine: boolean;
   symptoms?: string;
   urgency: string;
 }
@@ -120,7 +122,7 @@ export const usePatientAppointments = (
       const shouldInclude = (
         (!filters.status || newAppointment.status === filters.status) &&
         (!filters.appointmentType || newAppointment.appointment_type === filters.appointmentType) &&
-        (!filters.provider || newAppointment.provider.id === filters.provider)
+        (!filters.provider || newAppointment.provider === filters.provider)
       );
       
       if (shouldInclude) {

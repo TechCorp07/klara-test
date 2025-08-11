@@ -175,12 +175,12 @@ export default function ScheduleAppointmentPage() {
       const appointmentData = {
         provider: parseInt(appointment.provider_id),
         appointment_type: appointment.appointment_type,
+        is_telemedicine: appointment.is_telemedicine,
         visit_type: appointment.is_telemedicine ? 'telemedicine' : 'in_person',
         preferred_datetime: `${appointment.preferred_date}T${appointment.preferred_time}:00`,
         reason_for_visit: appointment.reason_for_visit,
         symptoms: appointment.symptoms || '',
         urgency: appointment.urgency,
-        is_telemedicine: appointment.is_telemedicine,
         duration_minutes: appointment.duration || 30
       };
 
