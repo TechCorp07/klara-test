@@ -205,7 +205,6 @@ function PatientDashboardContent() {
         return (
           <>
             <AppointmentsWidget
-              appointments={safeAppointments}
               onScheduleAppointment={() => router.push('/patient/appointments/schedule')}
             />
             <CareTeamWidget 
@@ -261,7 +260,6 @@ function PatientDashboardContent() {
               onLogMedication={handleLogMedication}
             />
             <AppointmentsWidget
-              appointments={safeAppointments}
               onScheduleAppointment={() => router.push('/patient/appointments/schedule')}
             />
             <HealthAlertsWidget 

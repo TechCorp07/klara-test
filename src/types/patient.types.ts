@@ -173,6 +173,7 @@ export interface PatientProfile {
       last_name: string;
       email: string;
       phone_number?: string;
+      specialty?: string;
     };
     
     // Display fields from backend

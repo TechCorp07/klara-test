@@ -1,61 +1,31 @@
 // src/app/(dashboard)/patient/components/dashboard/AppointmentsWidget.tsx
-import React from 'react';
-import { Calendar, Video, MapPin, Phone } from 'lucide-react';
+'use client';
 
-interface AppointmentsProps {
-  appointments?: {
-    upcoming?: Array<{
-      id: number;
-      date: string;
-      time: string;
-      provider_name: string;
-      provider_specialty: string;
-      appointment_type: string;
-      is_telemedicine: boolean;
-      location?: string;
-      preparation_notes?: string;
-      can_reschedule: boolean;
-      can_cancel: boolean;
-    }>;
-    recent?: Array<{
-      date: string;
-      provider: string;
-      summary: string;
-      follow_up_required: boolean;
-    }>;
-  };
-  onScheduleAppointment: () => void;
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { Calendar, Clock, Video, MapPin, Phone } from 'lucide-react';
+import { useUpcomingAppointments } from '@/hooks/patient/usePatientAppointments';
+
+interface AppointmentsWidgetProps {
+  onScheduleAppointment?: () => void;
 }
 
-export function AppointmentsWidget({ appointments, onScheduleAppointment }: AppointmentsProps) {
-    // Add null safety check at the beginning
-    if (!appointments) {
-      return (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <Calendar className="w-5 h-5 text-blue-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
-            </div>
-            <button
-              onClick={onScheduleAppointment}
-              className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors"
-            >
-              Schedule New
-            </button>
-          </div>
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-2">
-              <Calendar className="w-12 h-12 mx-auto" />
-            </div>
-            <p className="text-gray-500 text-sm">Loading appointments...</p>
-          </div>
-        </div>
-      );
-    }
+export function AppointmentsWidget({ 
+  onScheduleAppointment 
+}: AppointmentsWidgetProps) {
+  const router = useRouter();
+  
+  // Use the same hook that works for the appointments page
+  const { appointments, loading, error } = useUpcomingAppointments(5);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
     return date.toLocaleDateString('en-US', { 
       weekday: 'short', 
       month: 'short', 
@@ -63,87 +33,100 @@ export function AppointmentsWidget({ appointments, onScheduleAppointment }: Appo
     });
   };
 
-  const formatTime = (timeString: string) => {
-    const time = new Date(`2000-01-01T${timeString}`);
-    return time.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: 'numeric',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
-    const getAppointmentUrgency = (dateString: string) => {
-      const appointmentDate = new Date(dateString);
-      const today = new Date();
-      const diffDays = Math.ceil((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === 0) return 'today';
-      if (diffDays === 1) return 'tomorrow';
-      if (diffDays <= 7) return 'this-week';
-      return 'later';
-    };
+  const getUrgency = (scheduledTime: string) => {
+    const appointmentDate = new Date(scheduledTime);
+    const now = new Date();
+    const timeDiff = appointmentDate.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 3600);
 
-    const getUrgencyStyles = (urgency: string) => {
-      switch (urgency) {
-        case 'today':
-          return 'border-l-4 border-l-red-500 bg-red-50';
-        case 'tomorrow':
-          return 'border-l-4 border-l-orange-500 bg-orange-50';
-        case 'this-week':
-          return 'border-l-4 border-l-yellow-500 bg-yellow-50';
-        default:
-          return 'border-l-4 border-l-blue-500 bg-blue-50';
-      }
-    };
+    if (hoursDiff <= 1) return 'today';
+    if (hoursDiff <= 24) return 'tomorrow';
+    if (hoursDiff <= 168) return 'week';
+    return 'later';
+  };
 
+  if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <Calendar className="w-5 h-5 text-blue-600 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
-          </div>
-          <button
-            onClick={onScheduleAppointment}
-            className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors"
-          >
-            Schedule New
-          </button>
+          <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
         </div>
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
+        </div>
+        <div className="text-center py-4 text-red-500">
+          <p className="text-sm">Failed to load appointments</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
+        <button
+          onClick={() => router.push('/patient/appointments')}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
+          View All
+        </button>
+      </div>
 
       {/* Upcoming Appointments */}
-      <div className="mb-6">
-        <h4 className="font-medium text-gray-900 mb-3">Upcoming</h4>
-        {appointments.upcoming && appointments.upcoming.length > 0 ? (
+      <div>
+        <h4 className="font-medium text-gray-900 mb-3">
+          Upcoming ({appointments.length})
+        </h4>
+        
+        {appointments.length > 0 ? (
           <div className="space-y-3">
-            {appointments.upcoming.slice(0, 3).map((appointment) => {
-              const urgency = getAppointmentUrgency(appointment.date);
+            {appointments.map((appointment) => {
+              const urgency = getUrgency(appointment.scheduled_time);
+              
               return (
                 <div
                   key={appointment.id}
-                  className={`p-3 rounded-lg ${getUrgencyStyles(urgency)}`}
+                  className={`p-3 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
+                    urgency === 'today' 
+                      ? 'bg-red-50 border-red-400'
+                      : urgency === 'tomorrow'
+                      ? 'bg-amber-50 border-amber-400'
+                      : 'bg-blue-50 border-blue-400'
+                  }`}
+                  onClick={() => router.push(`/patient/appointments/${appointment.id}`)}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {appointment.provider_name}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {appointment.provider_specialty}
-                      </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {appointment.provider}
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatDate(appointment.date)}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {formatTime(appointment.time)}
-                      </div>
+                    <div className="text-xs text-gray-600">
+                      {formatDate(appointment.scheduled_time)} at {formatTime(appointment.scheduled_time)}
                     </div>
                   </div>
 
-                  <div className="flex items-center text-sm text-gray-600 mb-2">
-                    {appointment.is_telemedicine ? (
+                  <div className="flex items-center text-xs text-gray-600 mb-1">
+                    {appointment.appointment_type === 'video_consultation' || appointment.appointment_type === 'phone_consultation' ? (
                       <div className="flex items-center">
                         <Video className="w-4 h-4 mr-1" />
                         <span>Telemedicine</span>
@@ -155,18 +138,24 @@ export function AppointmentsWidget({ appointments, onScheduleAppointment }: Appo
                       </div>
                     )}
                     <span className="mx-2">•</span>
-                    <span className="capitalize">{appointment.appointment_type}</span>
+                    <span className="capitalize">{appointment.appointment_type.replace('_', ' ')}</span>
                   </div>
 
                   {appointment.preparation_notes && (
-                    <div className="text-xs text-gray-600 bg-white p-2 rounded border-l-2 border-blue-300">
+                    <div className="text-xs text-gray-600 bg-white p-2 rounded border-l-2 border-blue-300 mt-2">
                       <strong>Preparation:</strong> {appointment.preparation_notes}
                     </div>
                   )}
 
-                  {urgency === 'today' && (
+                  {urgency === 'today' && appointment.priority && appointment.meeting_url && (
                     <div className="mt-2 flex space-x-2">
-                      <button className="flex items-center text-xs bg-green-600 text-white px-2 py-1 rounded">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(appointment.meeting_url, '_blank');
+                        }}
+                        className="flex items-center text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                      >
                         <Phone className="w-3 h-3 mr-1" />
                         Join Call
                       </button>
@@ -181,7 +170,7 @@ export function AppointmentsWidget({ appointments, onScheduleAppointment }: Appo
             <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-400" />
             <p>No upcoming appointments</p>
             <button
-              onClick={onScheduleAppointment}
+              onClick={onScheduleAppointment || (() => router.push('/patient/appointments/schedule'))}
               className="text-blue-600 hover:text-blue-700 text-sm mt-1"
             >
               Schedule your first appointment
@@ -189,31 +178,6 @@ export function AppointmentsWidget({ appointments, onScheduleAppointment }: Appo
           </div>
         )}
       </div>
-
-      {/* Recent Appointments Summary */}
-      {appointments.recent && appointments.recent.length > 0 && (
-        <div>
-          <h4 className="font-medium text-gray-900 mb-3">Recent Visit</h4>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="flex justify-between items-start mb-1">
-              <div className="text-sm font-medium text-gray-900">
-                {appointments.recent[0].provider}
-              </div>
-              <div className="text-xs text-gray-600">
-                {formatDate(appointments.recent[0].date)}
-              </div>
-            </div>
-            <div className="text-sm text-gray-600 mb-2">
-              {appointments.recent[0].summary}
-            </div>
-            {appointments.recent[0].follow_up_required && (
-              <div className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
-                Follow-up required
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
