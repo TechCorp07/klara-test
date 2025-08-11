@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'appointments',
           name: 'Appointments',
-          href: '/patient?tab=care',
+          href: '/patient/appointments',
           icon: 'calendar',
           show: true
         },
