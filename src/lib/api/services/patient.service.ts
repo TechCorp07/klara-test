@@ -503,13 +503,15 @@ async getAppointmentById(id: number): Promise<Appointment> {
    */
   async scheduleAppointment(appointmentData: ScheduleAppointmentPayload): Promise<Appointment> {
     try {
+      const endTime = this.calculateEndTime(appointmentData.preferred_datetime, appointmentData.duration_minutes || 30);
+    
       // Transform frontend data to match backend requirements
       const transformedData = {
         // Required fields
         provider: appointmentData.provider,
         scheduled_time: appointmentData.preferred_datetime,
-        end_time: this.calculateEndTime(appointmentData.preferred_datetime, appointmentData.duration_minutes || 30),
-        reason: appointmentData.reason_for_visit, // Backend expects 'reason', not 'reason_for_visit'
+        end_time: endTime,
+        reason: appointmentData.reason_for_visit || 'General consultation',
         
         // Map appointment type correctly
         appointment_type: this.mapAppointmentType(appointmentData.appointment_type, appointmentData.is_telemedicine),
@@ -530,7 +532,14 @@ async getAppointmentById(id: number): Promise<Appointment> {
       // Debug logging
       console.log('🔍 Original appointment data:', appointmentData);
       console.log('🔍 Transformed data being sent:', transformedData);
-
+      console.log('🔍 Time validation:', {
+        start: appointmentData.preferred_datetime,
+        end: endTime,
+        duration: appointmentData.duration_minutes || 30,
+        startParsed: new Date(appointmentData.preferred_datetime),
+        endParsed: new Date(endTime),
+        isValidOrder: new Date(endTime) > new Date(appointmentData.preferred_datetime)
+      });
       
       const response = await apiClient.post<Appointment>(
         ENDPOINTS.TELEMEDICINE.SCHEDULE_APPOINTMENT,
@@ -540,6 +549,11 @@ async getAppointmentById(id: number): Promise<Appointment> {
       
       } catch (error) {
         console.error('❌ Schedule appointment error:', error);
+        // Log the full error response
+        if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response) {
+          console.error('❌ Backend validation errors:', error.response.data);
+        }
+        
         throw new Error('Failed to schedule appointment');
       }
     }
@@ -550,7 +564,12 @@ async getAppointmentById(id: number): Promise<Appointment> {
   private calculateEndTime(startTime: string, durationMinutes: number): string {
     const start = new Date(startTime);
     const end = new Date(start.getTime() + (durationMinutes * 60 * 1000));
+    if (startTime.includes('Z') || startTime.includes('+') || startTime.includes('-')) {
     return end.toISOString();
+    } else {
+    // Return in local format to match startTime format
+    return end.toISOString().slice(0, -1);
+  }
   }
 
   /**

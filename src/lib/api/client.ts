@@ -117,7 +117,10 @@ class TabAPIClient {
             data: error.response.data,
             url: originalRequest.url,
             sentData: originalRequest.data,
-            headers: originalRequest.headers
+            requestHeaders: {
+              'Content-Type': originalRequest.headers['Content-Type'],
+              'Authorization': originalRequest.headers.Authorization ? 'Session ***' : 'None'
+            }
           });
         }
         // Handle authentication errors
