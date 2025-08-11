@@ -506,8 +506,6 @@ async getAppointmentById(id: number): Promise<Appointment> {
       // Transform frontend data to match backend requirements
       const transformedData = {
         // Required fields
-        patient: this.getCurrentUserId(),
-        
         provider: appointmentData.provider,
         scheduled_time: appointmentData.preferred_datetime,
         end_time: this.calculateEndTime(appointmentData.preferred_datetime, appointmentData.duration_minutes || 30),
@@ -532,7 +530,6 @@ async getAppointmentById(id: number): Promise<Appointment> {
       // Debug logging
       console.log('🔍 Original appointment data:', appointmentData);
       console.log('🔍 Transformed data being sent:', transformedData);
-      console.log('🔍 Sending to endpoint:', ENDPOINTS.TELEMEDICINE.SCHEDULE_APPOINTMENT);
 
       
       const response = await apiClient.post<Appointment>(
@@ -541,23 +538,11 @@ async getAppointmentById(id: number): Promise<Appointment> {
       );
       return extractData(response);
       
-    } catch (error) {
-        console.error('❌ Failed to schedule appointment:', error);
-        if (typeof error === 'object' && error !== null && 'response' in error) {
-          const axiosError = error as { response: { data: unknown } };
-          console.error('❌ Backend validation errors:', axiosError.response.data);
-        }
+      } catch (error) {
+        console.error('❌ Schedule appointment error:', error);
         throw new Error('Failed to schedule appointment');
+      }
     }
-  }
-
-  /**
-   * Get current user ID from auth context
-   */
-  private getCurrentUserId(): number | undefined {
-    const user = useAuth().user;
-    return user?.id || undefined;
-  }
 
   /**
    * Helper method to calculate end time
@@ -575,7 +560,7 @@ async getAppointmentById(id: number): Promise<Appointment> {
     console.log('🔍 Mapping appointment type:', { frontendType, isTelemedicine });
     // Map frontend appointment types to backend valid choices
     if (isTelemedicine) {
-      return frontendType === 'phone_consultation' ? 'phone_consultation' : 'video_consultation';
+      return 'video_consultation';
     }
     
     const typeMap: Record<string, string> = {
