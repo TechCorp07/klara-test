@@ -4,7 +4,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, Video, MapPin, Phone } from 'lucide-react';
-import { useUpcomingAppointments } from '@/hooks/patient/usePatientAppointments';
+import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
+import type { Appointment } from '@/types/patient.types';
 
 interface AppointmentsWidgetProps {
   onScheduleAppointment?: () => void;
@@ -15,21 +16,50 @@ export function AppointmentsWidget({
 }: AppointmentsWidgetProps) {
   const router = useRouter();
   
-  // Use the same hook that works for the appointments page
-  const { appointments, loading, error } = useUpcomingAppointments(5);
+  // Use the EXACT same hook call as the working appointments page
+  const { 
+    appointments, 
+    loading, 
+    error 
+  } = usePatientAppointments({
+    autoRefresh: true,
+    refreshInterval: 30000
+  });
+
+  // Use the EXACT same filtering logic as the working page
+  const now = new Date();
+  
+  const upcomingAppointments = appointments.filter(appointment => {
+    const appointmentDate = new Date(appointment.scheduled_time);
+    return (appointmentDate >= now || appointment.status === 'in_progress') && 
+           ['scheduled', 'confirmed', 'in_progress', 'checked_in'].includes(appointment.status);
+  }).slice(0, 5); // Limit to 5 for the widget
+
+  // Use the EXACT same helper functions as the working page
+  const getProviderName = (appointment: Appointment): string => {
+    if (appointment.provider_details) {
+      return `${appointment.provider_details.first_name} ${appointment.provider_details.last_name}`;
+    }
+    return 'Provider TBD';
+  };
+
+  const isTelemedicineAppointment = (appointment: Appointment): boolean => {
+    return ['video_consultation', 'phone_consultation'].includes(appointment.appointment_type);
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    const now = new Date();
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays === -1) return 'Yesterday';
+    
     return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
+      weekday: 'short',
       month: 'short', 
-      day: 'numeric' 
+      day: 'numeric'
     });
   };
 
@@ -76,6 +106,7 @@ export function AppointmentsWidget({
         </div>
         <div className="text-center py-4 text-red-500">
           <p className="text-sm">Failed to load appointments</p>
+          <p className="text-xs text-gray-500 mt-1">{error}</p>
         </div>
       </div>
     );
@@ -93,16 +124,16 @@ export function AppointmentsWidget({
         </button>
       </div>
 
-      {/* Upcoming Appointments */}
       <div>
         <h4 className="font-medium text-gray-900 mb-3">
-          Upcoming ({appointments.length})
+          Upcoming ({upcomingAppointments.length})
         </h4>
         
-        {appointments.length > 0 ? (
+        {upcomingAppointments.length > 0 ? (
           <div className="space-y-3">
-            {appointments.map((appointment) => {
+            {upcomingAppointments.map((appointment) => {
               const urgency = getUrgency(appointment.scheduled_time);
+              const isTelemedicine = isTelemedicineAppointment(appointment);
               
               return (
                 <div
@@ -118,7 +149,7 @@ export function AppointmentsWidget({
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="text-sm font-medium text-gray-900">
-                      {appointment.provider}
+                      {getProviderName(appointment)}
                     </div>
                     <div className="text-xs text-gray-600">
                       {formatDate(appointment.scheduled_time)} at {formatTime(appointment.scheduled_time)}
@@ -126,7 +157,7 @@ export function AppointmentsWidget({
                   </div>
 
                   <div className="flex items-center text-xs text-gray-600 mb-1">
-                    {appointment.appointment_type === 'video_consultation' || appointment.appointment_type === 'phone_consultation' ? (
+                    {isTelemedicine ? (
                       <div className="flex items-center">
                         <Video className="w-4 h-4 mr-1" />
                         <span>Telemedicine</span>
@@ -147,7 +178,7 @@ export function AppointmentsWidget({
                     </div>
                   )}
 
-                  {urgency === 'today' && appointment.priority && appointment.meeting_url && (
+                  {urgency === 'today' && appointment.meeting_url && (
                     <div className="mt-2 flex space-x-2">
                       <button 
                         onClick={(e) => {

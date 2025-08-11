@@ -9,14 +9,11 @@ import {
   Video, 
   MapPin, 
   Plus, 
-  Filter,
   Search,
   AlertCircle,
   CheckCircle,
   XCircle,
-  Loader2,
-  Phone,
-  MessageSquare
+  Loader2
 } from 'lucide-react';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
 import type { Appointment } from '@/types/patient.types';
@@ -37,14 +34,12 @@ export default function AppointmentsPage() {
     timeframe: 'all',
     searchTerm: ''
   });
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const { 
     appointments, 
     loading, 
     error, 
-    cancelAppointment,
-    rescheduleAppointment 
+    cancelAppointment
   } = usePatientAppointments({
     autoRefresh: true,
     refreshInterval: 30000

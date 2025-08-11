@@ -1,24 +1,12 @@
 // src/app/(dashboard)/patient/components/dashboard/TelemedicineWidget.tsx
+'use client';
+
 import React, { useState } from 'react';
-import { Video, Clock, Monitor, Mic, Settings } from 'lucide-react';
+import { Video, Clock, Monitor, Phone } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
-import { useUpcomingAppointments } from '@/hooks/patient/usePatientAppointments';
-
-interface TelemedicineSession {
-  id: number;
-  provider_name: string;
-  provider_specialty: string;
-  scheduled_time: string;
-  duration_minutes: number;
-  session_status: 'scheduled' | 'starting' | 'active' | 'completed' | 'cancelled';
-  meeting_url?: string;
-  meeting_id?: string;
-  platform: 'zoom' | 'webex' | 'teams' | 'google-meet' | 'custom';
-  preparation_notes?: string;
-  can_join: boolean;
-  minutes_until_start?: number;
-}
+import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
+import type { Appointment } from '@/types/patient.types';
 
 interface TelemedicineProps {
   onRequestSession?: () => void;
@@ -26,57 +14,38 @@ interface TelemedicineProps {
 }
 
 export function TelemedicineWidget({ onRequestSession, onJoinSession }: TelemedicineProps) {
-  // Use the working appointments hook instead of local state
-  const { appointments, loading, error } = useUpcomingAppointments(10);
   const [requesting, setRequesting] = useState(false);
+  
+  // Use the EXACT same hook call as the working appointments page
+  const { 
+    appointments, 
+    loading, 
+    error 
+  } = usePatientAppointments({
+    autoRefresh: true,
+    refreshInterval: 30000
+  });
 
-  // Filter for telemedicine appointments using the correct property
-  const telemedicineAppointments = appointments.filter(apt => 
-    apt.appointment_type === 'video_consultation' || apt.appointment_type === 'phone_consultation'
-  );
+  // Use the EXACT same filtering logic as the working page, then filter for telemedicine
+  const now = new Date();
+  
+  const upcomingAppointments = appointments.filter(appointment => {
+    const appointmentDate = new Date(appointment.scheduled_time);
+    return (appointmentDate >= now || appointment.status === 'in_progress') && 
+           ['scheduled', 'confirmed', 'in_progress', 'checked_in'].includes(appointment.status);
+  });
 
-  // Convert appointments to TelemedicineSession format with proper type handling
-  const sessions: TelemedicineSession[] = telemedicineAppointments.map(apt => ({
-    id: apt.id,
-    provider_name: String(apt.provider_name || apt.provider_details?.first_name + ' ' + apt.provider_details?.last_name || 'Unknown Provider'),
-    provider_specialty: apt.provider_details?.specialty || 'General Medicine',
-    scheduled_time: apt.scheduled_time,
-    duration_minutes: apt.duration_minutes || 30,
-    session_status: apt.status as 'scheduled' | 'starting' | 'active' | 'completed' | 'cancelled',
-    meeting_url: apt.meeting_url,
-    meeting_id: apt.meeting_url ? 'meeting-' + apt.id : undefined,
-    platform: 'zoom', // Default platform, you can make this dynamic
-    preparation_notes: apt.preparation_notes,
-    can_join: !!apt.meeting_url && apt.status === 'scheduled',
-    minutes_until_start: apt.meeting_url ? Math.max(0, Math.floor((new Date(apt.scheduled_time).getTime() - new Date().getTime()) / (1000 * 60))) : undefined
-  }));
+  // Filter for telemedicine appointments using the same helper as the working page
+  const telemedicineAppointments = upcomingAppointments.filter(appointment => 
+    ['video_consultation', 'phone_consultation'].includes(appointment.appointment_type)
+  ).slice(0, 3); // Limit to 3 for the widget
 
-  const handleRequestSession = async () => {
-    try {
-      setRequesting(true);
-      await apiClient.post(ENDPOINTS.PATIENT.TELEMEDICINE_REQUEST, {
-        provider_id: null, // Let patient choose or use preferred provider
-        session_type: 'consultation',
-        preferred_date: new Date().toISOString(),
-        reason: 'Regular checkup',
-        is_urgent: false,
-        platform_preference: 'zoom'
-      });
-      
-      onRequestSession?.();
-      // The hook will automatically refresh data
-    } catch (err) {
-      console.error('Error requesting session:', err);
-    } finally {
-      setRequesting(false);
+  // Use the same helper functions as the working page
+  const getProviderName = (appointment: Appointment): string => {
+    if (appointment.provider_details) {
+      return `${appointment.provider_details.first_name} ${appointment.provider_details.last_name}`;
     }
-  };
-
-  const handleJoinSession = (session: TelemedicineSession) => {
-    if (session.meeting_url) {
-      window.open(session.meeting_url, '_blank', 'width=1200,height=800');
-    }
-    onJoinSession?.(session.id);
+    return 'Provider TBD';
   };
 
   const formatTime = (dateString: string) => {
@@ -89,14 +58,13 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    const now = new Date();
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
     return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
+      weekday: 'short',
       month: 'short', 
       day: 'numeric' 
     });
@@ -104,6 +72,33 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
 
   const getMinutesUntilStart = (scheduledTime: string): number => {
     return Math.max(0, Math.floor((new Date(scheduledTime).getTime() - new Date().getTime()) / (1000 * 60)));
+  };
+
+  const handleRequestSession = async () => {
+    try {
+      setRequesting(true);
+      await apiClient.post(ENDPOINTS.PATIENT.TELEMEDICINE_REQUEST, {
+        provider_id: null,
+        session_type: 'consultation',
+        preferred_date: new Date().toISOString(),
+        reason: 'Regular checkup',
+        is_urgent: false,
+        platform_preference: 'zoom'
+      });
+      
+      onRequestSession?.();
+    } catch (err) {
+      console.error('Error requesting session:', err);
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleJoinSession = (appointment: Appointment) => {
+    if (appointment.meeting_url) {
+      window.open(appointment.meeting_url, '_blank', 'width=1200,height=800');
+    }
+    onJoinSession?.(appointment.id);
   };
 
   if (loading) {
@@ -147,28 +142,30 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
         </button>
       </div>
 
-      {sessions.length > 0 ? (
+      {telemedicineAppointments.length > 0 ? (
         <div className="space-y-3">
-          {sessions.map((session) => {
-            const minutesUntil = getMinutesUntilStart(session.scheduled_time);
-            const canJoinNow = session.can_join && minutesUntil <= 15; // Allow joining 15 minutes before
+          {telemedicineAppointments.map((appointment) => {
+            const minutesUntil = getMinutesUntilStart(appointment.scheduled_time);
+            const canJoinNow = appointment.meeting_url && minutesUntil <= 15; // Allow joining 15 minutes before
             
             return (
               <div
-                key={session.id}
+                key={appointment.id}
                 className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <div className="font-medium text-gray-900">{session.provider_name}</div>
-                    <div className="text-sm text-gray-600">{session.provider_specialty}</div>
+                    <div className="font-medium text-gray-900">{getProviderName(appointment)}</div>
+                    <div className="text-sm text-gray-600">
+                      {appointment.appointment_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium text-gray-900">
-                      {formatDate(session.scheduled_time)}
+                      {formatDate(appointment.scheduled_time)}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {formatTime(session.scheduled_time)}
+                      {formatTime(appointment.scheduled_time)}
                     </div>
                   </div>
                 </div>
@@ -176,10 +173,10 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-sm text-gray-600">
                     <Clock className="w-4 h-4 mr-1" />
-                    <span>{session.duration_minutes} min</span>
+                    <span>{appointment.duration_minutes || 30} min</span>
                     <span className="mx-2">•</span>
                     <Monitor className="w-4 h-4 mr-1" />
-                    <span className="capitalize">{session.platform}</span>
+                    <span>Video Call</span>
                     {minutesUntil > 0 && (
                       <>
                         <span className="mx-2">•</span>
@@ -188,9 +185,9 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
                     )}
                   </div>
 
-                  {canJoinNow && session.meeting_url && (
+                  {canJoinNow && (
                     <button
-                      onClick={() => handleJoinSession(session)}
+                      onClick={() => handleJoinSession(appointment)}
                       className="flex items-center bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
                     >
                       <Video className="w-4 h-4 mr-1" />
@@ -199,15 +196,15 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
                   )}
                 </div>
 
-                {session.preparation_notes && (
+                {appointment.preparation_notes && (
                   <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                    <strong>Preparation:</strong> {session.preparation_notes}
+                    <strong>Preparation:</strong> {appointment.preparation_notes}
                   </div>
                 )}
 
-                {!canJoinNow && session.meeting_url && minutesUntil > 15 && (
+                {!canJoinNow && appointment.meeting_url && minutesUntil > 15 && (
                   <div className="mt-2 text-xs text-gray-500">
-                    You can join {Math.max(15, minutesUntil)} minutes before your appointment
+                    You can join 15 minutes before your appointment
                   </div>
                 )}
               </div>

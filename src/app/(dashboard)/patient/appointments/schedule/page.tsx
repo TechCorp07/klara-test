@@ -63,6 +63,8 @@ export default function ScheduleAppointmentPage() {
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [providers, setProviders] = useState<Array<{id: number, name: string, specialty?: string}>>([]);
+  const [loadingProviders, setLoadingProviders] = useState(true);
 
   const { scheduleAppointment: hookScheduleAppointment } = usePatientAppointments({
     autoRefresh: true,
@@ -74,6 +76,47 @@ export default function ScheduleAppointmentPage() {
     checkConsentStatus();
   }, []);
   
+  useEffect(() => {
+  const loadProviders = async () => {
+    try {
+      setLoadingProviders(true);
+      // This endpoint should return available providers
+      const response = await fetch('/api/users/provider/available', {
+        headers: {
+          'Authorization': `Session ${localStorage.getItem('session_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const providersData = await response.json();
+        console.log('🔍 Loaded providers:', providersData);
+        setProviders(providersData);
+      } else {
+        console.error('Failed to load providers');
+        // Fallback: Add some dummy providers for testing
+        setProviders([
+          { id: 2, name: 'Dr. Sarah Johnson', specialty: 'Cardiology' },
+          { id: 3, name: 'Dr. Michael Chen', specialty: 'Neurology' },
+          { id: 4, name: 'Dr. Emily Davis', specialty: 'Oncology' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading providers:', error);
+      // Fallback providers for testing
+      setProviders([
+        { id: 2, name: 'Dr. Sarah Johnson', specialty: 'Cardiology' },
+        { id: 3, name: 'Dr. Michael Chen', specialty: 'Neurology' },
+        { id: 4, name: 'Dr. Emily Davis', specialty: 'Oncology' }
+      ]);
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+  
+  loadProviders();
+}, []);
+
   const checkConsentStatus = async () => {
     try {
       setConsentState(prev => ({ ...prev, loading: true }));
@@ -183,6 +226,28 @@ export default function ScheduleAppointmentPage() {
         urgency: appointment.urgency,
         duration_minutes: appointment.duration || 30
       };
+
+      // 🔍 ADD DEBUG LOGGING
+      console.log('🔍 Form data before API call:', {
+        original_provider_id: appointment.provider_id,
+        parsed_provider_id: parseInt(appointment.provider_id),
+        appointmentData
+      });
+
+      // 🔍 CRITICAL: Check if we're accidentally sending patient ID as provider
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('🔍 Current user (should NOT match provider):', currentUser);
+      
+      if (currentUser.id === parseInt(appointment.provider_id)) {
+        console.error('❌ ERROR: Provider ID matches patient ID - this is wrong!');
+        setSubmissionState({
+          isSubmitting: false,
+          success: false,
+          error: 'Invalid provider selection. Please try again.',
+          appointmentDetails: null
+        });
+        return;
+      }
 
       // Make API call
       const response = await hookScheduleAppointment(appointmentData);
@@ -436,29 +501,44 @@ export default function ScheduleAppointmentPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Provider *
               </label>
-              <select
-                value={appointment.provider_id}
-                onChange={(e) => {
-                  setAppointment({...appointment, provider_id: e.target.value});
-                  if (validationErrors.provider_id) {
-                    setValidationErrors(prev => ({...prev, provider_id: ''}));
-                  }
-                }}
-                className={`w-full border rounded-md px-3 py-2 ${
-                  validationErrors.provider_id 
-                    ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-300 focus:border-blue-500'
-                }`}
-                required
-                disabled={submissionState.isSubmitting}
-              >
-                <option value="">Select a provider</option>
-                <option value="1">Dr. Sarah Johnson - Oncology</option>
-                <option value="2">Dr. Michael Chen - Neurology</option>
-                <option value="3">Dr. Emma Wilson - Genetics</option>
-              </select>
+              {loadingProviders ? (
+                <div className="w-full border rounded-md px-3 py-2 bg-gray-50">
+                  <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                  Loading providers...
+                </div>
+              ) : (
+                <select
+                  value={appointment.provider_id}
+                  onChange={(e) => {
+                    console.log('🔍 Provider selected:', e.target.value);
+                    setAppointment({...appointment, provider_id: e.target.value});
+                    if (validationErrors.provider_id) {
+                      setValidationErrors(prev => ({...prev, provider_id: ''}));
+                    }
+                  }}
+                  className={`w-full border rounded-md px-3 py-2 ${
+                    validationErrors.provider_id 
+                      ? 'border-red-300 bg-red-50' 
+                      : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select a provider...</option>
+                  {providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name} {provider.specialty ? `- ${provider.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
               {validationErrors.provider_id && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.provider_id}</p>
+              )}
+              
+              {/* 🔍 DEBUG: Show selected provider ID */}
+              {appointment.provider_id && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Selected Provider ID: {appointment.provider_id}
+                </p>
               )}
             </div>
 
