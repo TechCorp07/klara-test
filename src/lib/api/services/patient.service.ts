@@ -444,6 +444,21 @@ class EnhancedPatientService {
   }
 
   /**
+ * Get appointment by ID
+ */
+async getAppointmentById(id: number): Promise<Appointment> {
+  try {
+    const response = await apiClient.get<Appointment>(
+      ENDPOINTS.TELEMEDICINE.APPOINTMENT_DETAIL(id)
+    );
+    return extractData(response);
+  } catch (error) {
+    console.error('Failed to fetch appointment:', error);
+    throw new Error('Failed to fetch appointment details');
+  }
+}
+
+  /**
    * Request appointment scheduling
    */
   async requestAppointment(appointmentData: AppointmentRequest): Promise<{ id: number; status: string }> {

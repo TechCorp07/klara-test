@@ -139,46 +139,92 @@ export interface PatientProfile {
   export interface Appointment {
     id: number;
     patient: number;
-    provider: {
+    provider: number;
+    medical_record?: number;
+    related_condition?: number;
+    
+    // Time fields matching backend
+    scheduled_time: string;
+    end_time: string;
+    duration_minutes: number;
+    timezone?: string;
+    
+    // Status and type fields
+    status: 'scheduled' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+    appointment_type: 'consultation' | 'follow_up' | 'procedure' | 'lab_work' | 'imaging' | 'therapy' | 'video_consultation' | 'phone_consultation';
+    priority: 'routine' | 'urgent' | 'emergency';
+    
+    // Content fields
+    reason: string;
+    notes?: string;
+    symptoms?: string;
+    
+    // Backend nested details (from serializer)
+    patient_details?: {
+      id: number;
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone_number?: string;
+    };
+    provider_details?: {
+      id: number;
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone_number?: string;
+    };
+    
+    // Display fields from backend
+    status_display?: string;
+    appointment_type_display?: string;
+    priority_display?: string;
+    
+    // Insurance and payment
+    insurance_verified?: boolean;
+    copay_amount?: number;
+    copay_collected?: boolean;
+    
+    // Reminder fields
+    reminders_enabled?: boolean;
+    reminder_sent?: boolean;
+    reminder_sent_time?: string;
+    
+    // Related data
+    medical_record_details?: {
+      id: number;
+      patient: number;
+      has_rare_condition: boolean;
+    };
+    related_condition_details?: {
       id: number;
       name: string;
-      specialty: string;
-      credentials: string;
-      profile_image?: string;
+      is_rare_condition: boolean;
     };
-    appointment_type: 'consultation' | 'follow_up' | 'procedure' | 'lab_work' | 'imaging' | 'therapy';
-    visit_type: 'in_person' | 'video' | 'phone';
-    scheduled_datetime: string;
-    duration_minutes: number;
-    status: 'scheduled' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-    reason_for_visit: string;
-    symptoms?: string;
-    urgency: 'routine' | 'urgent' | 'emergency';
-    location?: {
-      name: string;
-      address: string;
-      room?: string;
+    availability_details?: {
+      id: number;
+      provider: number;
+      start_time: string;
+      end_time: string;
     };
-    virtual_meeting?: {
-      platform: 'zoom' | 'teams' | 'custom';
-      meeting_id: string;
-      join_url: string;
-      passcode?: string;
-    };
-    preparation_instructions?: string;
-    estimated_cost?: number;
-    insurance_authorization_required: boolean;
-    reminder_preferences: {
-      email: boolean;
-      sms: boolean;
-      call: boolean;
-      hours_before: number[];
-    };
-    cancellation_policy?: string;
-    created_date: string;
-    last_modified: string;
+    
+    // Metadata
+    created_at: string;
+    updated_at: string;
+    created_by?: number;
+    updated_by?: number;
+    
+    // Computed/helper fields for frontend
+    provider_name?: string;        // Computed from provider_details
+    is_telemedicine?: boolean;     // Computed from appointment_type
+    reason_for_visit?: string;     // Alias for reason
+    preferred_datetime?: string;   // Alias for scheduled_time
+    meeting_url?: string;          // For telemedicine appointments
+    location?: string;             // For in-person appointments
+    preparation_notes?: string;    // Additional instructions
+    follow_up_required?: boolean;  // If follow-up is needed
   }
-  
+    
   export interface LabResult {
     id: number;
     patient: number;
