@@ -1,6 +1,7 @@
 // src/hooks/patient/usePatientAppointments.ts
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/lib/auth';
 import { patientService } from '@/lib/api/services/patient.service';
 import type { Appointment } from '@/types/patient.types';
 
@@ -14,6 +15,7 @@ export interface ScheduleAppointmentPayload {
   is_telemedicine: boolean;
   symptoms?: string;
   urgency: string;
+  patient?: number; // Optional, if scheduling for a specific patient
 }
 
 interface UsePatientAppointmentsOptions {
@@ -54,6 +56,7 @@ export const usePatientAppointments = (
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFiltersState] = useState<UsePatientAppointmentsOptions>(options);
 
+  const { user } = useAuth();
   // Fetch appointments
   const fetchAppointments = useCallback(async (append = false) => {
     try {
@@ -116,7 +119,18 @@ export const usePatientAppointments = (
   const scheduleAppointment = useCallback(
     async (appointmentData: ScheduleAppointmentPayload) => {
       try {
-        const newAppointment = await patientService.scheduleAppointment(appointmentData);
+        if (!user?.id) {
+          throw new Error('User not authenticated');
+        }
+        // Add user ID to appointment data
+        const appointmentWithPatient = {
+          ...appointmentData,
+          patient: user.id
+        };
+
+        console.log('🔍 Adding patient ID:', user.id);
+
+        const newAppointment = await patientService.scheduleAppointment(appointmentWithPatient);
       
       // Add to local state if it matches current filters
       const shouldInclude = (
@@ -134,7 +148,7 @@ export const usePatientAppointments = (
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to schedule appointment');
     }
-  }, [filters]);
+  }, [filters, user?.id]);
 
   // Cancel appointment
   const cancelAppointment = useCallback(async (id: number, reason?: string) => {

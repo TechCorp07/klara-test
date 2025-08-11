@@ -111,17 +111,7 @@ class TabAPIClient {
         
         // 🔍 ADD THIS DEBUG LOGGING FOR APPOINTMENT ERRORS
         if (originalRequest?.url?.includes('/appointments/') && error.response) {
-          console.error('❌ Appointment Error Debug:', {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            data: error.response.data,
-            url: originalRequest.url,
-            sentData: originalRequest.data,
-            requestHeaders: {
-              'Content-Type': originalRequest.headers['Content-Type'],
-              'Authorization': originalRequest.headers.Authorization ? 'Session ***' : 'None'
-            }
-          });
+          console.error('❌ Full Backend Error Response:', JSON.stringify(error.response.data, null, 2));
         }
         // Handle authentication errors
         if (error.response?.status === 401 && !originalRequest?.skipAuthRefresh) {
