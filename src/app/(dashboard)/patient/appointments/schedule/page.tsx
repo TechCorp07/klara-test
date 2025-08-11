@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Video, Calendar, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { patientService } from '@/lib/api/services/patient.service';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
+import apiClient from '@/lib/api/client';
 
 interface AppointmentFormData {
   provider_id: string;
@@ -81,26 +82,11 @@ export default function ScheduleAppointmentPage() {
     try {
       setLoadingProviders(true);
       // This endpoint should return available providers
-      const response = await fetch('/api/users/provider/available', {
-        headers: {
-          'Authorization': `Session ${localStorage.getItem('session_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.get('/users/provider/available/');
       
-      if (response.ok) {
-        const providersData = await response.json();
-        console.log('🔍 Loaded providers:', providersData);
-        setProviders(providersData);
-      } else {
-        console.error('Failed to load providers');
-        // Fallback: Add some dummy providers for testing
-        setProviders([
-          { id: 2, name: 'Dr. Sarah Johnson', specialty: 'Cardiology' },
-          { id: 3, name: 'Dr. Michael Chen', specialty: 'Neurology' },
-          { id: 4, name: 'Dr. Emily Davis', specialty: 'Oncology' }
-        ]);
-      }
+      console.log('🔍 Loaded providers:', response.data);
+      setProviders(response.data as Array<{id: number, name: string, specialty?: string}>);
+
     } catch (error) {
       console.error('Error loading providers:', error);
       // Fallback providers for testing
