@@ -69,6 +69,20 @@ class TabAPIClient {
         
         // Add request timestamp for debugging
         extendedConfig.metadata = { startTime: Date.now() };
+
+        // 🔍 ADD THIS DEBUG LOGGING FOR APPOINTMENT REQUESTS
+        if (config.url?.includes('/appointments/') && config.method === 'post') {
+          console.log('🔍 Appointment Request Debug:', {
+            url: config.url,
+            method: config.method,
+            headers: {
+              'Content-Type': config.headers['Content-Type'],
+              'Authorization': config.headers.Authorization ? 'Session ***' : 'None',
+            },
+            data: config.data,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         return config;
       },
@@ -80,12 +94,32 @@ class TabAPIClient {
 
     // Response interceptor - Handle auth errors
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => {  
+      (response: AxiosResponse) => {
+        // 🔍 ADD THIS DEBUG LOGGING FOR APPOINTMENT RESPONSES
+        if (response.config.url?.includes('/appointments/') && response.config.method === 'post') {
+          console.log('🔍 Appointment Response Debug:', {
+            status: response.status,
+            statusText: response.statusText,
+            data: response.data,
+            url: response.config.url
+          });
+        }
         return response;
       },
       async (error: AxiosError) => {
         const originalRequest = error.config as ExtendedInternalAxiosRequestConfig;
         
+        // 🔍 ADD THIS DEBUG LOGGING FOR APPOINTMENT ERRORS
+        if (originalRequest?.url?.includes('/appointments/') && error.response) {
+          console.error('❌ Appointment Error Debug:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: originalRequest.url,
+            sentData: originalRequest.data,
+            headers: originalRequest.headers
+          });
+        }
         // Handle authentication errors
         if (error.response?.status === 401 && !originalRequest?.skipAuthRefresh) {
           

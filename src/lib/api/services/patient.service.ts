@@ -3,6 +3,7 @@ import { HealthRecord, MedicationScheduleItem, RecordRequest } from '@/hooks/pat
 import { ScheduleAppointmentPayload } from '@/hooks/patient/usePatientAppointments';
 import { apiClient } from '@/lib/api/client';
 import { buildQueryUrl, ENDPOINTS } from '@/lib/api/endpoints';
+import { useAuth } from '@/lib/auth';
 import { Appointment, EmergencyContact, HealthInsurance, MedicationAdherence, PatientPreferences, PatientProfile, Prescription, VitalSigns } from '@/types/patient.types';
 import { AxiosResponse } from 'axios';
 
@@ -505,6 +506,8 @@ async getAppointmentById(id: number): Promise<Appointment> {
       // Transform frontend data to match backend requirements
       const transformedData = {
         // Required fields
+        patient: this.getCurrentUserId(),
+        
         provider: appointmentData.provider,
         scheduled_time: appointmentData.preferred_datetime,
         end_time: this.calculateEndTime(appointmentData.preferred_datetime, appointmentData.duration_minutes || 30),
@@ -526,15 +529,34 @@ async getAppointmentById(id: number): Promise<Appointment> {
         reminders_enabled: true,
       };
 
+      // Debug logging
+      console.log('🔍 Original appointment data:', appointmentData);
+      console.log('🔍 Transformed data being sent:', transformedData);
+      console.log('🔍 Sending to endpoint:', ENDPOINTS.TELEMEDICINE.SCHEDULE_APPOINTMENT);
+
+      
       const response = await apiClient.post<Appointment>(
         ENDPOINTS.TELEMEDICINE.SCHEDULE_APPOINTMENT,
         transformedData
       );
       return extractData(response);
+      
     } catch (error) {
-      console.error('Failed to schedule appointment:', error);
-      throw new Error('Failed to schedule appointment');
+        console.error('❌ Failed to schedule appointment:', error);
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+          const axiosError = error as { response: { data: unknown } };
+          console.error('❌ Backend validation errors:', axiosError.response.data);
+        }
+        throw new Error('Failed to schedule appointment');
     }
+  }
+
+  /**
+   * Get current user ID from auth context
+   */
+  private getCurrentUserId(): number | undefined {
+    const user = useAuth().user;
+    return user?.id || undefined;
   }
 
   /**
@@ -550,6 +572,7 @@ async getAppointmentById(id: number): Promise<Appointment> {
    * Helper method to map appointment type
    */
   private mapAppointmentType(frontendType: string, isTelemedicine: boolean): string {
+    console.log('🔍 Mapping appointment type:', { frontendType, isTelemedicine });
     // Map frontend appointment types to backend valid choices
     if (isTelemedicine) {
       return frontendType === 'phone_consultation' ? 'phone_consultation' : 'video_consultation';
@@ -562,7 +585,9 @@ async getAppointmentById(id: number): Promise<Appointment> {
       'screening': 'initial_consultation',
     };
     
-    return typeMap[frontendType] || 'in_person';
+    const mappedType = typeMap[frontendType] || 'in_person';
+    console.log('🔍 Mapped to:', mappedType);
+    return mappedType;
   }
 
   /**
