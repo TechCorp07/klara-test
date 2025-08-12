@@ -427,11 +427,48 @@ export default function ScheduleAppointmentPage() {
                   {details.is_telemedicine && (
                   <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
                     <p className="text-blue-800 font-medium text-sm">✓ Telemedicine Setup Complete</p>
-                    <p className="text-blue-600 text-xs mt-1">
-                      Meeting link and calendar invites have been sent to your email
-                    </p>
+                    
+                    {/* Show meeting details if available */}
+                    {details.meeting_url ? (
+                      <div className="space-y-2">
+                        <div className="bg-white p-2 rounded border text-xs">
+                          <p className="font-medium text-gray-700 mb-1">Meeting Details:</p>
+                          {details.meeting_id && (
+                            <p className="text-gray-600">ID: {details.meeting_id}</p>
+                          )}
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-gray-600">Join Meeting:</span>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => navigator.clipboard.writeText(details.meeting_url)}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
+                                title="Copy meeting link"
+                              >
+                                Copy Link
+                              </button>
+                              <a
+                                href={details.meeting_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                              >
+                                Open Meeting
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-blue-600 text-xs">
+                          Meeting link and calendar invites sent to your email
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-blue-600 text-xs">
+                        Meeting setup in progress. Details will be sent to your email shortly.
+                      </p>
+                    )}
                   </div>
                 )}
+
                   <p><strong>Status:</strong> <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">{details.status}</span></p>
                 </div>
               </div>
