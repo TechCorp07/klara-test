@@ -250,14 +250,14 @@ export default function ScheduleAppointmentPage() {
       
       const appointmentId = response.id;
 
-      // Auto-redirect after showing success for 3 seconds
+      // Auto-redirect after showing success for 10 seconds
       setTimeout(() => {
         if (appointmentId && !isNaN(appointmentId)) {
           router.push(`/patient/appointments/${appointmentId}`);
         } else {
           router.push('/patient/appointments');
         }
-      }, 3000);
+      }, 10000);
 
     } catch (error: unknown) {
       console.error('Failed to schedule appointment:', error);
@@ -424,6 +424,14 @@ export default function ScheduleAppointmentPage() {
                   <p><strong>Date & Time:</strong> {new Date(details.scheduled_time || details.preferred_datetime).toLocaleString()}</p>
                   <p><strong>Type:</strong> {details.appointment_type}</p>
                   <p><strong>Visit Type:</strong> {details.is_telemedicine ? 'Telemedicine' : 'In-Person'}</p>
+                  {details.is_telemedicine && (
+                  <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                    <p className="text-blue-800 font-medium text-sm">✓ Telemedicine Setup Complete</p>
+                    <p className="text-blue-600 text-xs mt-1">
+                      Meeting link and calendar invites have been sent to your email
+                    </p>
+                  </div>
+                )}
                   <p><strong>Status:</strong> <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">{details.status}</span></p>
                 </div>
               </div>
