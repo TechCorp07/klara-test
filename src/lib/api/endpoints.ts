@@ -94,6 +94,7 @@ export const ENDPOINTS = {
     APPOINTMENTS: '/telemedicine/appointments/',
     REQUEST_APPOINTMENT: '/telemedicine/appointments/',
     CANCEL_APPOINTMENT: (id: number) => `/telemedicine/appointments/${id}/cancel/`,
+    MESSAGE_PROVIDER: '/users/patient/send_message_to_provider/',
       
     // Health alerts
     ALERTS: '/users/patient/alerts/',
