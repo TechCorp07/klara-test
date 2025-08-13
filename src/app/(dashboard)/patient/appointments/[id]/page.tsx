@@ -24,6 +24,7 @@ import {
   Pill
 } from 'lucide-react';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
+import { patientService } from '@/lib/api/services/patient.service';
 import { TelemedicineMeetingInfo } from '../../components/dashboard/TelemedicineMeetingInfo';
 import type { Appointment } from '@/types/patient.types';
 import config from '@/lib/config';
@@ -37,8 +38,13 @@ export default function AppointmentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [rescheduleDateTime, setRescheduleDateTime] = useState('');
+  const [messageContent, setMessageContent] = useState('');
+  const [messageSubject, setMessageSubject] = useState('');
 
-  const { cancelAppointment } = usePatientAppointments();
+  const { cancelAppointment, rescheduleAppointment } = usePatientAppointments();
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -145,6 +151,44 @@ export default function AppointmentDetailPage() {
       window.open(appointment.meeting_url, '_blank');
     } else {
       alert('Meeting link is not available yet. Please check back closer to your appointment time.');
+    }
+  };
+
+  const handleRescheduleAppointment = async () => {
+    if (!appointment || !rescheduleDateTime) return;
+    
+    try {
+      setActionLoading('reschedule');
+      await rescheduleAppointment(appointment.id, rescheduleDateTime);
+      alert('Appointment rescheduled successfully');
+      setShowRescheduleModal(false);
+      // Refresh the appointment data
+      window.location.reload();
+    } catch (error) {
+      alert('Failed to reschedule appointment. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleMessageProvider = async () => {
+    if (!appointment?.provider_details || !messageContent.trim()) return;
+    
+    try {
+      setActionLoading('message');
+      await patientService.sendMessage({
+        recipient: appointment.provider_details.id,
+        subject: messageSubject || `Message regarding appointment #${appointment.id}`,
+        message: messageContent,
+      });
+      alert('Message sent successfully');
+      setShowMessageModal(false);
+      setMessageContent('');
+      setMessageSubject('');
+    } catch (error) {
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -339,6 +383,93 @@ export default function AppointmentDetailPage() {
                 )}
               </div>
             )}
+            {/* Reschedule Modal */}
+            {showRescheduleModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-lg font-semibold mb-4">Reschedule Appointment</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        New Date & Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={rescheduleDateTime}
+                        onChange={(e) => setRescheduleDateTime(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={handleRescheduleAppointment}
+                        disabled={!rescheduleDateTime || actionLoading === 'reschedule'}
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {actionLoading === 'reschedule' ? 'Rescheduling...' : 'Confirm'}
+                      </button>
+                      <button
+                        onClick={() => setShowRescheduleModal(false)}
+                        className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Message Modal */}
+            {showMessageModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-lg font-semibold mb-4">Message Provider</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Subject (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={messageSubject}
+                        onChange={(e) => setMessageSubject(e.target.value)}
+                        placeholder="Subject"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Message *
+                      </label>
+                      <textarea
+                        value={messageContent}
+                        onChange={(e) => setMessageContent(e.target.value)}
+                        placeholder="Type your message here..."
+                        rows={4}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={handleMessageProvider}
+                        disabled={!messageContent.trim() || actionLoading === 'message'}
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {actionLoading === 'message' ? 'Sending...' : 'Send Message'}
+                      </button>
+                      <button
+                        onClick={() => setShowMessageModal(false)}
+                        className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -359,7 +490,10 @@ export default function AppointmentDetailPage() {
 
                 {appointment.provider_details && (
                   <div className="space-y-2">
-                    <button className="w-full flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <button 
+                      onClick={() => setShowMessageModal(true)}
+                      className="w-full flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    >
                       <MessageSquare className="w-4 h-4 mr-2" />
                       Message Provider
                     </button>
@@ -389,8 +523,16 @@ export default function AppointmentDetailPage() {
                 )}
 
                 {isUpcoming && appointment.status !== 'cancelled' && (
-                  <button className="w-full flex items-center justify-center bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700">
-                    <Edit className="w-4 h-4 mr-2" />
+                  <button 
+                    onClick={() => setShowRescheduleModal(true)}
+                    disabled={actionLoading === 'reschedule'}
+                    className="w-full flex items-center justify-center bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    {actionLoading === 'reschedule' ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Edit className="w-4 h-4 mr-2" />
+                    )}
                     Reschedule
                   </button>
                 )}

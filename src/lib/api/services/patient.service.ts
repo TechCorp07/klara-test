@@ -604,7 +604,8 @@ async getAppointmentById(id: number): Promise<Appointment> {
   async cancelAppointment(id: number, reason?: string): Promise<void> {
     try {
       await apiClient.post(ENDPOINTS.TELEMEDICINE.CANCEL_APPOINTMENT(id), {
-        reason: reason || 'Patient cancellation'
+        reason: reason || 'Patient cancellation',
+        cancel_zoom_meeting: true
       });
     } catch (error) {
       console.error('Failed to cancel appointment:', error);
