@@ -437,7 +437,12 @@ class EnhancedPatientService {
     attachments?: string[];
   }): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.MESSAGE_PROVIDER, messageData);
+      await apiClient.post(ENDPOINTS.PATIENT.MESSAGE_PROVIDER, {
+        recipient_id: messageData.recipient,
+        subject: messageData.subject,
+        content: messageData.message,
+        message_type: 'provider_message'
+      });
     } catch (error) {
       console.error('Failed to send message:', error);
       throw new Error('Failed to send message');
@@ -616,20 +621,29 @@ async getAppointmentById(id: number): Promise<Appointment> {
   /**
    * Reschedule appointment
    */
-  async rescheduleAppointment(id: number, newDateTime: string): Promise<Appointment> {
+    async rescheduleAppointment(id: number, newDateTime: string): Promise<Appointment> {
     try {
+      const endTime = this.calculateEndTime(newDateTime, 30);
+      const payload = { 
+        new_scheduled_time: newDateTime,
+        new_end_time: endTime,
+        reason: 'Patient requested reschedule',
+        notify_participants: true
+      };
+      
+      console.log('🔍 Reschedule payload:', payload);
+      
       const response = await apiClient.post<Appointment>(
         ENDPOINTS.TELEMEDICINE.RESCHEDULE_APPOINTMENT(id),
-        { 
-          new_scheduled_time: newDateTime,
-          new_end_time: this.calculateEndTime(newDateTime, 30),
-          reason: 'Patient requested reschedule',
-          notify_participants: true
-        }
+        payload
       );
       return extractData(response);
     } catch (error) {
       console.error('Failed to reschedule appointment:', error);
+      // Log the full error response for debugging
+      if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response) {
+        console.error('Backend reschedule error:', error.response.data);
+      }
       throw new Error('Failed to reschedule appointment');
     }
   }
