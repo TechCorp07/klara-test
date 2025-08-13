@@ -3,9 +3,10 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Video, MapPin, Phone } from 'lucide-react';
+import { Calendar, Video, MapPin, Phone } from 'lucide-react';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
 import type { Appointment } from '@/types/patient.types';
+import { TelemedicineMeetingInfo } from './TelemedicineMeetingInfo';
 
 interface AppointmentsWidgetProps {
   onScheduleAppointment?: () => void;
@@ -163,9 +164,14 @@ export function AppointmentsWidget({
                         <span>Telemedicine</span>
                       </div>
                     ) : (
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        <span>{appointment.location || 'In-person'}</span>
+                      <div>
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          <span>{appointment.location || 'In-person'}</span>
+                        </div>
+                        <div className="mt-2">
+                          <TelemedicineMeetingInfo appointment={appointment} compact={true} />
+                        </div>
                       </div>
                     )}
                     <span className="mx-2">•</span>

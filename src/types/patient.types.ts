@@ -218,9 +218,11 @@ export interface PatientProfile {
     // Computed/helper fields for frontend
     provider_name?: string;        // Computed from provider_details
     is_telemedicine?: boolean;     // Computed from appointment_type
+    telemedicine_ready?: boolean;  // If telemedicine link is ready
     reason_for_visit?: string;     // Alias for reason
     preferred_datetime?: string;   // Alias for scheduled_time
     meeting_url?: string;          // For telemedicine appointments
+    meeting_id?: string;           // Unique ID for telemedicine session
     location?: string;             // For in-person appointments
     preparation_notes?: string;    // Additional instructions
     follow_up_required?: boolean;  // If follow-up is needed

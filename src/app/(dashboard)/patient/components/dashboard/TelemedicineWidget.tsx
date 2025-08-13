@@ -6,6 +6,7 @@ import { Video, Clock, Monitor, Phone } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
+import { TelemedicineMeetingInfo } from './TelemedicineMeetingInfo';
 import type { Appointment } from '@/types/patient.types';
 
 interface TelemedicineProps {
@@ -149,64 +150,64 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
             const canJoinNow = appointment.meeting_url && minutesUntil <= 15; // Allow joining 15 minutes before
             
             return (
-              <div
-                key={appointment.id}
-                className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="font-medium text-gray-900">{getProviderName(appointment)}</div>
-                    <div className="text-sm text-gray-600">
-                      {appointment.appointment_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              <div key={appointment.id}>
+                <div className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-medium text-gray-900">{getProviderName(appointment)}</div>
+                      <div className="text-sm text-gray-600">
+                        {appointment.appointment_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatDate(appointment.scheduled_time)}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {formatTime(appointment.scheduled_time)}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatDate(appointment.scheduled_time)}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {formatTime(appointment.scheduled_time)}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="w-4 h-4 mr-1" />
-                    <span>{appointment.duration_minutes || 30} min</span>
-                    <span className="mx-2">•</span>
-                    <Monitor className="w-4 h-4 mr-1" />
-                    <span>Video Call</span>
-                    {minutesUntil > 0 && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>{minutesUntil} min until start</span>
-                      </>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Clock className="w-4 h-4 mr-1" />
+                      <span>{appointment.duration_minutes || 30} min</span>
+                      <span className="mx-2">•</span>
+                      <Monitor className="w-4 h-4 mr-1" />
+                      <span>Video Call</span>
+                      {minutesUntil > 0 && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <span>{minutesUntil} min until start</span>
+                        </>
+                      )}
+                    </div>
+
+                    {canJoinNow && (
+                      <button
+                        onClick={() => handleJoinSession(appointment)}
+                        className="flex items-center bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                      >
+                        <Video className="w-4 h-4 mr-1" />
+                        Join Now
+                      </button>
                     )}
                   </div>
 
-                  {canJoinNow && (
-                    <button
-                      onClick={() => handleJoinSession(appointment)}
-                      className="flex items-center bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                    >
-                      <Video className="w-4 h-4 mr-1" />
-                      Join Now
-                    </button>
+                  {appointment.preparation_notes && (
+                    <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                      <strong>Preparation:</strong> {appointment.preparation_notes}
+                    </div>
+                  )}
+
+                  {!canJoinNow && appointment.meeting_url && minutesUntil > 15 && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      You can join 15 minutes before your appointment
+                    </div>
                   )}
                 </div>
-
-                {appointment.preparation_notes && (
-                  <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                    <strong>Preparation:</strong> {appointment.preparation_notes}
-                  </div>
-                )}
-
-                {!canJoinNow && appointment.meeting_url && minutesUntil > 15 && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    You can join 15 minutes before your appointment
-                  </div>
-                )}
+                <TelemedicineMeetingInfo appointment={appointment} compact={true} />
               </div>
             );
           })}
@@ -214,7 +215,7 @@ export function TelemedicineWidget({ onRequestSession, onJoinSession }: Telemedi
       ) : (
         <div className="text-center py-6 text-gray-500">
           <Video className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-          <p className="text-sm mb-2">No telemedicine sessions scheduled</p>
+          <p className="text-sm mb-2">No upcoming telemedicine appointments</p>
           <button
             onClick={handleRequestSession}
             disabled={requesting}

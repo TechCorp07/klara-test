@@ -24,6 +24,7 @@ import {
   Pill
 } from 'lucide-react';
 import { usePatientAppointments } from '@/hooks/patient/usePatientAppointments';
+import { TelemedicineMeetingInfo } from '../../components/dashboard/TelemedicineMeetingInfo';
 import type { Appointment } from '@/types/patient.types';
 import config from '@/lib/config';
 
@@ -462,6 +463,7 @@ export default function AppointmentDetailPage() {
                 )}
               </div>
             </div>
+            <TelemedicineMeetingInfo appointment={appointment} compact={false} />
           </div>
         </div>
       </div>
