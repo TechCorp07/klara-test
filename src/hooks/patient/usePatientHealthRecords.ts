@@ -25,7 +25,7 @@ interface RecordRequest {
     start_date: string;
     end_date: string;
   };
-  delivery_method: 'email' | 'mail' | 'pickup' | 'portal'; // Include 'portal' to match imported type
+  delivery_method: 'email' | 'mail' | 'pickup'; // Remove 'portal' to match service
   purpose: string;
   notes?: string;
 }

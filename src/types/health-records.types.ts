@@ -529,7 +529,21 @@ export interface UsePatientHealthRecordsReturn {
   refetch: () => Promise<void>;
   loadMore: () => Promise<void>;
   downloadRecord: (recordId: number) => Promise<void>;
-  requestRecords: (requestData: RecordRequest) => Promise<RecordRequestResponse>;
+    requestRecords: (requestData: {
+    record_types: string[];
+    date_range?: {
+      start_date: string;
+      end_date: string;
+    };
+    delivery_method: 'email' | 'mail' | 'pickup';
+    purpose: string;
+    notes?: string;
+  }) => Promise<{
+    request_id: string;
+    estimated_completion: string;
+    tracking_number?: string;
+    status: 'submitted' | 'processing' | 'ready' | 'delivered';
+  }>;
   shareRecord: (recordId: number, recipientEmail: string, message?: string) => Promise<void>;
   
   // Filtering
