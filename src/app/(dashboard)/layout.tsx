@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'health-records',
           name: 'Health Records',
-          href: '/patient?tab=health',
+          href: '/patient/healthrecords',
           icon: 'file-medical',
           show: true
         },
@@ -174,6 +174,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           href: '/patient?tab=health',
           icon: 'pill',
           priority: 'medium'
+        },
+        {
+          id: "view_health_records",
+          name: "Health Records",
+          description: "View complete medical history",
+          icon: "file-medical",
+          href: "/patient/healthrecords",
+          priority: "medium"
         }
       );
     }

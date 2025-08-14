@@ -173,6 +173,64 @@ export interface PatientDashboardData {
   }>;
 }
 
+export interface HealthRecordDetail {
+  id: number;
+  record_type: string;
+  title: string;
+  date: string;
+  status: string;
+  is_critical: boolean;
+  provider?: {
+    id: number;
+    name: string;
+    specialty: string;
+    contact_info?: {
+      phone?: string;
+      email?: string;
+      address?: string;
+    };
+  };
+  summary?: string;
+  content?: string;
+  notes?: string;
+  attachments?: Array<{
+    id: number;
+    filename: string;
+    file_size: number;
+    mime_type: string;
+    uploaded_at: string;
+  }>;
+  related_records?: Array<{
+    id: number;
+    title: string;
+    record_type: string;
+    date: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+  // Condition-specific fields
+  diagnosis_code?: string;
+  severity?: string;
+  is_rare_condition?: boolean;
+  rare_condition_details?: {
+    orpha_code?: string;
+    prevalence?: string;
+    inheritance_pattern?: string;
+  };
+  // Lab result-specific fields
+  result_value?: string;
+  reference_range?: string;
+  unit?: string;
+  is_abnormal?: boolean;
+  // Medication-specific fields
+  dosage?: string;
+  frequency?: string;
+  start_date?: string;
+  end_date?: string;
+  // Vital signs-specific fields
+  measurements?: Record<string, number>;
+}
+
 export interface MedicationLogEntry {
   medication_id: number;
   taken: boolean;
@@ -1021,9 +1079,6 @@ async getAppointmentById(id: number): Promise<Appointment> {
     return this.logMedication(data.prescription, logEntry);
   }
 
-  /**
-   * Get medication adherence data
-   */
 /**
  * Get medication adherence data with flexible parameters
  */
@@ -1310,6 +1365,40 @@ async getAppointmentById(id: number): Promise<Appointment> {
     } catch (error) {
       console.error('Failed to trigger emergency notification:', error);
       throw new Error('Failed to send emergency notification');
+    }
+  }
+
+  /**
+   * Get detailed health record by ID
+   */
+  async getHealthRecordDetail(recordId: number): Promise<HealthRecordDetail> {
+    try {
+      const response = await apiClient.get<HealthRecordDetail>(
+        `${ENDPOINTS.PATIENT.PROFILE}/health-records/${recordId}/`
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch health record detail:', error);
+      throw new Error('Failed to load health record details');
+    }
+  }
+
+  /**
+   * Download attachment by ID
+   */
+  async downloadAttachment(attachmentId: number): Promise<Blob> {
+    try {
+      const response = await apiClient.get(
+        `${ENDPOINTS.PATIENT.PROFILE}/health-records/attachments/${attachmentId}/download/`,
+        {
+          responseType: 'blob',
+        }
+      );
+      
+      return response.data as Blob;
+    } catch (error) {
+      console.error('Failed to download attachment:', error);
+      throw new Error('Failed to download the attachment');
     }
   }
 }
