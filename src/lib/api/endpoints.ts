@@ -81,9 +81,23 @@ export const ENDPOINTS = {
     MEDICATION_ANALYTICS: '/users/patient/medications/analytics/',
     MEDICATION_REMINDERS: '/users/patient/profile/medication-reminders/',
     
+    // Health Records endpoints
+    HEALTH_RECORDS: '/healthcare/medical-records/',
+    HEALTH_RECORDS_SUMMARY: '/healthcare/medical-records/summary/',
+    HEALTH_RECORD_DETAIL: (id: number) => `/healthcare/medical-records/${id}/`,
+    DOWNLOAD_RECORD: (recordId: number) => `/healthcare/medical-records/${recordId}/download/`,
+    
     // Vital signs
     VITALS: '/users/patient/vitals/',
     VITALS_LATEST: '/users/patient/vitals/latest/',
+    CONDITIONS: '/healthcare/conditions/',
+    MEDICATIONS_HEALTHCARE: '/healthcare/medications/',
+    LAB_RESULTS: '/healthcare/lab-tests/',
+    VITAL_SIGNS_HEALTHCARE: '/healthcare/vital-signs/',
+    ALLERGIES: '/healthcare/allergies/',
+    FAMILY_HISTORY_HEALTHCARE: '/healthcare/family-history/',
+    IMMUNIZATIONS: '/healthcare/immunizations/',
+    TREATMENTS: '/healthcare/treatments/',
     
     // Wearable devices
     WEARABLE_DEVICES: '/users/patient/wearable-devices/',

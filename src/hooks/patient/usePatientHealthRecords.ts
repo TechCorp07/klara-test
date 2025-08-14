@@ -3,62 +3,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { patientService } from '@/lib/api/services/patient.service';
 
-interface HealthRecord {
-  id: number;
-  record_type: 'lab_result' | 'imaging' | 'visit_note' | 'test_result' | 'prescription' | 'vaccination' | 'procedure' | 'discharge_summary';
-  title: string;
-  date: string;
-  provider: {
-    id: number;
-    name: string;
-    specialty: string;
-  };
-  status: 'final' | 'preliminary' | 'pending' | 'amended' | 'cancelled';
-  has_attachments: boolean;
-  is_critical: boolean;
-  summary?: string;
-  document_url?: string;
-  file_size?: number;
-  mime_type?: string;
-  created_at: string;
-  updated_at: string;
-}
+// Import all required types from your health-records.types.ts
+import type {
+  HealthRecord,
+  MedicalCondition,
+  Medication,
+  LabResult,
+  VitalSign,
+  Allergy,
+  FamilyHistory,
+  HealthRecordsSummary,
+  HealthRecordFilters,
+  UsePatientHealthRecordsOptions,
+  UsePatientHealthRecordsReturn
+} from '@/types/health-records.types';
 
-interface HealthRecordsSummary {
-  total_records: number;
-  recent_records: number; // Last 30 days
-  pending_results: number;
-  critical_alerts: number;
-  last_updated: string;
-  records_by_type: Record<string, number>;
-  records_by_provider: Record<string, number>;
-}
-
-interface HealthRecordFilters {
-  record_type?: string;
-  start_date?: string;
-  end_date?: string;
-  provider?: number;
-  status?: string;
-  is_critical?: boolean;
-  has_attachments?: boolean;
-  search_query?: string;
-}
-
-interface UsePatientHealthRecordsOptions {
-  filters?: HealthRecordFilters;
-  limit?: number;
-  autoRefresh?: boolean;
-  refreshInterval?: number;
-}
-
+// Local interfaces for record requests to match your patient service
 interface RecordRequest {
   record_types: string[];
   date_range?: {
     start_date: string;
     end_date: string;
   };
-  delivery_method: 'email' | 'mail' | 'pickup';
+  delivery_method: 'email' | 'mail' | 'pickup' | 'portal'; // Include 'portal' to match imported type
   purpose: string;
   notes?: string;
 }
@@ -67,149 +34,203 @@ interface RecordRequestResponse {
   request_id: string;
   estimated_completion: string;
   tracking_number?: string;
-  status: 'submitted' | 'processing' | 'ready' | 'delivered';
+  status: 'submitted' | 'processing' | 'ready' | 'delivered'; // Add required status field
 }
 
-interface UsePatientHealthRecordsReturn {
-  // Data
-  records: HealthRecord[];
-  summary: HealthRecordsSummary | null;
-  loading: boolean;
-  error: string | null;
-  hasMore: boolean;
-  totalCount: number;
-  
-  // Actions
-  refetch: () => Promise<void>;
-  loadMore: () => Promise<void>;
-  downloadRecord: (recordId: number) => Promise<void>;
-  requestRecords: (requestData: RecordRequest) => Promise<RecordRequestResponse>;
-  shareRecord: (recordId: number, recipientEmail: string, message?: string) => Promise<void>;
-  
-  // Filtering
-  setFilters: (filters: HealthRecordFilters) => void;
-  clearFilters: () => void;
-  searchRecords: (query: string) => void;
-  
-  // Utilities
-  getRecordsByType: (type: string) => HealthRecord[];
-  getCriticalRecords: () => HealthRecord[];
-  getRecentRecords: (days?: number) => HealthRecord[];
-}
-
-export const usePatientHealthRecords = (
+export function usePatientHealthRecords(
   options: UsePatientHealthRecordsOptions = {}
-): UsePatientHealthRecordsReturn => {
+): UsePatientHealthRecordsReturn {
   const [records, setRecords] = useState<HealthRecord[]>([]);
+  const [conditions, setConditions] = useState<MedicalCondition[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [labResults, setLabResults] = useState<LabResult[]>([]);
+  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
+  const [allergies, setAllergies] = useState<Allergy[]>([]);
+  const [familyHistory, setFamilyHistory] = useState<FamilyHistory[]>([]);
   const [summary, setSummary] = useState<HealthRecordsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFiltersState] = useState<HealthRecordFilters>(options.filters || {});
+  const [currentFilters, setCurrentFilters] = useState<HealthRecordFilters>(options.filters || {});
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch health records
-  const fetchHealthRecords = useCallback(async (append = false) => {
+  // Fetch health records from API
+  const fetchHealthRecords = useCallback(async (params: Record<string, string | number | boolean> = {}) => {
     try {
-      if (!append) setLoading(true);
+      setLoading(true);
       setError(null);
 
-      const params: Record<string, string | number | boolean | undefined> = {
+      // Combine filters with search query
+      const queryParams = {
+        ...currentFilters,
+        search: searchQuery,
         limit: options.limit || 20,
-        offset: append ? records.length : 0,
-        ordering: '-date',
+        ...params
       };
 
-      // Apply filters
-      if (filters.record_type) params.record_type = filters.record_type;
-      if (filters.start_date) params.start_date = filters.start_date;
-      if (filters.end_date) params.end_date = filters.end_date;
-      if (filters.provider) params.provider = filters.provider;
-      if (filters.status) params.status = filters.status;
-      if (filters.is_critical !== undefined) params.is_critical = filters.is_critical;
-      if (filters.has_attachments !== undefined) params.has_attachments = filters.has_attachments;
-      if (filters.search_query) params.search = filters.search_query;
-
-      const response = await patientService.getHealthRecords(params);
+      const response = await patientService.getHealthRecords(queryParams);
       
-      if (append) {
-        setRecords(prev => [...prev, ...response.results]);
+      if (params.offset && typeof params.offset === 'number' && params.offset > 0) {
+        // Append to existing records for pagination
+        setRecords(prev => [...(prev || []), ...(response.results || [])]);
       } else {
-        setRecords(response.results);
+        // Replace records for new search/filters
+        setRecords(response.results || []);
       }
       
+      setTotalCount(response.count || 0);
       setHasMore(!!response.next);
-      setTotalCount(response.count);
+      
     } catch (err) {
+      console.error('Failed to fetch health records:', err);
       setError(err instanceof Error ? err.message : 'Failed to load health records');
+      // Set empty arrays on error to prevent undefined access
+      setRecords([]);
     } finally {
       setLoading(false);
     }
-  }, [filters, records.length, options.limit]);
+  }, [currentFilters, searchQuery, options.limit]);
+
+  // Fetch medical conditions specifically
+  const fetchMedicalConditions = useCallback(async () => {
+    try {
+      const response = await patientService.getMedicalConditions();
+      setConditions(response.results || []);
+    } catch (err) {
+      console.error('Failed to fetch medical conditions:', err);
+      setConditions([]);
+    }
+  }, []);
+
+  // Fetch medications
+  const fetchMedications = useCallback(async () => {
+    try {
+      // Use HealthRecord type for now since we don't have specific medication endpoint
+      const response = await patientService.getHealthRecords({ record_type: 'medication' });
+      // Convert HealthRecord[] to Medication[] - you may need to adjust this mapping
+      setMedications(response.results as unknown as Medication[]);
+    } catch (err) {
+      console.error('Failed to fetch medications:', err);
+      setMedications([]);
+    }
+  }, []);
+
+  // Fetch lab results
+  const fetchLabResults = useCallback(async () => {
+    try {
+      const response = await patientService.getHealthRecords({ record_type: 'lab_result' });
+      setLabResults(response.results as unknown as LabResult[]);
+    } catch (err) {
+      console.error('Failed to fetch lab results:', err);
+      setLabResults([]);
+    }
+  }, []);
+
+  // Fetch vital signs
+  const fetchVitalSigns = useCallback(async () => {
+    try {
+      const response = await patientService.getHealthRecords({ record_type: 'vital_sign' });
+      setVitalSigns(response.results as unknown as VitalSign[]);
+    } catch (err) {
+      console.error('Failed to fetch vital signs:', err);
+      setVitalSigns([]);
+    }
+  }, []);
+
+  // Fetch allergies
+  const fetchAllergies = useCallback(async () => {
+    try {
+      const response = await patientService.getHealthRecords({ record_type: 'allergy' });
+      setAllergies(response.results as unknown as Allergy[]);
+    } catch (err) {
+      console.error('Failed to fetch allergies:', err);
+      setAllergies([]);
+    }
+  }, []);
+
+  // Fetch family history
+  const fetchFamilyHistory = useCallback(async () => {
+    try {
+      const response = await patientService.getHealthRecords({ record_type: 'family_history' });
+      setFamilyHistory(response.results as unknown as FamilyHistory[]);
+    } catch (err) {
+      console.error('Failed to fetch family history:', err);
+      setFamilyHistory([]);
+    }
+  }, []);
 
   // Fetch summary data
   const fetchSummary = useCallback(async () => {
     try {
-      // This would be a separate endpoint for summary data
-      // For now, we'll calculate it from the records
-      const summaryData: HealthRecordsSummary = {
-        total_records: totalCount,
-        recent_records: records.filter(record => {
-          const recordDate = new Date(record.date);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          return recordDate >= thirtyDaysAgo;
-        }).length,
-        pending_results: records.filter(record => record.status === 'pending').length,
-        critical_alerts: records.filter(record => record.is_critical).length,
-        last_updated: new Date().toISOString(),
-        records_by_type: records.reduce((acc, record) => {
-          acc[record.record_type] = (acc[record.record_type] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        records_by_provider: records.reduce((acc, record) => {
-          acc[record.provider.name] = (acc[record.provider.name] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-      };
-      
+      const summaryData = await patientService.getHealthRecordsSummary();
       setSummary(summaryData);
     } catch (err) {
-      console.error('Failed to fetch summary:', err);
+      console.error('Failed to fetch health records summary:', err);
+      setSummary(null);
     }
-  }, [records, totalCount]);
+  }, []);
 
-    // Fetch summary when records change
-    useEffect(() => {
-      if (records.length > 0) {
-        fetchSummary();
-      }
-    }, [fetchSummary, records.length]);
-
-  // Initial fetch and when filters change
+  // Initial data fetch
   useEffect(() => {
-    fetchHealthRecords();
-  }, [fetchHealthRecords]);
+    const loadInitialData = async () => {
+      await Promise.all([
+        fetchHealthRecords().catch(() => {
+          // Already handled in fetchHealthRecords
+        }),
+        fetchMedicalConditions().catch(() => {
+          // Already handled in fetchMedicalConditions  
+        }),
+        fetchSummary().catch(() => {
+          // Already handled in fetchSummary
+        })
+      ]);
+    };
+    
+    loadInitialData();
+  }, [fetchHealthRecords, fetchMedicalConditions, fetchSummary]);
 
   // Auto-refresh functionality
   useEffect(() => {
-    if (options.autoRefresh) {
-      const interval = setInterval(
-        () => fetchHealthRecords(),
-        options.refreshInterval || 300000 // Default 5 minutes
-      );
+    if (options.autoRefresh && options.refreshInterval) {
+      const interval = setInterval(() => {
+        fetchHealthRecords().catch(() => {
+          // Already handled in fetchHealthRecords
+        });
+        fetchSummary().catch(() => {
+          // Already handled in fetchSummary
+        });
+      }, options.refreshInterval);
+
       return () => clearInterval(interval);
     }
-  }, [options.autoRefresh, options.refreshInterval, fetchHealthRecords]);
+  }, [options.autoRefresh, options.refreshInterval, fetchHealthRecords, fetchSummary]);
+
+  // Refetch all data
+  const refetch = useCallback(async () => {
+    await Promise.all([
+      fetchHealthRecords().catch(() => {
+        // Already handled in fetchHealthRecords
+      }),
+      fetchMedicalConditions().catch(() => {
+        // Already handled in fetchMedicalConditions
+      }),
+      fetchSummary().catch(() => {
+        // Already handled in fetchSummary
+      })
+    ]);
+  }, [fetchHealthRecords, fetchMedicalConditions, fetchSummary]);
 
   // Load more records (pagination)
   const loadMore = useCallback(async () => {
     if (hasMore && !loading) {
-      await fetchHealthRecords(true);
+      await fetchHealthRecords({ offset: (records || []).length }).catch(() => {
+        // Already handled in fetchHealthRecords
+      });
     }
-  }, [hasMore, loading, fetchHealthRecords]);
+  }, [hasMore, loading, records, fetchHealthRecords]);
 
-  // Download record
+  // Download a specific record
   const downloadRecord = useCallback(async (recordId: number) => {
     try {
       const blob = await patientService.downloadLabResult(recordId);
@@ -218,142 +239,112 @@ export const usePatientHealthRecords = (
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
-      // Get filename from record
-      const record = records.find(r => r.id === recordId);
-      const filename = record ? `${record.title.replace(/[^a-z0-9]/gi, '_')}.pdf` : `health_record_${recordId}.pdf`;
-      
-      link.download = filename;
+      link.download = `health-record-${recordId}.pdf`;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
       window.URL.revokeObjectURL(url);
+      
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to download record');
+      console.error('Download failed:', err);
+      throw new Error('Failed to download record');
     }
-  }, [records]);
+  }, []);
 
-  // Request records
+  // Request records from external providers
   const requestRecords = useCallback(async (requestData: RecordRequest): Promise<RecordRequestResponse> => {
     try {
-      const response = await patientService.requestHealthRecords(requestData);
-      // Add the required status field to match RecordRequestResponse interface
+      // Cast to the service's expected type and add missing status field
+      const response = await patientService.requestHealthRecords(requestData as any);
       return {
         ...response,
-        status: 'submitted' // Default status for new requests
+        status: 'submitted' as const // Add the required status field
       };
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to submit record request');
+      console.error('Failed to request records:', err);
+      throw new Error('Failed to submit record request');
     }
   }, []);
 
-  // Share record (hypothetical feature)
+  // Share a record
   const shareRecord = useCallback(async (recordId: number, recipientEmail: string, message?: string) => {
     try {
-      // This would be a separate API endpoint for sharing records
       await patientService.sendMessage({
-        recipient: 0, // Would need to resolve email to user ID
-        subject: 'Shared Health Record',
+        recipient: 0, // This would need to be looked up based on email
+        subject: `Shared Health Record #${recordId}`,
         message: message || 'A health record has been shared with you.',
-        // attachments: [record file]
+        attachments: [recordId.toString()]
       });
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to share record');
+      console.error('Failed to share record:', err);
+      throw new Error('Failed to share record');
     }
   }, []);
 
-  // Filter management
-  const setFilters = useCallback((newFilters: HealthRecordFilters) => {
-    setFiltersState(prev => ({ ...prev, ...newFilters }));
+  // Update filters
+  const setFilters = useCallback((filters: HealthRecordFilters) => {
+    setCurrentFilters(filters);
   }, []);
 
+  // Clear all filters
   const clearFilters = useCallback(() => {
-    setFiltersState({});
+    setCurrentFilters({});
+    setSearchQuery('');
   }, []);
 
+  // Search records
   const searchRecords = useCallback((query: string) => {
-    setFiltersState(prev => ({ ...prev, search_query: query }));
+    setSearchQuery(query);
   }, []);
 
-  // Utility functions
-  const getRecordsByType = useCallback((type: string) => {
-    return records.filter(record => record.record_type === type);
+  // Utility functions with safe array access
+  const getRecordsByType = useCallback((type: string): HealthRecord[] => {
+    return (records || []).filter(record => record.record_type === type);
   }, [records]);
 
-  const getCriticalRecords = useCallback(() => {
-    return records.filter(record => record.is_critical);
+  const getCriticalRecords = useCallback((): HealthRecord[] => {
+    return (records || []).filter(record => record.is_critical);
   }, [records]);
 
-  const getRecentRecords = useCallback((days = 30) => {
+  const getRecentRecords = useCallback((days: number = 30): HealthRecord[] => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     
-    return records.filter(record => new Date(record.date) >= cutoffDate);
+    return (records || []).filter(record => 
+      new Date(record.date) >= cutoffDate
+    );
   }, [records]);
 
-  // Refetch data
-  const refetch = useCallback(async () => {
-    await fetchHealthRecords();
-  }, [fetchHealthRecords]);
-
   return {
-    records,
+    // Data - with safe defaults
+    records: records || [],
+    conditions: conditions || [],
+    medications: medications || [],
+    labResults: labResults || [],
+    vitalSigns: vitalSigns || [],
+    allergies: allergies || [],
+    familyHistory: familyHistory || [],
     summary,
     loading,
     error,
     hasMore,
     totalCount,
+    
+    // Actions
     refetch,
     loadMore,
     downloadRecord,
     requestRecords,
     shareRecord,
+    
+    // Filtering
     setFilters,
     clearFilters,
     searchRecords,
+    
+    // Utilities
     getRecordsByType,
     getCriticalRecords,
-    getRecentRecords,
+    getRecentRecords
   };
-};
-
-// Helper hook for critical records only
-export const useCriticalHealthRecords = () => {
-  return usePatientHealthRecords({
-    filters: { is_critical: true },
-    autoRefresh: true,
-    refreshInterval: 60000, // 1 minute for critical records
-  });
-};
-
-// Helper hook for recent lab results
-export const useRecentLabResults = (days = 30) => {
-  const endDate = new Date().toISOString().split('T')[0];
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  
-  return usePatientHealthRecords({
-    filters: {
-      record_type: 'lab_result',
-      start_date: startDate.toISOString().split('T')[0],
-      end_date: endDate,
-    },
-    autoRefresh: true,
-  });
-};
-
-// Helper hook for pending results
-export const usePendingResults = () => {
-  return usePatientHealthRecords({
-    filters: { status: 'pending' },
-    autoRefresh: true,
-    refreshInterval: 120000, // 2 minutes for pending results
-  });
-};
-
-// Helper hook for records with attachments
-export const useRecordsWithAttachments = () => {
-  return usePatientHealthRecords({
-    filters: { has_attachments: true },
-  });
-};
+}

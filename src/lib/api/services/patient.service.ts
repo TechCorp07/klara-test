@@ -3,7 +3,7 @@ import { HealthRecord, MedicationScheduleItem, RecordRequest } from '@/hooks/pat
 import { ScheduleAppointmentPayload } from '@/hooks/patient/usePatientAppointments';
 import { apiClient } from '@/lib/api/client';
 import { buildQueryUrl, ENDPOINTS } from '@/lib/api/endpoints';
-import { useAuth } from '@/lib/auth';
+import { HealthRecordsSummary, MedicalCondition } from '@/types/health-records.types';
 import { Appointment, EmergencyContact, HealthInsurance, MedicationAdherence, PatientPreferences, PatientProfile, Prescription, VitalSigns } from '@/types/patient.types';
 import { AxiosResponse } from 'axios';
 
@@ -439,7 +439,7 @@ class EnhancedPatientService {
         count: number;
         next: string | null;
         previous: string | null;
-      }>(buildQueryUrl(`${ENDPOINTS.PATIENT.PROFILE}/health-records/`, params));
+      }>(buildQueryUrl(ENDPOINTS.PATIENT.HEALTH_RECORDS, params));
       return extractData(response);
     } catch (error) {
       console.error('Failed to fetch health records:', error);
@@ -448,11 +448,49 @@ class EnhancedPatientService {
   }
 
   /**
+   * Get health records summary
+   */
+  async getHealthRecordsSummary(): Promise<HealthRecordsSummary> {
+    try {
+      const response = await apiClient.get<HealthRecordsSummary>(
+        ENDPOINTS.PATIENT.HEALTH_RECORDS_SUMMARY
+      );
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch health records summary:', error);
+      throw new Error('Failed to load health records summary');
+    }
+  }
+
+  /**
+   * Get medical conditions
+   */
+  async getMedicalConditions(params?: Record<string, string | number | boolean | undefined>): Promise<{
+    results: MedicalCondition[];
+    count: number;
+    next: string | null;
+    previous: string | null;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        results: MedicalCondition[];
+        count: number;
+        next: string | null;
+        previous: string | null;
+      }>(buildQueryUrl(ENDPOINTS.PATIENT.CONDITIONS, params));
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medical conditions:', error);
+      throw new Error('Failed to load medical conditions');
+    }
+  }
+
+  /**
    * Download lab result or health record
    */
   async downloadLabResult(recordId: number): Promise<Blob> {
     try {
-      const response = await apiClient.get(`${ENDPOINTS.PATIENT.PROFILE}/health-records/${recordId}/download/`, {
+      const response = await apiClient.get(ENDPOINTS.PATIENT.DOWNLOAD_RECORD(recordId), {
         responseType: 'blob',
       });
       
@@ -1374,7 +1412,7 @@ async getAppointmentById(id: number): Promise<Appointment> {
   async getHealthRecordDetail(recordId: number): Promise<HealthRecordDetail> {
     try {
       const response = await apiClient.get<HealthRecordDetail>(
-        `${ENDPOINTS.PATIENT.PROFILE}/health-records/${recordId}/`
+        ENDPOINTS.PATIENT.HEALTH_RECORD_DETAIL(recordId)
       );
       return extractData(response);
     } catch (error) {
