@@ -438,10 +438,10 @@ class EnhancedPatientService {
   }): Promise<void> {
     try {
       await apiClient.post(ENDPOINTS.PATIENT.MESSAGE_PROVIDER, {
-        recipient_id: messageData.recipient,
+        recipient: messageData.recipient,
         subject: messageData.subject,
-        content: messageData.message,
-        message_type: 'provider_message'
+        message: messageData.message,
+        attachments: messageData.attachments || []
       });
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -623,10 +623,12 @@ async getAppointmentById(id: number): Promise<Appointment> {
    */
     async rescheduleAppointment(id: number, newDateTime: string): Promise<Appointment> {
     try {
-      const endTime = this.calculateEndTime(newDateTime, 30);
+      const startTime = new Date(newDateTime);
+      const endTime = new Date(startTime.getTime() + (30 * 60 * 1000));
+      
       const payload = { 
-        new_scheduled_time: newDateTime,
-        new_end_time: endTime,
+        new_scheduled_time: startTime.toISOString(),
+        new_end_time: endTime.toISOString(),
         reason: 'Patient requested reschedule',
         notify_participants: true
       };

@@ -174,6 +174,9 @@ export default function AppointmentDetailPage() {
   const handleMessageProvider = async () => {
     if (!appointment?.provider_details || !messageContent.trim()) return;
     
+    console.log('🔍 Appointment provider details:', appointment?.provider_details);
+    console.log('🔍 Provider ID for messaging:', appointment?.provider_details?.id);
+    
     try {
       setActionLoading('message');
       await patientService.sendMessage({
