@@ -173,7 +173,7 @@ export interface PatientDashboardData {
   }>;
 }
 
-export interface HealthRecordDetail {
+interface HealthRecordDetail {
   id: number;
   record_type: string;
   title: string;
