@@ -237,14 +237,13 @@ export function useRealTimeAlerts() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // WebSocket connection for real-time alerts would go here
-    // For now, we'll simulate with periodic checks
     const checkForNewAlerts = async () => {
       try {
         // This would be replaced with WebSocket or Server-Sent Events
-        const dashboardData = await patientService.getDashboardData();
-        const newAlerts = dashboardData.alerts.filter((alert) => !alert.acknowledged);
-        
+        const { notificationService } = await import('@/lib/api/services/notification.service');
+        const response = await notificationService.getNotifications({ unread_only: true });
+        const newAlerts = (response.data as { notifications: typeof alerts }).notifications || [];
+
         setAlerts(newAlerts);
         setUnreadCount(newAlerts.length);
         
@@ -279,9 +278,15 @@ export function useRealTimeAlerts() {
     return () => clearInterval(interval);
   }, []);
 
-  const markAsRead = useCallback((alertId: number) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    const markAsRead = useCallback(async (alertId: number) => {
+    try {
+      const { notificationService } = await import('@/lib/api/services/notification.service');
+      await notificationService.markAsRead(alertId);
+      setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   }, []);
 
   return {

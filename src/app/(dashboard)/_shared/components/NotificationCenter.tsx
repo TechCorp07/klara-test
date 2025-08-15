@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
+import { notificationService } from '@/lib/api/services/notification.service';
 
 interface Notification {
   id: string;
@@ -16,6 +17,23 @@ interface Notification {
   actionText?: string;
 }
 
+interface ApiNotification {
+  id: string;
+  notification_type: 'emergency' | 'caregiver_request' | 'appointment' | 'medication' | 'verification' | 'system' | 'security';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  read_at?: string;
+  priority: 'high' | 'medium' | 'low';
+  actionUrl?: string;
+  actionText?: string;
+}
+
+interface NotificationsResponse {
+  notifications: ApiNotification[];
+}
+
 export default function NotificationCenter() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -23,61 +41,45 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = useCallback(async () => {
-    // In real implementation, this would fetch from /notifications/
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'emergency',
-        title: 'Emergency Access Alert',
-        message: 'Emergency PHI access has been initiated and requires review',
-        timestamp: '2024-01-15T10:30:00Z',
-        read: false,
-        priority: 'high',
-        actionUrl: '/dashboard/compliance/emergency-access',
-        actionText: 'Review'
-      },
-      {
-        id: '2',
-        type: 'caregiver_request',
-        title: 'New Caregiver Request',
-        message: 'Jane Smith has requested caregiver access to your account',
-        timestamp: '2024-01-15T09:15:00Z',
-        read: false,
-        priority: 'medium',
-        actionUrl: '/dashboard/patient/caregiver-requests',
-        actionText: 'Review Request'
-      },
-      {
-        id: '3',
-        type: 'verification',
-        title: 'Identity Verification Required',
-        message: 'Please verify your identity within 5 days to maintain account access',
-        timestamp: '2024-01-14T14:20:00Z',
-        read: true,
-        priority: 'high',
-        actionUrl: '/dashboard/patient/verify-identity',
-        actionText: 'Verify Now'
-      }
-    ];
-    
-    // Filter notifications based on user role
-    const filteredNotifications = mockNotifications.filter(notification => {
-      switch (user?.role) {
-        case 'patient':
-          return ['caregiver_request', 'appointment', 'medication', 'verification', 'system'].includes(notification.type);
-        case 'provider':
-          return ['emergency', 'appointment', 'system', 'security'].includes(notification.type);
-        case 'compliance':
-          return ['emergency', 'security', 'system'].includes(notification.type);
-        case 'admin':
-          return true; // Admins see all notifications
-        default:
-          return ['system'].includes(notification.type);
-      }
-    });
+    try {
+      const response = await notificationService.getNotifications({
+        limit: 10
+      });
 
-    setNotifications(filteredNotifications);
-    setUnreadCount(filteredNotifications.filter(n => !n.read).length);
+      // Filter notifications based on user role
+      const notificationsData = (response.data as NotificationsResponse).notifications;
+      const filteredNotifications = notificationsData
+        .filter((notification: ApiNotification) => {
+          switch (user?.role) {
+            case 'patient':
+              return ['caregiver_request', 'appointment', 'medication', 'verification', 'system'].includes(notification.notification_type);
+            case 'provider':
+              return ['emergency', 'appointment', 'system', 'security'].includes(notification.notification_type);
+            case 'compliance':
+              return ['emergency', 'security', 'system'].includes(notification.notification_type);
+            case 'admin':
+              return true; // Admins see all notifications
+            default:
+              return ['system'].includes(notification.notification_type);
+          }
+        })
+        .map((notification: ApiNotification): Notification => ({
+          id: notification.id,
+          type: notification.notification_type,
+          title: notification.title,
+          message: notification.message,
+          timestamp: notification.timestamp,
+          read: notification.read,
+          priority: notification.priority,
+          actionUrl: notification.actionUrl,
+          actionText: notification.actionText,
+        }));
+
+      setNotifications(filteredNotifications);
+      setUnreadCount(filteredNotifications.filter((n: Notification) => !n.read).length);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -89,11 +91,17 @@ export default function NotificationCenter() {
   }, [user, fetchNotifications]);
 
   const markAsRead = async (notificationId: string) => {
-    // In real implementation, this would call /notifications/{id}/mark-read/
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    try {
+      await notificationService.markAsRead(parseInt(notificationId));
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? 
+          { ...n, read_at: new Date().toISOString() } : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
   const markAllAsRead = async () => {

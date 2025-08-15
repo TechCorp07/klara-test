@@ -17,6 +17,7 @@ const ALLOWED_PATH_PREFIXES = [
   'approvals/',
   'profile/',
   'auth/',
+  'communication/',
 ];
 
 // Helper function to check if a path is allowed
