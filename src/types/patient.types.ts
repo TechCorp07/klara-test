@@ -533,6 +533,14 @@ export interface ConnectedDevice {
   [key: string]: unknown;
 }
 
+export interface HealthMetric {
+  type: string;
+  value: number;
+  unit: string;
+  measured_at: string;
+  source: 'apple_watch' | 'iphone';
+}
+
 export interface BillingStatement {
   id: number;
   amount_due: number;

@@ -4,7 +4,7 @@ import { ScheduleAppointmentPayload } from '@/hooks/patient/usePatientAppointmen
 import { apiClient } from '@/lib/api/client';
 import { buildQueryUrl, ENDPOINTS } from '@/lib/api/endpoints';
 import { HealthRecordsSummary, MedicalCondition } from '@/types/health-records.types';
-import { Appointment, EmergencyContact, HealthInsurance, MedicationAdherence, PatientPreferences, PatientProfile, Prescription, VitalSigns } from '@/types/patient.types';
+import { Appointment, EmergencyContact, HealthInsurance, HealthMetric, MedicationAdherence, PatientPreferences, PatientProfile, Prescription, VitalSigns } from '@/types/patient.types';
 import { AxiosResponse } from 'axios';
 
 // Helper function to extract data from your existing Axios responses
@@ -421,6 +421,87 @@ class EnhancedPatientService {
     } catch (error) {
       console.error('Failed to disconnect wearable device:', error);
       throw new Error('Failed to disconnect device. Please try again.');
+    }
+  }
+
+  /**
+   * Get wearable measurement data for a specific integration type
+   */
+  async getWearableData(integrationType: 'apple_health' | 'fitbit' | 'garmin' | 'samsung_health' | 'withings'): Promise<{
+    measurements: HealthMetric[];
+    last_sync: string | null;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        results: Array<{
+          measurement_type: string;
+          value: number;
+          unit: string;
+          measured_at: string;
+          device_model?: string;
+        }>;
+      }>(`/api/wearables/measurements/?integration_type=${integrationType}`);
+      
+      const data = extractData(response);
+      
+      // Transform the data to match your interface
+      const measurements: HealthMetric[] = data.results.map(item => ({
+        type: item.measurement_type,
+        value: item.value,
+        unit: item.unit,
+        measured_at: item.measured_at,
+        source: integrationType === 'apple_health' ? 'apple_watch' : 'iphone'
+      }));
+
+      // Get last sync time from integration
+      const integrationResponse = await apiClient.get<{
+        results: Array<{
+          integration_type: string;
+          last_sync: string | null;
+        }>;
+      }>(`/api/wearables/integrations/?integration_type=${integrationType}`);
+      
+      const integrationData = extractData(integrationResponse);
+      const lastSync = integrationData.results.find(i => i.integration_type === integrationType)?.last_sync || null;
+
+      return {
+        measurements,
+        last_sync: lastSync
+      };
+    } catch (error) {
+      console.error('Failed to fetch wearable data:', error);
+      throw new Error('Failed to load wearable health data');
+    }
+  }
+
+  /**
+   * Sync wearable data for a specific integration type
+   */
+  async syncWearableData(integrationType: 'apple_health' | 'fitbit' | 'garmin' | 'samsung_health' | 'withings'): Promise<{
+    success: boolean;
+    measurements_synced: number;
+    message: string;
+  }> {
+    try {
+      const response = await apiClient.post<{
+        integration_type: string;
+        status: string;
+        measurements_synced: number;
+        message: string;
+      }>('/api/wearables/sync/', {
+        integration_type: integrationType
+      });
+      
+      const data = extractData(response);
+      
+      return {
+        success: data.status === 'success',
+        measurements_synced: data.measurements_synced,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('Failed to sync wearable data:', error);
+      throw new Error('Failed to sync wearable data. Please try again.');
     }
   }
 
