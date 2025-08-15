@@ -45,6 +45,10 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string; 
   role: UserRole;
   is_active: boolean;
   is_approved: boolean;
@@ -73,7 +77,10 @@ export interface User {
   // Additional fields
   days_until_verification_required?: number;
   pending_caregiver_requests?: CaregiverRequest[];
-  profile?: string | null; 
+  profile?: string | null;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
 }
 
 export interface LoginCredentials {

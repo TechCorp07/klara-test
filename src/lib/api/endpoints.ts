@@ -20,6 +20,7 @@ export const ENDPOINTS = {
     VERIFY_PHONE: '/users/auth/verify-phonenumber/',
     
     // Password management
+    CHANGE_PASSWORD: '/users/auth/change-password/',
     FORGOT_PASSWORD: '/users/auth/forgot-password/',
     RESET_PASSWORD: '/users/auth/reset-password/',
     
@@ -33,6 +34,9 @@ export const ENDPOINTS = {
     CHECK_STATUS: '/users/auth/check-status/',
     REFRESH_TOKEN: '/users/auth/refresh/',
     REFRESH_SESSION: '/users/auth/refresh-session/',
+    ACTIVE_SESSIONS: '/users/auth/sessions/',
+    TERMINATE_SESSION: (sessionId: string) => `/users/auth/sessions/${sessionId}/terminate/`,
+    TERMINATE_ALL_SESSIONS: '/users/auth/sessions/terminate-all/',
     ME: '/users/auth/me/',
   },
 
@@ -73,8 +77,10 @@ export const ENDPOINTS = {
     
     // Profile management
     PROFILE: '/users/patient/profile/',
-    UPDATE_PROFILE: '/users/patient/profile/',
-    
+    UPDATE_PROFILE: '/users/patient-profiles/update/',
+    UPLOAD_PROFILE_PHOTO: '/users/patient-profiles/upload-photo/',
+    DELETE_PROFILE_PHOTO: '/users/patient-profiles/delete-photo/',
+
     // Medications
     MEDICATIONS: '/users/patient/medications/',
     LOG_MEDICATION: (id: number) => `/users/patient/medications/${id}/log/`,
@@ -159,11 +165,18 @@ export const ENDPOINTS = {
     MESSAGE_THREAD: (threadId: number) => `/users/patient/messages/threads/${threadId}/`,
     MARK_MESSAGE_READ: (messageId: number) => `/users/patient/messages/${messageId}/read/`,
 
-    // Additional Patient Features
+    // Preferences and settings
     PATIENT_PREFERENCES: '/users/patient/preferences/',
     UPDATE_PREFERENCES: '/users/patient/preferences/update/',
     NOTIFICATION_SETTINGS: '/users/patient/notifications/settings/',
-    PRIVACY_SETTINGS: '/users/patient/privacy/settings/',
+    PRIVACY_SETTINGS: '/users/patient/privacy-settings/',
+    NOTIFICATION_PREFERENCES: '/users/patient/notification-preferences/',
+    PREFERENCES: '/users/patient/preferences/',
+
+    // Security
+    SECURITY_SETTINGS: '/users/patient/security-settings/',
+    LOGIN_HISTORY: '/users/patient/login-history/',
+    DEVICE_MANAGEMENT: '/users/patient/devices/',
 
     // Document Management
     MEDICAL_DOCUMENTS: '/users/patient/documents/',
@@ -441,7 +454,8 @@ export const ENDPOINTS = {
     BULK_DELETE: '/communication/notifications/bulk-delete/',
     
     // Notification preferences (patient settings)
-    PREFERENCES: '/users/patient/notification-preferences/',
+    PREFERENCES: '/communication/notifications/preferences/',
+    UPDATE_PREFERENCES: '/communication/notifications/preferences/update/',
   },
 
   // Community notifications (separate from main notifications)
