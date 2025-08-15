@@ -140,7 +140,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Session ${sessionToken}`,
+          //'Authorization': `Session ${sessionToken}`,
         },
         body: JSON.stringify({ session_token: sessionToken }),
       });

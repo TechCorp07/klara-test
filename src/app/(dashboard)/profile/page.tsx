@@ -86,9 +86,9 @@ export default function ProfilePage() {
 
       const response = await apiClient.patch(ENDPOINTS.PATIENT.PROFILE, data);
       
-      // Refresh the JWT token to get updated user data
-      await refreshToken();
-      
+      if (response.data) {
+      }
+
       setSuccessMessage('Profile updated successfully');
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
