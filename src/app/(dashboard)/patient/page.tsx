@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/auth';
 import { useDashboard, usePatientActions, useRealTimeAlerts } from '@/hooks/useDashboard';
 import { NotificationProvider, useNotifications, LiveUpdateIndicator } from '@/components/notifications/NotificationProvider';
 import { DashboardErrorBoundary, DashboardLoader, NetworkStatus } from '@/components/dashboard/DashboardErrorBoundary';
+import ProfileDropdown from '@/components/ui/ProfileDropdown';
+import NotificationsPanel from '@/components/ui/NotificationsPanel';
 
 // Import all dashboard widgets
 import { HealthSummaryWidget } from './components/dashboard/HealthSummaryWidget';
@@ -32,6 +34,10 @@ function PatientDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addNotification } = useNotifications();
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
   
   const { alerts: unreadCount } = useRealTimeAlerts();
   // Mobile sidebar state
@@ -159,7 +165,6 @@ function PatientDashboardContent() {
     }
   
     // Safe data extraction with fallbacks
-    const safeAppointments = dashboardData?.appointments || [];
     const safeMedications = dashboardData?.medications || [];
     const safeVitals = dashboardData?.vitals || [];
     const safeAlerts = dashboardData?.alerts || [];
@@ -170,7 +175,7 @@ function PatientDashboardContent() {
     const safeCareTeam = dashboardData?.care_team || [];
     const safePatientInfo = dashboardData?.patient_info || {};
     const safeRareConditions = safePatientInfo?.rare_conditions || [];
-  
+
     switch (selectedView) {
       case 'health':
         return (
@@ -382,20 +387,40 @@ function PatientDashboardContent() {
                 </button>
 
                 {/* Notifications */}
-                <button className="relative p-2 text-gray-400 hover:text-gray-600">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadCount.length > 9 ? '9+' : unreadCount.length}
-                    </span>
-                  )}
-                </button>
+                <div className="relative">
+                  <button 
+                    ref={notificationButtonRef}
+                    onClick={() => setNotificationsPanelOpen(!notificationsPanelOpen)}
+                    className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {unreadCount.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                        {unreadCount.length > 9 ? '9+' : unreadCount.length}
+                      </span>
+                    )}
+                  </button>
+                  <NotificationsPanel
+                    isOpen={notificationsPanelOpen}
+                    onClose={() => setNotificationsPanelOpen(false)}
+                    triggerRef={notificationButtonRef}
+                  />
+                </div>
 
                 {/* Profile menu */}
                 <div className="relative">
-                  <button className="flex items-center p-2 text-gray-400 hover:text-gray-600">
+                  <button 
+                    ref={profileButtonRef}
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
                     <User className="w-5 h-5" />
                   </button>
+                  <ProfileDropdown
+                    isOpen={profileDropdownOpen}
+                    onClose={() => setProfileDropdownOpen(false)}
+                    triggerRef={profileButtonRef}
+                  />
                 </div>
               </div>
             </div>

@@ -413,13 +413,43 @@ export const ENDPOINTS = {
     CONTENT: '/search/content/',
   },
 
-  // Notifications
   NOTIFICATIONS: {
-    LIST: '/notifications/',
-    MARK_READ: (id: string) => `/notifications/${id}/mark-read/`,
-    MARK_ALL_READ: '/notifications/mark-all-read/',
-    PREFERENCES: '/notifications/preferences/',
-    UNREAD_COUNT: '/notifications/unread-count/',
+    // Base endpoints (proxy to /api/communication/notifications/)
+    BASE: '/api/proxy/communication/notifications',
+    LIST: '/api/proxy/communication/notifications/',
+    CREATE: '/api/proxy/communication/notifications/',
+    
+    // Individual notification endpoints
+    DETAIL: (id: number) => `/api/proxy/communication/notifications/${id}/`,
+    UPDATE: (id: number) => `/api/proxy/communication/notifications/${id}/`,
+    DELETE: (id: number) => `/api/proxy/communication/notifications/${id}/`,
+    MARK_AS_READ: (id: number) => `/api/proxy/communication/notifications/${id}/mark-read/`,
+    
+    // Query-based endpoints (use query parameters)
+    UNREAD: '/api/proxy/communication/notifications/?read_at__isnull=true',
+    BY_TYPE: (type: string) => `/api/proxy/communication/notifications/?notification_type=${type}`,
+    BY_PRIORITY: (priority: string) => `/api/proxy/communication/notifications/?priority=${priority}`,
+    RECENT: (days: number = 7) => `/api/proxy/communication/notifications/?days=${days}`,
+    
+    // Wearable notifications (proxy to enhanced endpoints)
+    WEARABLE_ALERTS: '/api/proxy/users/notifications/wearable-alerts/',
+    ANALYTICS: '/api/proxy/users/notifications/analytics/',
+    
+    // Bulk operations
+    MARK_ALL_READ: '/api/proxy/communication/notifications/mark-all-read/',
+    BULK_UPDATE: '/api/proxy/communication/notifications/bulk-update/',
+    BULK_DELETE: '/api/proxy/communication/notifications/bulk-delete/',
+    
+    // Notification preferences (patient settings)
+    PREFERENCES: '/api/proxy/users/patient/notification-preferences/',
+  },
+
+  // Community notifications (separate from main notifications)
+  COMMUNITY_NOTIFICATIONS: {
+    BASE: '/api/proxy/community/notifications',
+    LIST: '/api/proxy/community/notifications/',
+    CREATE: '/api/proxy/community/notifications/',
+    DETAIL: (id: number) => `/api/proxy/community/notifications/${id}/`,
   },
 } as const;
 
