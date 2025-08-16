@@ -69,7 +69,7 @@ export const ENDPOINTS = {
     COMPLETE_RESEARCHER_PROFILE: (id: number) => `/users/researcher-profiles/${id}/complete/`,
     COMPLETE_COMPLIANCE_PROFILE: (id: number) => `/users/compliance-profiles/${id}/complete/`,
   },
-
+  
   // Patient-specific endpoints
   PATIENT: {
     // Dashboard

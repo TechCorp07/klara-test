@@ -217,7 +217,7 @@ export default function ProfilePage() {
       }
       const responseData = response.data as UploadPhotoResponse;
       setProfilePhoto(responseData.profile_photo_url);
-      
+
       setSuccessMessage('Profile photo updated successfully');
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
@@ -236,7 +236,7 @@ export default function ProfilePage() {
       await apiClient.delete(ENDPOINTS.PATIENT.DELETE_PROFILE_PHOTO);
       
       setProfilePhoto(null);
-      await refreshToken();
+      
       setSuccessMessage('Profile photo removed successfully');
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
