@@ -93,8 +93,6 @@ export default function ProfilePage() {
     setSuccessMessage(null);
     setIsLoading(true);
 
-    console.log('📤 Submitting profile data:', data);
-
     interface ProfileUpdateResponse {
       detail: string;
       user: {
@@ -125,18 +123,12 @@ export default function ProfilePage() {
 
     const response = await apiClient.patch<ProfileUpdateResponse>(ENDPOINTS.PATIENT.PROFILE, data);
     
-    console.log('📥 Received response:', response);
-    console.log('📋 Response data:', response.data);
-    
     const responseData = response.data;
     
     if (responseData) {
       if (responseData.user) {
-        console.log('👤 Updated user data:', responseData.user);
-        console.log('📊 Update results:', responseData.updated_fields);
-
         setFormJustUpdated(true);
-        
+
         const newFormData = {
           first_name: responseData.user.first_name || '',
           last_name: responseData.user.last_name || '',
@@ -152,27 +144,11 @@ export default function ProfilePage() {
           emergency_contact_relationship: responseData.profile.emergency_contact_relationship || '',
         };
 
-        console.log('🔄 Updating form with new data:', newFormData);
         reset(newFormData);
-        console.log('✅ Form reset completed');
 
         Object.keys(newFormData).forEach(key => {
           setValue(key as keyof ProfileFormValues, newFormData[key as keyof ProfileFormValues]);
         });
-
-        console.log('✅ Individual fields updated');
-
-        // ✅ TRY AUTH REFRESH (but don't let it fail the whole operation)
-        if (responseData.updated_fields?.user_updated || responseData.updated_fields?.profile_updated) {
-          try {
-            console.log('🔄 Attempting to refresh auth context...');
-            await refreshToken();
-            console.log('✅ Auth context refreshed successfully');
-          } catch (refreshError) {
-            console.warn('⚠️ Auth refresh failed, but profile update was successful:', refreshError);
-            // Don't throw - the profile update worked
-          }
-        }
       }
 
       setSuccessMessage(responseData.detail || 'Profile updated successfully');
@@ -241,7 +217,7 @@ export default function ProfilePage() {
       }
       const responseData = response.data as UploadPhotoResponse;
       setProfilePhoto(responseData.profile_photo_url);
-      await refreshToken();
+      
       setSuccessMessage('Profile photo updated successfully');
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {

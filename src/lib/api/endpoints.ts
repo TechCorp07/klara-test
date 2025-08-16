@@ -78,9 +78,9 @@ export const ENDPOINTS = {
     // Profile management
     PROFILE: '/users/patient/profile/',
     UPDATE_PROFILE: '/users/patient-profiles/update/',
-    UPLOAD_PROFILE_PHOTO: '/users/patient-profiles/upload-photo/',
-    DELETE_PROFILE_PHOTO: '/users/patient-profiles/delete-photo/',
-
+    UPLOAD_PROFILE_PHOTO: '/users/patient/upload-photo/',
+    DELETE_PROFILE_PHOTO: '/users/patient/delete-photo/',
+    
     // Medications
     MEDICATIONS: '/users/patient/medications/',
     LOG_MEDICATION: (id: number) => `/users/patient/medications/${id}/log/`,
