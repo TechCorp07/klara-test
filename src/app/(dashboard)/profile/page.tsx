@@ -43,6 +43,8 @@ export default function ProfilePage() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
 
+  const [formJustUpdated, setFormJustUpdated] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -55,7 +57,7 @@ export default function ProfilePage() {
 
   // Load user data into form
   useEffect(() => {
-    if (user) {
+    if (user && !formJustUpdated) {
       reset({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
@@ -72,7 +74,13 @@ export default function ProfilePage() {
       });
       setProfilePhoto(user.profile_image || null);
     }
-  }, [user, reset]);
+     if (formJustUpdated) {
+      const timer = setTimeout(() => {
+        setFormJustUpdated(false);
+      }, 1000); // 1 second delay
+      return () => clearTimeout(timer);
+    }
+  }, [user, reset, formJustUpdated]);
 
     // Handle section change from URL
     useEffect(() => {
@@ -127,7 +135,8 @@ export default function ProfilePage() {
         console.log('👤 Updated user data:', responseData.user);
         console.log('📊 Update results:', responseData.updated_fields);
 
-        // ✅ PREPARE NEW FORM DATA
+        setFormJustUpdated(true);
+        
         const newFormData = {
           first_name: responseData.user.first_name || '',
           last_name: responseData.user.last_name || '',
@@ -144,14 +153,9 @@ export default function ProfilePage() {
         };
 
         console.log('🔄 Updating form with new data:', newFormData);
-
-        // ✅ UPDATE THE FORM IMMEDIATELY
         reset(newFormData);
-
-        // ✅ VERIFY THE FORM WAS UPDATED
         console.log('✅ Form reset completed');
 
-        // ✅ ALSO UPDATE INDIVIDUAL FIELDS (backup method)
         Object.keys(newFormData).forEach(key => {
           setValue(key as keyof ProfileFormValues, newFormData[key as keyof ProfileFormValues]);
         });
