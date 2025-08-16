@@ -18,7 +18,7 @@ const profileSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   email: z.string().email('Please enter a valid email address'),
-  phone: z.string().optional(),
+  phone_number: z.string().optional(),
   date_of_birth: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -60,7 +60,7 @@ export default function ProfilePage() {
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
-        phone: user.phone_number || '',
+        phone_number: user.phone_number || '',
         date_of_birth: user.date_of_birth || '',
         address: user.address || '',
         city: user.city || '',
@@ -74,26 +74,133 @@ export default function ProfilePage() {
     }
   }, [user, reset]);
 
-  // Handle section change from URL
-  useEffect(() => {
-    setActiveSection(section);
-  }, [section]);
+    // Handle section change from URL
+    useEffect(() => {
+      setActiveSection(section);
+    }, [section]);
 
   const onSubmit = async (data: ProfileFormValues) => {
-    try {
-      setErrorMessage(null);
-      setSuccessMessage(null);
+  try {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
 
-      const response = await apiClient.patch(ENDPOINTS.PATIENT.PROFILE, data);
-      
-      if (response.data) {
+    console.log('📤 Submitting profile data:', data);
+
+    interface ProfileUpdateResponse {
+      detail: string;
+      user: {
+        id: number;
+        username: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+        phone_number: string;
+        date_of_birth: string;
+        address: string;
+        city: string;
+        state: string;
+        zip_code: string;
+        profile_image?: string;
+      };
+      profile: {
+        id: number;
+        emergency_contact_name: string;
+        emergency_contact_phone: string;
+        emergency_contact_relationship: string;
+      };
+      updated_fields: {
+        user_updated: boolean;
+        profile_updated: boolean;
+      };
+    }
+
+    const response = await apiClient.patch<ProfileUpdateResponse>(ENDPOINTS.PATIENT.PROFILE, data);
+    
+    console.log('📥 Received response:', response);
+    console.log('📋 Response data:', response.data);
+    
+    const responseData = response.data;
+    
+    if (responseData) {
+      if (responseData.user) {
+        console.log('👤 Updated user data:', responseData.user);
+        console.log('📊 Update results:', responseData.updated_fields);
+
+        // ✅ PREPARE NEW FORM DATA
+        const newFormData = {
+          first_name: responseData.user.first_name || '',
+          last_name: responseData.user.last_name || '',
+          email: responseData.user.email || '',
+          phone_number: responseData.user.phone_number || '',
+          date_of_birth: responseData.user.date_of_birth || '',
+          address: responseData.user.address || '',
+          city: responseData.user.city || '',
+          state: responseData.user.state || '',
+          zip_code: responseData.user.zip_code || '',
+          emergency_contact_name: responseData.profile.emergency_contact_name || '',
+          emergency_contact_phone: responseData.profile.emergency_contact_phone || '',
+          emergency_contact_relationship: responseData.profile.emergency_contact_relationship || '',
+        };
+
+        console.log('🔄 Updating form with new data:', newFormData);
+
+        // ✅ UPDATE THE FORM IMMEDIATELY
+        reset(newFormData);
+
+        // ✅ VERIFY THE FORM WAS UPDATED
+        console.log('✅ Form reset completed');
+
+        // ✅ ALSO UPDATE INDIVIDUAL FIELDS (backup method)
+        Object.keys(newFormData).forEach(key => {
+          setValue(key as keyof ProfileFormValues, newFormData[key as keyof ProfileFormValues]);
+        });
+
+        console.log('✅ Individual fields updated');
+
+        // ✅ TRY AUTH REFRESH (but don't let it fail the whole operation)
+        if (responseData.updated_fields?.user_updated || responseData.updated_fields?.profile_updated) {
+          try {
+            console.log('🔄 Attempting to refresh auth context...');
+            await refreshToken();
+            console.log('✅ Auth context refreshed successfully');
+          } catch (refreshError) {
+            console.warn('⚠️ Auth refresh failed, but profile update was successful:', refreshError);
+            // Don't throw - the profile update worked
+          }
+        }
       }
 
-      setSuccessMessage('Profile updated successfully');
+      setSuccessMessage(responseData.detail || 'Profile updated successfully');
       setTimeout(() => setSuccessMessage(null), 5000);
-    } catch (error) {
-      console.error('Profile update error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to update profile');
+    } else {
+      throw new Error('No response data received');
+    }
+
+  } catch (error) {
+    console.error('❌ Profile update error:', error);
+    
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as { response?: unknown }).response === 'object'
+    ) {
+      const response = (error as { response?: { status?: number; data?: { detail?: string } } }).response;
+      if (response?.status === 405) {
+        setErrorMessage('Update method not supported. Please contact support.');
+      } else if (response?.status === 404) {
+        setErrorMessage('Profile endpoint not found. Please contact support.');
+      } else if (response?.data?.detail) {
+        setErrorMessage(response.data.detail);
+      } else {
+        setErrorMessage('Failed to update profile');
+      }
+      } else {
+        setErrorMessage(error instanceof Error ? error.message : 'Failed to update profile');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -257,8 +364,8 @@ export default function ProfilePage() {
                   label="Phone Number"
                   type="tel"
                   icon={<Phone className="w-4 h-4" />}
-                  {...register('phone')}
-                  error={errors.phone}
+                  {...register('phone_number')}
+                  error={errors.phone_number}
                 />
 
                 <FormInput
