@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { User, Camera, Mail, Phone, MapPin, Calendar, Shield, Upload, X } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
+import { getImageUrl } from '@/lib/utils/image';
 
 // Profile validation schema
 const profileSchema = z.object({
@@ -32,7 +33,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const { user, refreshToken } = useAuth();
+  const { user, updateUserProfileImage } = useAuth();
   const searchParams = useSearchParams();
   const section = searchParams.get('section') || 'general';
   
@@ -42,7 +43,6 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
-
   const [formJustUpdated, setFormJustUpdated] = useState(false);
 
   const {
@@ -217,6 +217,8 @@ export default function ProfilePage() {
       }
       const responseData = response.data as UploadPhotoResponse;
       setProfilePhoto(responseData.profile_photo_url);
+
+      updateUserProfileImage(responseData.profile_photo_url);
 
       setSuccessMessage('Profile photo updated successfully');
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -457,7 +459,7 @@ export default function ProfilePage() {
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                   {profilePhoto ? (
                     <img
-                      src={profilePhoto}
+                      src={getImageUrl(profilePhoto) || '/default-avatar.png'}
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />

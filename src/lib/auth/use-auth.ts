@@ -41,6 +41,7 @@ export interface UseJWTAuthReturn {
   requestPasswordReset?: (email: string) => Promise<{ detail?: string; success?: boolean; message?: string }>;
   resetPassword: (data: { token: string; password: string; confirm_password: string }) => Promise<{ detail?: string; success?: boolean; message?: string }>;
   setupTwoFactor: () => Promise<SetupTwoFactorResponse>;
+  updateUserProfileImage: (imageUrl: string | null) => void;
   confirmTwoFactor: (code: string) => Promise<{ success: boolean; message: string; backup_codes?: string[] }>;
   disableTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
   verifyTwoFactor?: (userId: number, code: string) => Promise<LoginResponse>;
@@ -102,8 +103,9 @@ export function useJWTAuth(): UseJWTAuthReturn {
     login: context.login,
     register: context.register,
     logout: context.logout,
-    logoutAllTabs: context.logoutAllTabs, // Now properly included
+    logoutAllTabs: context.logoutAllTabs,
     refreshToken: context.refreshToken,
+    updateUserProfileImage: context.updateUserProfileImage,
     resetPassword: context.resetPassword,
     setupTwoFactor: context.setupTwoFactor,
     confirmTwoFactor: context.confirmTwoFactor,

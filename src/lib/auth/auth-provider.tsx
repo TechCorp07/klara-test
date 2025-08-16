@@ -71,6 +71,7 @@ export interface JWTAuthContextType {
   reviewEmergencyAccess: (accessId: number, data: { justified: boolean; notes?: string }) => Promise<{ success: boolean; message: string }>;
   getEmergencyAccessRecords: (filters?: { reviewed?: boolean; status?: string }) => Promise<EmergencyAccessRecord[]>;
   updateConsent: (consentType: string, consentValue: boolean) => Promise<{ success: boolean; message: string }>;
+  updateUserProfileImage: (imageUrl: string | null) => void;
 }
 
 // Create the context
@@ -80,7 +81,6 @@ export const JWTAuthContext = createContext<JWTAuthContextType | null>(null);
  * JWT Authentication Provider with Tab Isolation
  */
 export function JWTAuthProvider({ children }: { children: ReactNode }) {
-  // ✅ 1. FIRST: All state declarations
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -160,6 +160,14 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       return { success: false };
     }
   }, [logout]);
+
+  const updateUserProfileImage = useCallback((imageUrl: string | null) => {
+    setUser(prevUser =>
+      prevUser
+        ? { ...prevUser, profile_image: imageUrl === null ? undefined : imageUrl }
+        : null
+    );
+  }, []);
 
   const checkSessionHealth = useCallback(async () => {
     const sessionToken = localStorage.getItem('session_token');
@@ -822,6 +830,7 @@ const hasPermission = useCallback((permission: string): boolean => {
     logout,
     logoutAllTabs,
     refreshToken,
+    updateUserProfileImage,
     resetPassword,
     setupTwoFactor,
     confirmTwoFactor,

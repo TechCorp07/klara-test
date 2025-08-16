@@ -294,9 +294,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             
             <div className="flex items-center">
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">
-                  {user?.first_name || user?.username} ({userRole})
-                </span>
+                {/* Profile Avatar and User Info */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                    {user?.profile_image ? (
+                      <img
+                        src={user.profile_image.startsWith('http') ? user.profile_image : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${user.profile_image}`}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          (target.nextElementSibling as HTMLElement)?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-4 h-4 text-gray-400 ${user?.profile_image ? 'hidden' : ''}`}>
+                      👤
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700">
+                    {user?.first_name || user?.username} ({userRole})
+                  </span>
+                </div>
+                
                 <button
                   onClick={handleLogout}
                   disabled={isLoggingOut}
