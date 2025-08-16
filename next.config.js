@@ -44,6 +44,11 @@ const nextConfig = {
     
     // Add security headers for HIPAA compliance
     async headers() {
+      // Get the media base URL (API URL without /api)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const mediaBaseUrl = apiUrl.endsWith('/api') 
+        ? apiUrl.slice(0, -4) 
+        : apiUrl.replace('/api', '');
       return [
         {
           // Apply to all routes
@@ -72,8 +77,9 @@ const nextConfig = {
                 script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com;
                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
                 font-src 'self' https://fonts.gstatic.com;
-                img-src 'self' data: https:;
-                connect-src 'self' https://api.klararety.com http://localhost:8000 http://127.0.0.1:8000/;
+                img-src 'self' data: https: ${mediaBaseUrl};
+                connect-src 'self' ${apiUrl} ${mediaBaseUrl} https://api.klararety.com http://localhost:8000 http://127.0.0.1:8000/;
+                media-src 'self' ${mediaBaseUrl};
                 frame-src 'self';
                 object-src 'none';
                 base-uri 'self';
