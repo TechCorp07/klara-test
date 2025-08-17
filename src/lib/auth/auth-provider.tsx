@@ -344,7 +344,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const sessionToken = localStorage.getItem('session_token');
       const response = await fetch('/api/admin/emergency-access/summary', {
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -366,7 +366,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/admin/emergency-access/initiate/', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -395,7 +395,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`/api/admin/emergency-access/${accessId}/end/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ reason }),
@@ -422,7 +422,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`/api/admin/emergency-access/${accessId}/review/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -461,7 +461,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const url = `/api/admin/emergency-access/records/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -504,7 +504,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/healthcare/health-data-consents/update_consent/', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestPayload),
@@ -553,7 +553,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (data: { token: string; password: string; confirm_password: string }): Promise<{ detail?: string; success?: boolean; message?: string }> => {
     try {
-      const response = await fetch('/api/auth/reset-password/', {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/reset-password/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -583,10 +583,10 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const setupTwoFactor = useCallback(async (): Promise<SetupTwoFactorResponse> => {
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch('/api/auth/2fa/setup/', {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/setup-2fa/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -605,10 +605,10 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const confirmTwoFactor = useCallback(async (code: string): Promise<{ success: boolean; message: string; backup_codes?: string[] }> => {
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch('/api/auth/2fa/confirm/', {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/confirm-2fa/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code }),
@@ -633,10 +633,10 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const disableTwoFactor = useCallback(async (code: string): Promise<{ success: boolean; message: string }> => {
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch('/api/auth/2fa/disable/', {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/disable-2fa/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code }),
@@ -659,7 +659,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   
   const verifyEmail = useCallback(async (data: { token: string; email?: string }): Promise<{ success: boolean; message: string; detail?: string }> => {
     try {
-      const response = await fetch('/api/auth/verify-email/', {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/verify-email/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -689,10 +689,10 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const requestEmailVerification = useCallback(async (): Promise<{ detail?: string; success?: boolean; message?: string }> => {
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch('/api/auth/request-email-verification/', {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/request-verification/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
       });

@@ -120,7 +120,7 @@ class TabAPIClient {
           const sessionToken = localStorage.getItem('session_token');
           if (sessionToken && !String(originalRequest.headers?.Authorization || '').includes('Session')) {
             try {
-              const refreshResponse = await fetch('/api/users/auth/refresh-session/', {
+              const refreshResponse = await fetch(`${this.baseURL}/users/auth/refresh-session/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ session_token: sessionToken })

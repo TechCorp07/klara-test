@@ -238,6 +238,7 @@ export default function ProfilePage() {
       await apiClient.delete(ENDPOINTS.PATIENT.DELETE_PROFILE_PHOTO);
       
       setProfilePhoto(null);
+      updateUserProfileImage(null);
       
       setSuccessMessage('Profile photo removed successfully');
       setTimeout(() => setSuccessMessage(null), 5000);

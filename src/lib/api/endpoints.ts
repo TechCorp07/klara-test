@@ -54,9 +54,6 @@ export const ENDPOINTS = {
     PENDING_APPROVALS: '/users/users/pending-approvals/',
     USER_DETAIL: (id: number) => `/users/users/${id}/`,
     USERS: '/users/users/', // Alias for LIST
-    
-    // Profile management
-    CHANGE_PASSWORD: '/users/auth/me/change-password/',
 
     // Profile completion endpoints
     COMPLETE_PATIENT_PROFILE: (id: number) => `/users/patient-profiles/${id}/complete/`,

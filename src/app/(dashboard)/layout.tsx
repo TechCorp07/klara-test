@@ -4,6 +4,7 @@
 import React, { ReactNode, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { Spinner } from '@/components/ui/spinner';
+import { getImageUrl } from '@/lib/utils/image';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -299,17 +300,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     {user?.profile_image ? (
                       <img
-                        src={user.profile_image.startsWith('http') ? user.profile_image : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${user.profile_image}`}
+                        src={getImageUrl(user.profile_image) || ''}
                         alt="Profile"
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
-                          (target.nextElementSibling as HTMLElement)?.classList.remove('hidden');
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.classList.remove('hidden');
                         }}
                       />
                     ) : null}
-                    <div className={`w-4 h-4 text-gray-400 ${user?.profile_image ? 'hidden' : ''}`}>
+                    <div className={`flex items-center justify-center w-full h-full text-gray-400 ${user?.profile_image ? 'hidden' : ''}`}>
                       👤
                     </div>
                   </div>
