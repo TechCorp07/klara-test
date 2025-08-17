@@ -39,6 +39,8 @@ type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>;
 
 export default function PasswordChangePage() {
   const router = useRouter();
+  const [isChanging, setIsChanging] = useState(false);
+  const [changeComplete, setChangeComplete] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -82,6 +84,7 @@ export default function PasswordChangePage() {
 
   const onSubmit = async (data: PasswordChangeFormValues) => {
     try {
+      setIsChanging(true);
       setErrorMessage(null);
       setSuccessMessage(null);
 
@@ -90,22 +93,44 @@ export default function PasswordChangePage() {
         new_password: data.new_password,
       });
 
-      setSuccessMessage('Password changed successfully');
+      setSuccessMessage('Your password has been changed successfully.');
+      setChangeComplete(true);
       reset();
       
       // Redirect back to settings after a delay
       setTimeout(() => {
         router.push('/settings?tab=security');
-      }, 2000);
-    } catch (error: any) {
-      console.error('Password change error:', error);
-      if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error);
-      } else if (error.response?.data?.current_password) {
-        setErrorMessage('Current password is incorrect');
+      }, 3000);
+    } catch (error: unknown) {
+        console.error('Password change error:', error);
+
+    // Handle the error properly
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { 
+        response?: { 
+          status?: number; 
+          data?: { 
+            error?: string; 
+            detail?: string; 
+            message?: string; 
+          }; 
+        } 
+      };
+      
+      if (axiosError.response?.data?.error) {
+        setErrorMessage(axiosError.response.data.error);
+      } else if (axiosError.response?.data?.detail) {
+        setErrorMessage(axiosError.response.data.detail);
+      } else if (axiosError.response?.data?.message) {
+        setErrorMessage(axiosError.response.data.message);
       } else {
         setErrorMessage('Failed to change password. Please try again.');
       }
+      } else {
+        setErrorMessage('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setIsChanging(false);
     }
   };
 
