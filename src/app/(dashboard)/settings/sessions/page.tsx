@@ -19,19 +19,74 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
+import { isAxiosError } from 'axios';
 
 interface Session {
-  id: string;
-  device_type: 'desktop' | 'mobile' | 'tablet';
-  browser: string;
-  os: string;
+  session_id: string;
+  device_type?: 'desktop' | 'mobile' | 'tablet';
+  browser?: string;
+  os?: string;
   ip_address: string;
   location?: string;
   created_at: string;
   last_activity: string;
   is_current: boolean;
+  expires_at: string;
   user_agent: string;
+
+  // Optional fields from backend
+  device_fingerprint?: string;
+  is_active?: boolean;
+  is_emergency_session?: boolean;
+  pharmaceutical_tenant?: string;
 }
+
+const detectDeviceType = (userAgent: string): 'desktop' | 'mobile' | 'tablet' => {
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+    return 'mobile';
+  }
+  if (ua.includes('tablet') || ua.includes('ipad')) {
+    return 'tablet';
+  }
+  return 'desktop';
+};
+
+const extractBrowserName = (userAgent: string): string => {
+  const ua = userAgent.toLowerCase();
+  
+  if (ua.includes('chrome') && !ua.includes('edg')) return 'Chrome';
+  if (ua.includes('firefox')) return 'Firefox';
+  if (ua.includes('safari') && !ua.includes('chrome')) return 'Safari';
+  if (ua.includes('edg')) return 'Edge';
+  if (ua.includes('opera') || ua.includes('opr')) return 'Opera';
+  if (ua.includes('ie') || ua.includes('trident')) return 'Internet Explorer';
+  
+  return 'Unknown Browser';
+};
+
+const extractOSName = (userAgent: string): string => {
+  const ua = userAgent.toLowerCase();
+  
+  if (ua.includes('windows nt 10')) return 'Windows 10/11';
+  if (ua.includes('windows nt 6.3')) return 'Windows 8.1';
+  if (ua.includes('windows nt 6.2')) return 'Windows 8';
+  if (ua.includes('windows nt 6.1')) return 'Windows 7';
+  if (ua.includes('windows')) return 'Windows';
+  
+  if (ua.includes('mac os x')) return 'macOS';
+  if (ua.includes('macintosh')) return 'Mac';
+  
+  if (ua.includes('android')) return 'Android';
+  if (ua.includes('iphone os') || ua.includes('ios')) return 'iOS';
+  if (ua.includes('ipad')) return 'iPadOS';
+  
+  if (ua.includes('linux')) return 'Linux';
+  if (ua.includes('ubuntu')) return 'Ubuntu';
+  if (ua.includes('debian')) return 'Debian';
+  
+  return 'Unknown OS';
+};
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -52,9 +107,33 @@ export default function SessionsPage() {
       
       const response = await apiClient.get(ENDPOINTS.AUTH.ACTIVE_SESSIONS);
       const data = response.data as { sessions: Session[] };
-      setSessions(data.sessions || []);
-    } catch (error) {
-      console.error('Failed to load sessions:', error);
+      
+      const mappedSessions = (data.sessions || []).map(session => ({
+        ...session,
+        device_type: detectDeviceType(session.user_agent),
+        browser: extractBrowserName(session.user_agent),
+        os: extractOSName(session.user_agent)
+      }));
+      
+      setSessions(mappedSessions);
+    } catch (error: unknown) {
+      console.error('❌ Failed to load sessions:', error);
+      
+      // Fix: Properly type check the error before accessing properties
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { 
+          response?: { 
+            status?: number; 
+            data?: unknown; 
+          } 
+        };
+        
+        if (axiosError.response) {
+          console.error('Response status:', axiosError.response.status);
+          console.error('Response data:', axiosError.response.data);
+        }
+      }
+      
       setErrorMessage('Failed to load active sessions');
     } finally {
       setIsLoading(false);
@@ -66,15 +145,21 @@ export default function SessionsPage() {
       setTerminating(sessionId);
       setErrorMessage(null);
       
-      await apiClient.delete(ENDPOINTS.AUTH.TERMINATE_SESSION(sessionId));
+      await apiClient.post(ENDPOINTS.AUTH.TERMINATE_SESSION(sessionId));
       
       // Remove the session from the list
-      setSessions(prev => prev.filter(session => session.id !== sessionId));
+      setSessions(prev => prev.filter(session => session.session_id !== sessionId));
       setSuccessMessage('Session terminated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to terminate session:', error);
-      setErrorMessage('Failed to terminate session');
+      
+      if (isAxiosError(error) && error.response) {
+        const message = error.response.data?.detail || error.response.data?.error || 'Failed to terminate session';
+        setErrorMessage(message as string);
+      } else {
+        setErrorMessage('Failed to terminate session');
+      }
     } finally {
       setTerminating(null);
     }
@@ -85,21 +170,30 @@ export default function SessionsPage() {
       setTerminatingAll(true);
       setErrorMessage(null);
       
-      await apiClient.post(ENDPOINTS.AUTH.TERMINATE_ALL_SESSIONS);
+      await apiClient.post(ENDPOINTS.AUTH.TERMINATE_ALL_SESSIONS, {
+              exclude_current: true,
+              reason: 'Terminated all other sessions from security page'
+      });
       
       // Keep only the current session
       setSessions(prev => prev.filter(session => session.is_current));
       setSuccessMessage('All other sessions terminated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to terminate all sessions:', error);
-      setErrorMessage('Failed to terminate all sessions');
+      
+      if (isAxiosError(error) && error.response) {
+        const message = error.response.data?.detail || error.response.data?.error || 'Failed to terminate all sessions';
+        setErrorMessage(message as string);
+      } else {
+        setErrorMessage('Failed to terminate all sessions');
+      }
     } finally {
       setTerminatingAll(false);
     }
   };
 
-  const getDeviceIcon = (deviceType: string) => {
+  const getDeviceIcon = (deviceType: 'desktop' | 'mobile' | 'tablet') => {
     switch (deviceType) {
       case 'mobile':
         return <Smartphone className="w-5 h-5 text-gray-500" />;
@@ -222,7 +316,7 @@ export default function SessionsPage() {
             <div className="space-y-4">
               {sessions.map((session) => (
                 <div
-                  key={session.id}
+                  key={session.session_id}
                   className={`border rounded-lg p-4 ${
                     session.is_current ? 'border-green-200 bg-green-50' : 'border-gray-200'
                   }`}
@@ -230,7 +324,7 @@ export default function SessionsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
-                        {getDeviceIcon(session.device_type)}
+                        {getDeviceIcon(session.device_type || 'desktop')}
                       </div>
                       
                       <div className="flex-1 min-w-0">
@@ -268,7 +362,7 @@ export default function SessionsPage() {
                             View technical details
                           </summary>
                           <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600 font-mono">
-                            <div>Session ID: {session.id}</div>
+                            <div>Session ID: {session.session_id}</div>
                             <div>User Agent: {session.user_agent}</div>
                           </div>
                         </details>
@@ -277,11 +371,11 @@ export default function SessionsPage() {
 
                     {!session.is_current && (
                       <button
-                        onClick={() => terminateSession(session.id)}
-                        disabled={terminating === session.id}
+                        onClick={() => terminateSession(session.session_id)}
+                        disabled={terminating === session.session_id}
                         className="flex items-center space-x-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded disabled:opacity-50"
                       >
-                        {terminating === session.id ? (
+                        {terminating === session.session_id ? (
                           <Spinner size="sm" />
                         ) : (
                           <X className="w-4 h-4" />
