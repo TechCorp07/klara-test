@@ -11,6 +11,7 @@ import { FormInput, FormButton, FormAlert } from '@/components/ui/common';
 import { ArrowLeft, Lock, Eye, EyeOff, Shield, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
+import error from 'next/error';
 
 // Password validation schema
 const passwordChangeSchema = z.object({
@@ -81,14 +82,14 @@ export default function PasswordChangePage() {
   };
 
   const passwordStrength = getPasswordStrength(newPassword);
-
+  
   const onSubmit = async (data: PasswordChangeFormValues) => {
     try {
       setIsChanging(true);
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      await apiClient.post(ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+      const response = await apiClient.post(ENDPOINTS.AUTH.CHANGE_PASSWORD, {
         current_password: data.current_password,
         new_password: data.new_password,
       });
@@ -97,38 +98,74 @@ export default function PasswordChangePage() {
       setChangeComplete(true);
       reset();
       
-      // Redirect back to settings after a delay
       setTimeout(() => {
         router.push('/settings?tab=security');
       }, 3000);
-    } catch (error: unknown) {
-        console.error('Password change error:', error);
-
-    // Handle the error properly
-    if (error && typeof error === 'object' && 'response' in error) {
-      const axiosError = error as { 
-        response?: { 
-          status?: number; 
-          data?: { 
-            error?: string; 
-            detail?: string; 
-            message?: string; 
-          }; 
-        } 
-      };
+    } catch (error) {
+      console.group('🔍 Password Change Error Debug');
+      console.log('Raw error:', error);
+      console.log('Error type:', typeof error);
       
-      if (axiosError.response?.data?.error) {
-        setErrorMessage(axiosError.response.data.error);
-      } else if (axiosError.response?.data?.detail) {
-        setErrorMessage(axiosError.response.data.detail);
-      } else if (axiosError.response?.data?.message) {
-        setErrorMessage(axiosError.response.data.message);
-      } else {
-        setErrorMessage('Failed to change password. Please try again.');
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      // Type-safe error handling
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as {
+          response?: {
+            status?: number;
+            data?: unknown;
+          };
+        };
+        
+        console.log('Response status:', axiosError.response?.status);
+        console.log('Response data:', axiosError.response?.data);
+        
+        if (axiosError.response?.data && typeof axiosError.response.data === 'object') {
+          const responseData = axiosError.response.data as Record<string, unknown>;
+          
+          // Check for error field (your backend uses this)
+          if (typeof responseData.error === 'string') {
+            errorMessage = responseData.error;
+          }
+          // Fallback to other common error fields
+          else if (typeof responseData.detail === 'string') {
+            errorMessage = responseData.detail;
+          }
+          else if (typeof responseData.message === 'string') {
+            errorMessage = responseData.message;
+          }
+          // Handle nested error objects
+          else if (responseData.error && typeof responseData.error === 'object') {
+            const errorObj = responseData.error as Record<string, unknown>;
+            if (typeof errorObj.message === 'string') {
+              errorMessage = errorObj.message;
+            }
+          }
+        }
+        
+        // Fallback based on status code
+        if (errorMessage === 'An unexpected error occurred. Please try again.') {
+          switch (axiosError.response?.status) {
+            case 400:
+              errorMessage = 'Please check your input and try again.';
+              break;
+            case 401:
+              errorMessage = 'Authentication failed. Please log in again.';
+              break;
+            case 403:
+              errorMessage = 'Access denied.';
+              break;
+            case 500:
+              errorMessage = 'Server error. Please try again later.';
+              break;
+          }
+        }
       }
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      
+      console.log('Final error message:', errorMessage);
+      console.groupEnd();
+      
+      setErrorMessage(errorMessage);
     } finally {
       setIsChanging(false);
     }
