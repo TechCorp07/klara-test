@@ -23,7 +23,8 @@ interface AuthResponse {
   session?: string;
   refresh_token?: string;
   success?: boolean;
-  detail?: string; 
+  detail?: string;
+  requires_2fa?: boolean;
 }
 
 /**
@@ -41,6 +42,15 @@ class JWTAuthService {
       );
   
       const data = response.data;
+
+      if (data.requires_2fa) {
+        return {
+          token: '', // No token yet
+          user: data.user as User,
+          requires_2fa: true,
+          message: data.message || 'Two-factor authentication required',
+        };
+      }
   
       // Check for errors without relying on success property
       if (!data.token && !data.access_token) {

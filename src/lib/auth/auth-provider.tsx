@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { JWTPayload } from './validator';
 import { TabAuthManager } from './tab-auth-utils';
 import { config } from '@/lib/config';
-import { 
-  User, 
+import {
+  User,
   UserRole,
   LoginCredentials,
   LoginResponse, 
@@ -275,17 +275,21 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       const response = await authService.login(credentials);
       
+      // Handle 2FA requirement
+      if (response.requires_2fa) {
+        return response; // Return the response with requires_2fa flag
+      }
+
+      // Normal login success - store tokens and set user
       if (response.token && response.session_token) {
-        // ✅ Store ONLY session token, discard JWT immediately
         localStorage.setItem('session_token', response.session_token);
         
-        // ✅ Remove any stored JWT tokens
         TabAuthManager.clearTabSession();
         
         // ✅ Ensure user has role property
         const userWithRole = {
           ...response.user,
-          role: response.user.role || 'patient', // ✅ Fallback to patient if missing
+          role: response.user.role || 'patient',
         };
         
         // ✅ Set user state with confirmed role
@@ -655,7 +659,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ 
           user_id: userId, 
           token: code,
-          tab_id: tabId 
+          //tab_id: tabId 
         }),
       });
 
@@ -685,7 +689,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       console.error('2FA verification error:', error);
       throw error;
     }
-  }, []);
+  }, [tabId]);
   
   const verifyEmail = useCallback(async (data: { token: string; email?: string }): Promise<{ success: boolean; message: string; detail?: string }> => {
     try {
