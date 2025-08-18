@@ -12,7 +12,8 @@ import {
   RegisterResponse,
   SetupTwoFactorResponse, 
   EmergencyAccessSummary,
-  EmergencyAccessRecord
+  EmergencyAccessRecord,
+  User
 } from '@/types/auth.types';
 
 export interface UseJWTAuthReturn {
@@ -44,12 +45,12 @@ export interface UseJWTAuthReturn {
   updateUserProfileImage: (imageUrl: string | null) => void;
   confirmTwoFactor: (code: string) => Promise<{ success: boolean; message: string; backup_codes?: string[] }>;
   disableTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
-  verifyTwoFactor?: (userId: number, code: string) => Promise<LoginResponse>;
+  verifyTwoFactor: (userId: number, code: string) => Promise<{ token: string; refresh_token: string; user: User; expires_in: number; }>;
   verifyEmail: (data: { token: string; email?: string }) => Promise<{ success: boolean; message: string; detail?: string }>;
   requestEmailVerification: () => Promise<{ detail?: string; success?: boolean; message?: string }>;
   request2FAEmailBackup: (userId: number) => Promise<{ success: boolean; message: string }>;
   verify2FAEmailBackup: (userId: number, backupCode: string) => Promise<string | { success: boolean; message: string }>;
-  
+
   // Permission methods
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
@@ -116,6 +117,7 @@ export function useJWTAuth(): UseJWTAuthReturn {
     requestEmailVerification: context.requestEmailVerification,
     verify2FAEmailBackup: context.verify2FAEmailBackup,
     request2FAEmailBackup: context.request2FAEmailBackup,
+    verifyTwoFactor: context.verifyTwoFactor,
 
     // Permission methods
     hasPermission: context.hasPermission,

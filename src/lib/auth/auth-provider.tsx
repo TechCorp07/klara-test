@@ -50,6 +50,7 @@ export interface JWTAuthContextType {
   requestEmailVerification: () => Promise<{ detail?: string; success?: boolean; message?: string }>;
   request2FAEmailBackup: (userId: number) => Promise<{ success: boolean; message: string }>;
   verify2FAEmailBackup: (userId: number, backupCode: string) => Promise<string | { success: boolean; message: string }>;
+  verifyTwoFactor: (userId: number, code: string) => Promise<{token: string; refresh_token: string; user: User; expires_in: number;}>;
 
   // Permission checking methods (extracted from JWT)
   hasPermission: (permission: string) => boolean;
@@ -642,6 +643,49 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }, []);
+
+  const verifyTwoFactor = useCallback(async (userId: number, code: string) => {
+    try {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/verify-2fa/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tab-ID': tabId,
+        },
+        body: JSON.stringify({ 
+          user_id: userId, 
+          token: code,
+          tab_id: tabId 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Two-factor authentication failed');
+      }
+
+      const data = await response.json();
+      
+      // Store tokens and user data
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      if (data.session_token) {
+        localStorage.setItem('session_token', data.session_token);
+      }
+      
+      setUser(data.user);
+      setIsTabAuthenticated(true);
+      
+      return data;
+    } catch (error) {
+      console.error('2FA verification error:', error);
+      throw error;
+    }
+  }, []);
   
   const verifyEmail = useCallback(async (data: { token: string; email?: string }): Promise<{ success: boolean; message: string; detail?: string }> => {
     try {
@@ -879,6 +923,7 @@ const hasPermission = useCallback((permission: string): boolean => {
     confirmTwoFactor,
     disableTwoFactor,
     verifyEmail,
+    verifyTwoFactor,
     requestEmailVerification,
     request2FAEmailBackup,
     verify2FAEmailBackup,
