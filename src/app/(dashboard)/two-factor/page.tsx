@@ -87,21 +87,46 @@ export default function TwoFactorPage() {
       setIsProcessing(true);
       setErrorMessage(null);
       
-      const response = await apiClient.post(ENDPOINTS.AUTH.VERIFY_2FA, {
-        code: verificationCode
+      const response = await apiClient.post(ENDPOINTS.AUTH.CONFIRM_2FA, {
+        token: verificationCode
       });
       
       setTwoFactorData(response.data as TwoFactorData);
       setSuccessMessage('Two-factor authentication enabled successfully');
       setStep('status');
       await refreshToken(); // Refresh user data
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to verify 2FA:', error);
-      if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error);
-      } else {
-        setErrorMessage('Invalid verification code. Please try again.');
+
+      let errorMessage = 'Invalid verification code. Please try again.';
+      
+      // Type-safe error handling
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as {
+          response?: {
+            status?: number;
+            data?: {
+              detail?: string;
+              error?: string;
+              message?: string;
+            };
+          };
+        };
+        
+        if (axiosError.response?.status && axiosError.response.status >= 400) {
+          const errorData = axiosError.response.data;
+          
+          if (errorData?.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData?.error) {
+            errorMessage = errorData.error;
+          } else if (errorData?.message) {
+            errorMessage = errorData.message;
+          }
+        }
       }
+      
+      setErrorMessage(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -281,7 +306,7 @@ export default function TwoFactorPage() {
                   {twoFactorData.qr_code && (
                     <div className="flex justify-center p-4 bg-gray-50 rounded-lg">
                       <img 
-                        src={`data:image/png;base64,${twoFactorData.qr_code}`}
+                        src={twoFactorData.qr_code}
                         alt="QR Code for 2FA setup"
                         className="w-48 h-48"
                       />

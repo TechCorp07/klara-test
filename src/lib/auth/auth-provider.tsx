@@ -140,7 +140,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          //'Authorization': `Session ${sessionToken}`,
+          'Authorization': `Session ${sessionToken}`,
         },
         body: JSON.stringify({ session_token: sessionToken }),
       });
@@ -611,7 +611,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ token: code }),
       });
       
       if (!response.ok) {

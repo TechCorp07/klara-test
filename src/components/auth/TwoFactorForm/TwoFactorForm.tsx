@@ -347,7 +347,6 @@ const TwoFactorForm: React.FC = () => {
           
           <div className="flex justify-center mb-4">
             <div className="p-2 bg-white border rounded-md shadow-sm">
-              {/* FIXED: QR code is now base64 data from backend */}
               <Image
                 src={qrCodeUrl}
                 alt="QR Code for Two-Factor Authentication"

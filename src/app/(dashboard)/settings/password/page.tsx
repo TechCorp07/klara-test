@@ -82,7 +82,7 @@ export default function PasswordChangePage() {
   };
 
   const passwordStrength = getPasswordStrength(newPassword);
-  
+
   const onSubmit = async (data: PasswordChangeFormValues) => {
     try {
       setIsChanging(true);
@@ -94,6 +94,26 @@ export default function PasswordChangePage() {
         new_password: data.new_password,
       });
 
+      // Check if the response indicates an error (400 status)
+      if (response.status >= 400) {
+        const errorData = response.data;
+        console.log('Error response data:', errorData);
+        
+        let errorMessage = 'An error occurred. Please try again.';
+        
+        if (typeof errorData === 'object' && errorData !== null && 'error' in errorData) {
+          errorMessage = String(errorData.error);
+        } else if (typeof errorData === 'object' && errorData !== null && 'detail' in errorData) {
+          errorMessage = String(errorData.detail);
+        } else if (typeof errorData === 'object' && errorData !== null && 'message' in errorData) {
+          errorMessage = String(errorData.message);
+        }
+        
+        setErrorMessage(errorMessage);
+        return;
+      }
+
+      // Success case (200-299 status codes)
       setSuccessMessage('Your password has been changed successfully.');
       setChangeComplete(true);
       reset();
@@ -101,69 +121,18 @@ export default function PasswordChangePage() {
       setTimeout(() => {
         router.push('/settings?tab=security');
       }, 3000);
+      
     } catch (error) {
-      console.group('🔍 Password Change Error Debug');
-      console.log('Raw error:', error);
-      console.log('Error type:', typeof error);
+      console.log('Caught error:', error);
       
       let errorMessage = 'An unexpected error occurred. Please try again.';
       
-      // Type-safe error handling
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as {
-          response?: {
-            status?: number;
-            data?: unknown;
-          };
-        };
-        
-        console.log('Response status:', axiosError.response?.status);
-        console.log('Response data:', axiosError.response?.data);
-        
-        if (axiosError.response?.data && typeof axiosError.response.data === 'object') {
-          const responseData = axiosError.response.data as Record<string, unknown>;
-          
-          // Check for error field (your backend uses this)
-          if (typeof responseData.error === 'string') {
-            errorMessage = responseData.error;
-          }
-          // Fallback to other common error fields
-          else if (typeof responseData.detail === 'string') {
-            errorMessage = responseData.detail;
-          }
-          else if (typeof responseData.message === 'string') {
-            errorMessage = responseData.message;
-          }
-          // Handle nested error objects
-          else if (responseData.error && typeof responseData.error === 'object') {
-            const errorObj = responseData.error as Record<string, unknown>;
-            if (typeof errorObj.message === 'string') {
-              errorMessage = errorObj.message;
-            }
-          }
-        }
-        
-        // Fallback based on status code
-        if (errorMessage === 'An unexpected error occurred. Please try again.') {
-          switch (axiosError.response?.status) {
-            case 400:
-              errorMessage = 'Please check your input and try again.';
-              break;
-            case 401:
-              errorMessage = 'Authentication failed. Please log in again.';
-              break;
-            case 403:
-              errorMessage = 'Access denied.';
-              break;
-            case 500:
-              errorMessage = 'Server error. Please try again later.';
-              break;
-          }
+        const axiosError = error as any;
+        if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
         }
       }
-      
-      console.log('Final error message:', errorMessage);
-      console.groupEnd();
       
       setErrorMessage(errorMessage);
     } finally {
