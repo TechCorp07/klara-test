@@ -47,7 +47,9 @@ export interface UseJWTAuthReturn {
   verifyTwoFactor?: (userId: number, code: string) => Promise<LoginResponse>;
   verifyEmail: (data: { token: string; email?: string }) => Promise<{ success: boolean; message: string; detail?: string }>;
   requestEmailVerification: () => Promise<{ detail?: string; success?: boolean; message?: string }>;
-
+  request2FAEmailBackup: (userId: number) => Promise<{ success: boolean; message: string }>;
+  verify2FAEmailBackup: (userId: number, backupCode: string) => Promise<string | { success: boolean; message: string }>;
+  
   // Permission methods
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
@@ -112,7 +114,9 @@ export function useJWTAuth(): UseJWTAuthReturn {
     disableTwoFactor: context.disableTwoFactor,
     verifyEmail: context.verifyEmail,
     requestEmailVerification: context.requestEmailVerification,
-    
+    verify2FAEmailBackup: context.verify2FAEmailBackup,
+    request2FAEmailBackup: context.request2FAEmailBackup,
+
     // Permission methods
     hasPermission: context.hasPermission,
     hasAnyPermission: context.hasAnyPermission,

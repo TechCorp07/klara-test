@@ -29,6 +29,8 @@ export const ENDPOINTS = {
     CONFIRM_2FA: '/users/auth/confirm-2fa/',
     VERIFY_2FA: '/users/auth/verify-2fa/',
     DISABLE_2FA: '/users/auth/disable-2fa/',
+    REQUEST_2FA_EMAIL_BACKUP: '/users/auth/request-2fa-email-backup/',
+    VERIFY_2FA_EMAIL_BACKUP: '/users/auth/verify-2fa-email-backup/',
     
     // Account status
     CHECK_STATUS: '/users/auth/check-status/',

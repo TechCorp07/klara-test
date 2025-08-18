@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FormInput, FormButton, FormAlert } from '../../ui/common';
 import { useAuth } from '@/lib/auth';
-import { config } from '@/lib/config';
+import { Smartphone, Mail, ArrowLeft, Shield, AlertTriangle } from 'lucide-react';
 
 // Email and password validation schema
 const loginSchema = z.object({
@@ -22,35 +22,38 @@ const loginSchema = z.object({
     .min(1, 'Password is required'),
 });
 
-// Type for the form values
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+type VerificationMethod = 'authenticator' | 'email';
 
 const LoginForm = () => {
-  // Get the auth context
-  const { login, verifyTwoFactor } = useAuth();
-
-  // Get the router and search params
+  const { login, verifyTwoFactor, request2FAEmailBackup, verify2FAEmailBackup } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Get the return URL from the query string (if any)
   const returnUrl = searchParams.get('returnUrl') || '/dashboard';
 
-  // State to track two-factor authentication flow
+  // Authentication flow states
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
-  const [temporaryUserId, setTemporaryUserId] = useState<number | null>(null); // CRITICAL FIX: Store numeric user ID
-  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [temporaryUserId, setTemporaryUserId] = useState<number | null>(null);
+  const [temporaryUserEmail, setTemporaryUserEmail] = useState<string>('');
+  const [verificationMethod, setVerificationMethod] = useState<VerificationMethod>('authenticator');
+  const [emailBackupRequested, setEmailBackupRequested] = useState(false);
 
-  // State for form error and success messages
+  // Form inputs
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [emailBackupCode, setEmailBackupCode] = useState('');
+
+  // UI states
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize form validation with react-hook-form and zod
+  // Form validation
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting: isFormSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -59,14 +62,12 @@ const LoginForm = () => {
     },
   });
 
-  // Handle form submission
+  // Handle initial login form submission
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      // Clear any previous error/success messages
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      // Submit login request - FIXED: Pass credentials as single object
       const response = await login({
         username: data.username,
         password: data.password
@@ -74,95 +75,22 @@ const LoginForm = () => {
 
       if (response.requires_2fa) {
         setTemporaryUserId(response.user.id);
+        setTemporaryUserEmail(response.user.email);
         setRequiresTwoFactor(true);
-        setSuccessMessage('Please enter the verification code from your authenticator app.');
+        setSuccessMessage('Please verify your identity to continue.');
       } else {
-        // Successful login without 2FA - redirect to the return URL
         setSuccessMessage('Login successful! Redirecting...');
-        
-        // Short delay for the success message to be visible
         setTimeout(() => {
           router.push(returnUrl);
         }, 500);
       }
-    } catch (error: unknown) {
-      // Enhanced error handling for different scenarios
-      if (error && typeof error === 'object') {
-        const err = error as {
-          requires_approval?: boolean;
-          role?: string;
-          submitted_at?: string;
-          redirect_to?: string;
-          response?: {
-            data?: {
-              requires_approval?: boolean;
-              role?: string;
-              submitted_at?: string;
-              redirect_to?: string;
-              detail?: string;
-              error?: string;
-              error_type?: string;
-            };
-          };
-          message?: string;
-          error?: string;
-          error_type?: string;
-        };
-        
-        // CHECK FOR APPROVAL PENDING - ADD THIS BLOCK FIRST
-        if (err.requires_approval || err.response?.data?.requires_approval) {
-          const errorData = err.response?.data || err;
-          const approvalUrl = errorData.redirect_to || 
-            `/approval-pending?role=${errorData.role}&submitted=${encodeURIComponent(errorData.submitted_at || new Date().toISOString())}`;
-          
-          router.push(approvalUrl);
-          return;
-        }
-
-        // Check for direct error properties first (from our API route)
-        if (err.error_type || err.error) {
-          const errorType = err.error_type;
-          const errorMsg = err.error || err.message;
-
-          switch (errorType) {
-            case 'IP_BLACKLISTED':
-              setErrorMessage('🚫 Your IP address has been temporarily blocked due to security concerns. Please contact support if you believe this is an error.');
-              break;
-            case 'RATE_LIMITED':
-              setErrorMessage('⏰ Too many login attempts. Please wait a few minutes before trying again.');
-              break;
-            case 'ACCOUNT_LOCKED':
-              setErrorMessage('🔒 Your account has been temporarily locked. Please contact support or try again later.');
-              break;
-            default:
-              setErrorMessage(errorMsg || 'Login failed');
-          }
-        }
-        // Check response data (from backend)
-        else if (err.response?.data?.detail) {
-          const detail = err.response.data.detail.toLowerCase();
-          
-          if (detail.includes('ip address blacklisted') || detail.includes('blacklisted')) {
-            setErrorMessage('🚫 Your IP address has been temporarily blocked due to security concerns. Please contact support if you believe this is an error.');
-          } else if (detail.includes('rate limit') || detail.includes('too many requests')) {
-            setErrorMessage('⏰ Too many login attempts. Please wait a few minutes before trying again.');
-          } else if (detail.includes('account locked') || detail.includes('locked')) {
-            setErrorMessage('🔒 Your account has been temporarily locked. Please contact support or try again later.');
-          } else {
-            setErrorMessage(err.response.data.detail || err.response.data.error || 'Login failed');
-          }
-        }
-        // Fallback to message
-        else {
-          setErrorMessage(err.message || 'Login failed');
-        }
-      } else {
-        setErrorMessage('Network error. Please check your connection and try again.');
-      }
+    } catch (error) {
+      handleAuthError(error);
     }
   };
 
-  const handleTwoFactorSubmit = async (e: React.FormEvent) => {
+  // Handle authenticator app 2FA verification
+  const handleAuthenticatorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!temporaryUserId) {
@@ -170,73 +98,190 @@ const LoginForm = () => {
       setRequiresTwoFactor(false);
       return;
     }
-    
-    // Check if verifyTwoFactor function is available
-    if (!verifyTwoFactor) {
-      setErrorMessage('Two-factor verification is not available. Please try logging in again.');
-      setRequiresTwoFactor(false);
+
+    if (!twoFactorCode || twoFactorCode.length !== 6) {
+      setErrorMessage('Please enter a valid 6-digit code.');
       return;
     }
     
     try {
-      // Clear any previous error/success messages
+      setIsSubmitting(true);
       setErrorMessage(null);
-      setSuccessMessage(null);
-  
-      // Pass temporaryUserId as number (not string)
+      
       await verifyTwoFactor(temporaryUserId, twoFactorCode);
       
-      // Successful 2FA verification - redirect to the return URL
       setSuccessMessage('Verification successful! Redirecting...');
-      
-      // Short delay for the success message to be visible
       setTimeout(() => {
         router.push(returnUrl);
       }, 500);
-    } catch (error: unknown) {
-      // Handle 2FA verification errors
-      if (error && typeof error === 'object') {
-        const err = error as {
-          response?: {
-            data?: {
-              detail?: string;
-              error?: { message?: string };
-            };
-          };
-          message?: string;
-        };
-    
-        if (err.response?.data?.detail) {
-          setErrorMessage(err.response.data.detail);
-        } else if (err.response?.data?.error) {
-          setErrorMessage(
-            err.response.data.error.message || 'Verification failed. Please try again.'
-          );
-        } else if (err.message) {
-          setErrorMessage(err.message);
-        } else {
-          setErrorMessage('An unexpected error occurred during verification. Please try again.');
-        }
-      } else {
-        setErrorMessage('An unknown error occurred during verification. Please try again.');
-      }
-    }    
+    } catch (error) {
+      handleAuthError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // If in two-factor authentication flow, render the 2FA form
+  // Handle email backup code request
+  const handleRequestEmailBackup = async () => {
+    if (!temporaryUserId) {
+      setErrorMessage('Session error. Please try logging in again.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      const response = await request2FAEmailBackup(temporaryUserId);
+      setEmailBackupRequested(true);
+      setVerificationMethod('email');
+      setSuccessMessage(response.message);
+    } catch (error) {
+      handleAuthError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle email backup verification
+  const handleEmailBackupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!temporaryUserId) {
+      setErrorMessage('Session error. Please try logging in again.');
+      setRequiresTwoFactor(false);
+      return;
+    }
+
+    if (!emailBackupCode || emailBackupCode.length !== 6) {
+      setErrorMessage('Please enter a valid 6-digit code.');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      await verify2FAEmailBackup(temporaryUserId, emailBackupCode);
+      
+      setSuccessMessage('Verification successful! Redirecting...');
+      setTimeout(() => {
+        router.push(returnUrl);
+      }, 500);
+    } catch (error) {
+      handleAuthError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Centralized error handling
+  const handleAuthError = (error: unknown) => {
+    if (error && typeof error === 'object') {
+      const err = error as {
+        requires_approval?: boolean;
+        role?: string;
+        submitted_at?: string;
+        redirect_to?: string;
+        response?: {
+          data?: {
+            requires_approval?: boolean;
+            role?: string;
+            submitted_at?: string;
+            redirect_to?: string;
+            detail?: string;
+            error?: string;
+            error_type?: string;
+          };
+        };
+        message?: string;
+        error?: string;
+        error_type?: string;
+      };
+      
+      // Handle approval pending
+      if (err.requires_approval || err.response?.data?.requires_approval) {
+        const errorData = err.response?.data || err;
+        const approvalUrl = errorData.redirect_to || 
+          `/approval-pending?role=${errorData.role}&submitted=${encodeURIComponent(errorData.submitted_at || new Date().toISOString())}`;
+        
+        router.push(approvalUrl);
+        return;
+      }
+
+      // Handle specific error types
+      const errorType = err.error_type || err.response?.data?.error_type;
+      const errorMsg = err.error || err.response?.data?.error || err.response?.data?.detail || err.message;
+
+      switch (errorType) {
+        case 'IP_BLACKLISTED':
+          setErrorMessage('🚫 Your IP address has been temporarily blocked due to security concerns. Please contact support.');
+          break;
+        case 'RATE_LIMITED':
+          setErrorMessage('⏰ Too many login attempts. Please wait a few minutes before trying again.');
+          break;
+        case 'ACCOUNT_LOCKED':
+          setErrorMessage('🔒 Your account has been temporarily locked. Please contact support or try again later.');
+          break;
+        default:
+          if (typeof errorMsg === 'string') {
+            const detail = errorMsg.toLowerCase();
+            if (detail.includes('invalid') && detail.includes('code')) {
+              setErrorMessage('Invalid verification code. Please try again.');
+            } else if (detail.includes('expired')) {
+              setErrorMessage('Verification code has expired. Please request a new one.');
+            } else {
+              setErrorMessage(errorMsg);
+            }
+          } else {
+            setErrorMessage('An unexpected error occurred. Please try again.');
+          }
+      }
+    } else {
+      setErrorMessage('Network error. Please check your connection and try again.');
+    }
+  };
+
+  // Reset to login form
+  const handleBackToLogin = () => {
+    setRequiresTwoFactor(false);
+    setTemporaryUserId(null);
+    setTemporaryUserEmail('');
+    setVerificationMethod('authenticator');
+    setEmailBackupRequested(false);
+    setTwoFactorCode('');
+    setEmailBackupCode('');
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  };
+
+  // Switch verification method
+  const handleSwitchMethod = (method: VerificationMethod) => {
+    setVerificationMethod(method);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setTwoFactorCode('');
+    setEmailBackupCode('');
+  };
+
+  // Render 2FA verification form
   if (requiresTwoFactor) {
     return (
       <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-          Two-Factor Authentication
-        </h2>
+        <div className="flex items-center mb-6">
+          <button
+            onClick={handleBackToLogin}
+            className="flex items-center text-gray-500 hover:text-gray-700 mr-3"
+            type="button"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Two-Factor Authentication
+          </h2>
+        </div>
 
-        <FormAlert
-          type="info"
-          message="For your security, we need to verify your identity. Please enter the verification code from your authenticator app."
-          dismissible={false}
-        />
-
+        {/* Alerts */}
         <FormAlert
           type="success"
           message={successMessage}
@@ -249,66 +294,223 @@ const LoginForm = () => {
           onDismiss={() => setErrorMessage(null)}
         />
 
-        <form onSubmit={handleTwoFactorSubmit} className="mt-4">
-          <div className="mb-4">
-            <label
-              htmlFor="twoFactorCode"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Verification Code
-            </label>
-            <input
-              id="twoFactorCode"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={twoFactorCode}
-              onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
-              className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              required
-              autoComplete="one-time-code"
-              placeholder="Enter 6-digit code"
-              aria-describedby="twoFactorCodeHelp"
-            />
-            <p id="twoFactorCodeHelp" className="mt-1 text-sm text-gray-500">
-              Enter the 6-digit code from your authenticator app
-            </p>
+        {/* Verification method selection */}
+        {!emailBackupRequested && (
+          <div className="mb-6">
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => handleSwitchMethod('authenticator')}
+                className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                  verificationMethod === 'authenticator'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Smartphone className="w-4 h-4 mr-2" />
+                Authenticator App
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSwitchMethod('email')}
+                className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                  verificationMethod === 'email'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Email Backup
+              </button>
+            </div>
           </div>
+        )}
 
-          <div className="mt-6">
-            <FormButton
-              type="submit"
-              variant="primary"
-              fullWidth
-              isLoading={isSubmitting}
-            >
-              Verify Code
-            </FormButton>
+        {/* Authenticator App Verification */}
+        {verificationMethod === 'authenticator' && (
+          <div>
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-start">
+                <Shield className="w-5 h-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-blue-800 font-medium">Authenticator App Required</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Open your authenticator app and enter the 6-digit code.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleAuthenticatorSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="twoFactorCode"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Verification Code
+                </label>
+                <input
+                  id="twoFactorCode"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                  className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm text-center text-lg font-mono tracking-widest focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="000000"
+                  autoComplete="one-time-code"
+                  disabled={isSubmitting}
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Enter the 6-digit code from your authenticator app
+                </p>
+              </div>
+
+              <FormButton
+                type="submit"
+                variant="primary"
+                isLoading={isSubmitting}
+                disabled={twoFactorCode.length !== 6}
+                className="w-full"
+              >
+                Verify Code
+              </FormButton>
+            </form>
+
+            {/* Lost device option */}
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => handleSwitchMethod('email')}
+                className="text-sm text-gray-600 hover:text-gray-800 underline"
+              >
+                Lost your device? Use email verification instead
+              </button>
+            </div>
           </div>
-        </form>
+        )}
 
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              setRequiresTwoFactor(false);
-              setTemporaryUserId(null);
-              setTwoFactorCode('');
-            }}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            Back to Login
-          </button>
-        </div>
+        {/* Email Backup Verification */}
+        {verificationMethod === 'email' && (
+          <div>
+            {!emailBackupRequested ? (
+              <div>
+                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-start">
+                    <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-yellow-800 font-medium">Email Backup Verification</p>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        We'll send a verification code to your email address: {temporaryUserEmail}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <FormButton
+                  type="button"
+                  variant="primary"
+                  onClick={handleRequestEmailBackup}
+                  isLoading={isSubmitting}
+                  className="w-full"
+                >
+                  Send Email Verification Code
+                </FormButton>
+
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchMethod('authenticator')}
+                    className="text-sm text-gray-600 hover:text-gray-800 underline"
+                  >
+                    Back to authenticator app
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-start">
+                    <Mail className="w-5 h-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-green-800 font-medium">Check Your Email</p>
+                      <p className="text-sm text-green-700 mt-1">
+                        We've sent a 6-digit code to {temporaryUserEmail}. The code expires in 10 minutes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleEmailBackupSubmit}>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="emailBackupCode"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Email Verification Code
+                    </label>
+                    <input
+                      id="emailBackupCode"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={emailBackupCode}
+                      onChange={(e) => setEmailBackupCode(e.target.value.replace(/\D/g, ''))}
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm text-center text-lg font-mono tracking-widest focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="000000"
+                      autoComplete="one-time-code"
+                      disabled={isSubmitting}
+                      required
+                    />
+                    <p className="mt-2 text-sm text-gray-500">
+                      Enter the 6-digit code sent to your email
+                    </p>
+                  </div>
+
+                  <FormButton
+                    type="submit"
+                    variant="primary"
+                    isLoading={isSubmitting}
+                    disabled={emailBackupCode.length !== 6}
+                    className="w-full"
+                  >
+                    Verify Email Code
+                  </FormButton>
+                </form>
+
+                <div className="mt-4 text-center space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleRequestEmailBackup}
+                    className="text-sm text-blue-600 hover:text-blue-800 underline block mx-auto"
+                    disabled={isSubmitting}
+                  >
+                    Resend email code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchMethod('authenticator')}
+                    className="text-sm text-gray-600 hover:text-gray-800 underline block mx-auto"
+                  >
+                    Use authenticator app instead
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
 
-  // Otherwise, render the main login form
+  // Render main login form
   return (
     <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-        Login to {config.appName}
+        Sign In
       </h2>
 
       <FormAlert
@@ -325,103 +527,51 @@ const LoginForm = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <FormInput
-          id="username"
           label="Email Address"
+          id="username"
           type="email"
+          required
+          {...register('username')}
           error={errors.username}
           autoComplete="email"
-          required
-          disabled={isSubmitting}
-          {...register('username')}
         />
 
         <FormInput
-          id="password"
           label="Password"
+          id="password"
           type="password"
+          required
+          {...register('password')}
           error={errors.password}
           autoComplete="current-password"
-          required
-          disabled={isSubmitting}
-          {...register('password')}
         />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              name="remember-me"
-              type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-              Remember me
-            </label>
-          </div>
-
-          <div className="text-sm">
-            <Link
-              href="/forgot-password"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Forgot your password?
-            </Link>
-          </div>
-        </div>
-
-        <div>
-          <FormButton
-            type="submit"
-            variant="primary"
-            fullWidth
-            isLoading={isSubmitting}
-          >
-            Sign in
-          </FormButton>
-        </div>
+        <FormButton
+          type="submit"
+          variant="primary"
+          isLoading={isFormSubmitting}
+          className="w-full"
+        >
+          Sign In
+        </FormButton>
       </form>
 
-      <div className="mt-6">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or</span>
-          </div>
-        </div>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Don&apos;t have an account?{' '}
-            <Link
-              href="/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Register now
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-6 text-center text-xs text-gray-500">
-        <p>
-          By signing in, you agree to our{' '}
-          <Link href={config.termsUrl} className="text-blue-600 hover:underline">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href={config.privacyUrl} className="text-blue-600 hover:underline">
-            Privacy Policy
+      <div className="mt-6 text-center space-y-2">
+        <Link
+          href="/forgot-password"
+          className="text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          Forgot your password?
+        </Link>
+        <div className="text-sm text-gray-600">
+          Don't have an account?{' '}
+          <Link
+            href="/register"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            Sign up
           </Link>
-        </p>
-        <p className="mt-1">
-          This platform complies with{' '}
-          <Link href={config.hipaaNoticeUrl} className="text-blue-600 hover:underline">
-            HIPAA
-          </Link>{' '}
-          regulations
-        </p>
+        </div>
       </div>
     </div>
   );

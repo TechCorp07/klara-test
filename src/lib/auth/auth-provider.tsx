@@ -48,6 +48,8 @@ export interface JWTAuthContextType {
   disableTwoFactor: (code: string) => Promise<{ success: boolean; message: string }>;
   verifyEmail: (data: { token: string; email?: string }) => Promise<{ success: boolean; message: string; detail?: string }>;
   requestEmailVerification: () => Promise<{ detail?: string; success?: boolean; message?: string }>;
+  request2FAEmailBackup: (userId: number) => Promise<{ success: boolean; message: string }>;
+  verify2FAEmailBackup: (userId: number, backupCode: string) => Promise<string | { success: boolean; message: string }>;
 
   // Permission checking methods (extracted from JWT)
   hasPermission: (permission: string) => boolean;
@@ -305,7 +307,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [setupSessionRefresh]);
 
-  // ✅ 7. SEVENTH: Define other auth methods
   const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
     setIsLoading(true);
     try {
@@ -478,15 +479,8 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateConsent = useCallback(async (consentType: string, consentValue: boolean): Promise<{ success: boolean; message: string }> => {
-    console.log('🔍 [updateConsent] Starting consent update:', {
-      consentType,
-      consentValue,
-      timestamp: new Date().toISOString()
-    });
-
     try {
       const sessionToken = localStorage.getItem('session_token');
-      console.log('🔍 [updateConsent] Session token exists:', !!sessionToken);
       
       if (!sessionToken) {
         console.error('❌ [updateConsent] No session token found');
@@ -498,9 +492,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         consented: consentValue,
       };
 
-      console.log('🔍 [updateConsent] Request payload:', requestPayload);
-      console.log('🔍 [updateConsent] Making request to:', '/api/healthcare/health-data-consents/update_consent/');
-
       const response = await fetch('/api/healthcare/health-data-consents/update_consent/', {
         method: 'POST',
         headers: {
@@ -509,18 +500,14 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify(requestPayload),
       });
-      
-      console.log('🔍 [updateConsent] Response status:', response.status);
-      console.log('🔍 [updateConsent] Response headers:', Object.fromEntries(response.headers.entries()));
-      
+
       // Get response text first to log it
       const responseText = await response.text();
-      console.log('🔍 [updateConsent] Raw response:', responseText);
-      
+
       let responseData;
       try {
         responseData = JSON.parse(responseText);
-        console.log('🔍 [updateConsent] Parsed response data:', responseData);
+
       } catch (parseError) {
         console.error('❌ [updateConsent] Failed to parse response as JSON:', parseError);
         responseData = { error: 'Invalid JSON response', raw: responseText };
@@ -535,7 +522,6 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         throw new Error(`HTTP ${response.status}: ${JSON.stringify(responseData)}`);
       }
       
-      console.log('✅ [updateConsent] Request successful:', responseData);
       return {
         success: true,
         message: responseData.message || 'Consent updated successfully',
@@ -712,6 +698,65 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const request2FAEmailBackup = useCallback(async (userId: number): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/request-2fa-email-backup/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to request email backup code');
+      }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || result.detail || 'Backup code sent to your email',
+      };
+    } catch (error) {
+      console.error('Failed to request 2FA email backup:', error);
+      throw error;
+    }
+  }, []);
+
+  const verify2FAEmailBackup = useCallback(async (userId: number, backupCode: string) => {
+    try {
+      const response = await fetch(`${config.apiBaseUrl}/users/auth/verify-2fa-email-backup/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          user_id: userId, 
+          backup_code: backupCode 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Email backup verification failed');
+      }
+
+      const data = await response.json();
+      
+      // Store tokens and user data
+      if (data.session_token) {
+        localStorage.setItem('session_token', data.session_token);
+      }
+      
+      setUser(data.user);
+      setIsTabAuthenticated(true);
+      
+      return data;
+    } catch (error) {
+      console.error('2FA email backup verification error:', error);
+      throw error;
+    }
+  }, []);
+
 const hasPermission = useCallback((permission: string): boolean => {
   if (!user?.permissions) return false;
   
@@ -770,7 +815,6 @@ const hasPermission = useCallback((permission: string): boolean => {
     checkSessionHealthRef.current = checkSessionHealth;
   }, [checkSessionHealth]);
   
-  // ✅ 9. NINTH: Now all useEffect hooks AFTER all functions are defined
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -808,7 +852,6 @@ const hasPermission = useCallback((permission: string): boolean => {
   useEffect(() => {
   }, [user, isTabAuthenticated]);
 
-  // ✅ 10. TENTH: Context value and provider
   const contextValue: JWTAuthContextType = {
     user,
     isAuthenticated: isTabAuthenticated && !!user,
@@ -837,6 +880,8 @@ const hasPermission = useCallback((permission: string): boolean => {
     disableTwoFactor,
     verifyEmail,
     requestEmailVerification,
+    request2FAEmailBackup,
+    verify2FAEmailBackup,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
