@@ -35,7 +35,7 @@ export const ENDPOINTS = {
     REFRESH_TOKEN: '/users/auth/refresh/',
     REFRESH_SESSION: '/users/auth/refresh-session/',
     ACTIVE_SESSIONS: '/users/auth/sessions/',
-    TERMINATE_SESSION: (sessionId: string) => `/users/auth/session/terminate/${sessionId}/`,
+    TERMINATE_SESSION: '/users/auth/session/terminate/',
     TERMINATE_ALL_SESSIONS: '/users/auth/session/terminate-all/',
     ME: '/users/auth/me/',
   },

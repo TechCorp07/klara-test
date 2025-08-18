@@ -140,30 +140,32 @@ export default function SessionsPage() {
     }
   };
 
-  const terminateSession = async (sessionId: string) => {
-    try {
-      setTerminating(sessionId);
-      setErrorMessage(null);
-      
-      await apiClient.post(ENDPOINTS.AUTH.TERMINATE_SESSION(sessionId));
-      
-      // Remove the session from the list
-      setSessions(prev => prev.filter(session => session.session_id !== sessionId));
-      setSuccessMessage('Session terminated successfully');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error: unknown) {
-      console.error('Failed to terminate session:', error);
-      
-      if (isAxiosError(error) && error.response) {
-        const message = error.response.data?.detail || error.response.data?.error || 'Failed to terminate session';
-        setErrorMessage(message as string);
-      } else {
-        setErrorMessage('Failed to terminate session');
-      }
-    } finally {
-      setTerminating(null);
+const terminateSession = async (sessionId: string) => {
+  try {
+    setTerminating(sessionId);
+    setErrorMessage(null);
+    
+    await apiClient.post(ENDPOINTS.AUTH.TERMINATE_SESSION, {
+      session_id: sessionId
+    });
+    
+    // Remove the session from the list
+    setSessions(prev => prev.filter(session => session.session_id !== sessionId));
+    setSuccessMessage('Session terminated successfully');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  } catch (error: unknown) {
+    console.error('Failed to terminate session:', error);
+    
+    if (isAxiosError(error) && error.response) {
+      const message = error.response.data?.detail || error.response.data?.error || 'Failed to terminate session';
+      setErrorMessage(message as string);
+    } else {
+      setErrorMessage('Failed to terminate session');
     }
-  };
+  } finally {
+    setTerminating(null);
+  }
+};
 
   const terminateAllOtherSessions = async () => {
     try {
