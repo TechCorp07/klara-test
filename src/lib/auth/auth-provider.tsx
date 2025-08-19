@@ -659,7 +659,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ 
           user_id: userId, 
           token: code,
-          //tab_id: tabId 
+          tab_id: tabId 
         }),
       });
 
