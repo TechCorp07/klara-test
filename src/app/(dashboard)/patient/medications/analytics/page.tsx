@@ -87,7 +87,7 @@ export default function MedicationAnalyticsPage() {
     try {
       // Load medication analytics
       const analyticsData = await patientService.getMedicationAnalytics(timeframe);
-      setAnalytics(analyticsData);
+      setAnalytics(createCompleteAnalytics(analyticsData));
       
       // Calculate adherence goal (mock data - replace with actual API call)
       const activeMedications = medications.filter(med => med.status === 'active');
