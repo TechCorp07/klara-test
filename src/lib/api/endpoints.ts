@@ -84,7 +84,9 @@ export const ENDPOINTS = {
     MEDICATIONS: '/users/patient/medications/',
     LOG_MEDICATION: (id: number) => `/users/patient/medications/${id}/log/`,
     MEDICATION_ANALYTICS: '/users/patient/medications/analytics/',
-    MEDICATION_REMINDERS: '/users/patient/profile/medication-reminders/',
+    MEDICATION_REMINDERS: '/users/patient/medications/reminders/',
+    MEDICATION_INSIGHTS: '/users/patient/medications/insights/',
+    MEDICATION_INTERACTIONS: '/users/patient/medications/interactions/',
     
     // Health Records endpoints
     HEALTH_RECORDS: '/healthcare/medical-records/',

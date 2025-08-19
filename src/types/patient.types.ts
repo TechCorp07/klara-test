@@ -561,3 +561,82 @@ export interface AutoPayResponse {
   enabled: boolean;
   [key: string]: unknown;
 }
+
+// Medication-specific types for enhanced tracking
+export interface MedicationEffectiveness {
+  id: number;
+  prescription: number;
+  date: string;
+  effectiveness_rating: number; // 1-5 scale
+  symptoms_before: string[];
+  symptoms_after: string[];
+  mood_before: number; // 1-5 scale
+  mood_after: number; // 1-5 scale
+  side_effects: string[];
+  notes?: string;
+}
+
+export interface MedicationReminder {
+  id: number;
+  medication: number;
+  reminder_times: string[];
+  enabled: boolean;
+  methods: ('email' | 'sms' | 'push' | 'smartwatch')[];
+  custom_message?: string;
+  snooze_duration: number;
+  advance_notice: number;
+  last_sent?: string;
+}
+
+export interface DrugInteraction {
+  id: string;
+  medication1: string;
+  medication2: string;
+  severity: 'minor' | 'moderate' | 'major' | 'severe';
+  type: 'drug_drug' | 'drug_food' | 'drug_condition';
+  description: string;
+  clinical_significance: string;
+  management: string;
+  onset: 'rapid' | 'delayed';
+  documentation: 'excellent' | 'good' | 'fair' | 'poor';
+  references?: string[];
+}
+
+export interface MedicationInsights {
+  adherence_patterns: Array<{ day_of_week: string; average_adherence: number }>;
+  missed_dose_patterns: Array<{ time_of_day: string; missed_count: number }>;
+  effectiveness_correlation: Array<{ adherence_rate: number; effectiveness_rating: number }>;
+  recommendations: string[];
+  best_adherence_day: string;
+  worst_adherence_day: string;
+  optimal_time_pattern: string;
+}
+
+export interface MedicationAnalytics {
+  adherence_trends: Array<{ date: string; rate: number }>;
+  missed_doses: Array<{ medication: string; missed_times: string[] }>;
+  side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
+  effectiveness_ratings: Array<{ medication: string; rating: number; date: string }>;
+  insights: {
+    best_adherence_day: string;
+    worst_adherence_day: string;
+    optimal_time_pattern: string;
+    improvement_suggestions: string[];
+  };
+}
+
+export interface FoodInteraction {
+  medication: string;
+  food_type: string;
+  interaction_type: 'avoid' | 'take_with' | 'timing_matters';
+  description: string;
+  recommendation: string;
+}
+
+export interface ConditionInteraction {
+  medication: string;
+  condition: string;
+  severity: 'contraindicated' | 'caution' | 'monitor';
+  description: string;
+  monitoring_required: string;
+}

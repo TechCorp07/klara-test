@@ -330,21 +330,6 @@ class EnhancedPatientService {
     }
 
   /**
-   * Log medication as taken or missed
-   */
-  async logMedication(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
-    try {
-      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(medicationId), {
-        ...logEntry,
-        taken_at: logEntry.taken_at || new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Failed to log medication:', error);
-      throw new Error('Failed to record medication. Please try again.');
-    }
-  }
-
-  /**
    * Record vital signs
    */
   async recordVitalSigns(vitals: VitalSignsEntry): Promise<void> {
@@ -987,44 +972,6 @@ async getAppointmentById(id: number): Promise<Appointment> {
   }
 
   /**
-   * Update medication reminder preferences
-   */
-  async updateMedicationReminders(preferences: {
-    enabled: boolean;
-    methods: ('email' | 'sms' | 'push' | 'smartwatch')[];
-    frequency: 'immediate' | '15min' | '30min' | '1hour';
-    quiet_hours?: { start: string; end: string };
-  }): Promise<void> {
-    try {
-      await apiClient.patch(ENDPOINTS.PATIENT.MEDICATION_REMINDERS, preferences);
-    } catch (error) {
-      console.error('Failed to update medication reminders:', error);
-      throw new Error('Failed to update reminder preferences');
-    }
-  }
-
-  /**
-   * Get medication analytics and adherence insights
-   */
-  async getMedicationAnalytics(timeframe: '7d' | '30d' | '90d' = '30d'): Promise<{
-    adherence_trends: Array<{ date: string; rate: number }>;
-    missed_doses: Array<{ medication: string; missed_times: string[] }>;
-    side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
-  }> {
-    try {
-      const response = await apiClient.get<{
-        adherence_trends: Array<{ date: string; rate: number }>;
-        missed_doses: Array<{ medication: string; missed_times: string[] }>;
-        side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
-      }>(`${ENDPOINTS.PATIENT.MEDICATION_ANALYTICS}?timeframe=${timeframe}`);
-      return extractData(response);
-    } catch (error) {
-      console.error('Failed to fetch medication analytics:', error);
-      throw new Error('Unable to load medication analytics.');
-    }
-  }
-
-  /**
    * Get family medical history for genetic conditions
    */
   async getFamilyMedicalHistory(): Promise<{
@@ -1168,6 +1115,59 @@ async getAppointmentById(id: number): Promise<Appointment> {
     }
   }
 
+    /**
+   * Log medication as taken or missed
+   */
+  async logMedication(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
+    try {
+      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(medicationId), {
+        ...logEntry,
+        taken_at: logEntry.taken_at || new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to log medication:', error);
+      throw new Error('Failed to record medication. Please try again.');
+    }
+  }
+
+  /**
+   * Update medication reminder preferences
+   */
+  async updateMedicationReminders(preferences: {
+    enabled: boolean;
+    methods: ('email' | 'sms' | 'push' | 'smartwatch')[];
+    frequency: 'immediate' | '15min' | '30min' | '1hour';
+    quiet_hours?: { start: string; end: string };
+  }): Promise<void> {
+    try {
+      await apiClient.patch(ENDPOINTS.PATIENT.MEDICATION_REMINDERS, preferences);
+    } catch (error) {
+      console.error('Failed to update medication reminders:', error);
+      throw new Error('Failed to update reminder preferences');
+    }
+  }
+
+  /**
+   * Get medication analytics and adherence insights
+   */
+  async getMedicationAnalytics(timeframe: '7d' | '30d' | '90d' = '30d'): Promise<{
+    adherence_trends: Array<{ date: string; rate: number }>;
+    missed_doses: Array<{ medication: string; missed_times: string[] }>;
+    side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        adherence_trends: Array<{ date: string; rate: number }>;
+        missed_doses: Array<{ medication: string; missed_times: string[] }>;
+        side_effects: Array<{ medication: string; effects: string[]; severity: string }>;
+      }>(`${ENDPOINTS.PATIENT.MEDICATION_ANALYTICS}?timeframe=${timeframe}`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication analytics:', error);
+      throw new Error('Unable to load medication analytics.');
+    }
+  }
+
   /**
    * Get medication schedule for a specific date
    */
@@ -1230,6 +1230,166 @@ async getAppointmentById(id: number): Promise<Appointment> {
     } catch (error) {
       console.error('Failed to fetch medication adherence:', error);
       throw new Error('Failed to load adherence data');
+    }
+  }
+
+    /**
+   * Get medication adherence analytics
+   */
+  async getMedicationAdherenceAnalytics(timeRange: '7d' | '30d' | '90d' | '1y'): Promise<{
+    overall_adherence: number;
+    adherence_by_medication: Array<{
+      medication: string;
+      adherence_rate: number;
+      missed_doses: number;
+      on_time_rate: number;
+    }>;
+    adherence_trends: Array<{
+      date: string;
+      adherence_rate: number;
+    }>;
+    factors_affecting_adherence: Array<{
+      factor: string;
+      impact_score: number;
+      description: string;
+    }>;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        overall_adherence: number;
+        adherence_by_medication: Array<{
+          medication: string;
+          adherence_rate: number;
+          missed_doses: number;
+          on_time_rate: number;
+        }>;
+        adherence_trends: Array<{
+          date: string;
+          adherence_rate: number;
+        }>;
+        factors_affecting_adherence: Array<{
+          factor: string;
+          impact_score: number;
+          description: string;
+        }>;
+      }>(`${ENDPOINTS.PATIENT.MEDICATION_ANALYTICS}?range=${timeRange}`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication adherence analytics:', error);
+      throw new Error('Failed to load adherence analytics');
+    }
+  }
+
+  /**
+   * Get medication interactions for a specific medication
+   */
+  async getMedicationInteractions(medicationId: number): Promise<Array<{
+    id: string;
+    medication1: string;
+    medication2: string;
+    severity: 'minor' | 'moderate' | 'major' | 'severe';
+    description: string;
+    management: string;
+  }>> {
+    try {
+      const response = await apiClient.get<Array<{
+        id: string;
+        medication1: string;
+        medication2: string;
+        severity: 'minor' | 'moderate' | 'major' | 'severe';
+        description: string;
+        management: string;
+      }>>(`${ENDPOINTS.PATIENT.MEDICATIONS}${medicationId}/interactions/`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication interactions:', error);
+      throw new Error('Failed to load medication interactions');
+    }
+  }
+
+  /**
+   * Check interactions between multiple medications
+   */
+  async checkMedicationInteractions(medicationIds: number[]): Promise<{
+    drug_interactions: Array<any>;
+    food_interactions: Array<any>;
+    condition_interactions: Array<any>;
+  }> {
+    try {
+      const response = await apiClient.post<{
+        drug_interactions: Array<any>;
+        food_interactions: Array<any>;
+        condition_interactions: Array<any>;
+      }>(`${ENDPOINTS.PATIENT.MEDICATIONS}check-interactions/`, {
+        medication_ids: medicationIds
+      });
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to check medication interactions:', error);
+      throw new Error('Failed to check interactions');
+    }
+  }
+
+  /**
+   * Get medication effectiveness ratings
+   */
+  async getMedicationEffectiveness(medicationId: number, timeframe: '7d' | '30d' | '90d' = '30d'): Promise<{
+    average_rating: number;
+    ratings_count: number;
+    trend: 'improving' | 'stable' | 'declining';
+    ratings_history: Array<{ date: string; rating: number }>;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        average_rating: number;
+        ratings_count: number;
+        trend: 'improving' | 'stable' | 'declining';
+        ratings_history: Array<{ date: string; rating: number }>;
+      }>(`${ENDPOINTS.PATIENT.MEDICATIONS}${medicationId}/effectiveness/?timeframe=${timeframe}`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication effectiveness:', error);
+      throw new Error('Failed to load effectiveness data');
+    }
+  }
+
+  /**
+   * Report side effects for a medication
+   */
+  async reportSideEffects(medicationId: number, sideEffects: {
+    effects: string[];
+    severity: 'mild' | 'moderate' | 'severe';
+    onset_date: string;
+    notes?: string;
+  }): Promise<void> {
+    try {
+      await apiClient.post(`${ENDPOINTS.PATIENT.MEDICATIONS}${medicationId}/side-effects/`, sideEffects);
+    } catch (error) {
+      console.error('Failed to report side effects:', error);
+      throw new Error('Failed to report side effects');
+    }
+  }
+
+  /**
+   * Get medication adherence insights
+   */
+  async getMedicationInsights(timeframe: '7d' | '30d' | '90d' = '30d'): Promise<{
+    adherence_patterns: Array<{ day_of_week: string; average_adherence: number }>;
+    missed_dose_patterns: Array<{ time_of_day: string; missed_count: number }>;
+    effectiveness_correlation: Array<{ adherence_rate: number; effectiveness_rating: number }>;
+    recommendations: string[];
+  }> {
+    try {
+      const response = await apiClient.get<{
+        adherence_patterns: Array<{ day_of_week: string; average_adherence: number }>;
+        missed_dose_patterns: Array<{ time_of_day: string; missed_count: number }>;
+        effectiveness_correlation: Array<{ adherence_rate: number; effectiveness_rating: number }>;
+        recommendations: string[];
+      }>(`${ENDPOINTS.PATIENT.MEDICATION_INSIGHTS}?timeframe=${timeframe}`);
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to fetch medication insights:', error);
+      throw new Error('Failed to load medication insights');
     }
   }
 
@@ -1413,53 +1573,6 @@ async getAppointmentById(id: number): Promise<Appointment> {
     } catch (error) {
       console.error('Failed to update insurance:', error);
       throw new Error('Failed to update insurance');
-    }
-  }
-
-  /**
-   * Get medication adherence analytics
-   */
-  async getMedicationAdherenceAnalytics(timeRange: '7d' | '30d' | '90d' | '1y'): Promise<{
-    overall_adherence: number;
-    adherence_by_medication: Array<{
-      medication: string;
-      adherence_rate: number;
-      missed_doses: number;
-      on_time_rate: number;
-    }>;
-    adherence_trends: Array<{
-      date: string;
-      adherence_rate: number;
-    }>;
-    factors_affecting_adherence: Array<{
-      factor: string;
-      impact_score: number;
-      description: string;
-    }>;
-  }> {
-    try {
-      const response = await apiClient.get<{
-        overall_adherence: number;
-        adherence_by_medication: Array<{
-          medication: string;
-          adherence_rate: number;
-          missed_doses: number;
-          on_time_rate: number;
-        }>;
-        adherence_trends: Array<{
-          date: string;
-          adherence_rate: number;
-        }>;
-        factors_affecting_adherence: Array<{
-          factor: string;
-          impact_score: number;
-          description: string;
-        }>;
-      }>(`${ENDPOINTS.PATIENT.MEDICATION_ANALYTICS}?range=${timeRange}`);
-      return extractData(response);
-    } catch (error) {
-      console.error('Failed to fetch medication adherence analytics:', error);
-      throw new Error('Failed to load adherence analytics');
     }
   }
 

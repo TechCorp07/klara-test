@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           id: 'medications',
           name: 'Medications',
-          href: '/patient?tab=health',
+          href: '/patient/medications',
           icon: 'pill',
           show: true
         }
