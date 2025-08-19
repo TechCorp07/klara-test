@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { JWTPayload } from './validator';
 import { TabAuthManager } from './tab-auth-utils';
 import { config } from '@/lib/config';
+import { jwtDecode } from 'jwt-decode';
 import {
   User,
   UserRole,
@@ -98,6 +99,25 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
   const refreshSessionTokenRef = useRef<(() => Promise<{ success: boolean; userData?: unknown }>) | null>(null);
   const checkSessionHealthRef = useRef<(() => Promise<void>) | null>(null);
 
+    const isTokenExpired = (token: string): boolean => {
+      try {
+        const decoded = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+        return decoded.exp ? decoded.exp < currentTime : true;
+      } catch {
+        return true;
+      }
+    };
+  
+    const getTokenExpirationTime = (token: string): number | null => {
+      try {
+        const decoded = jwtDecode(token);
+        return decoded.exp ? decoded.exp * 1000 : null; // Convert to milliseconds
+      } catch {
+        return null;
+      }
+    };
+
   const logout = useCallback(async () => {
     try {
       
@@ -131,38 +151,89 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
       console.error('❌ Logout error:', error);
     }
   }, [router]);
-
-  const refreshSessionToken = useCallback(async () => {
+  
+  const refreshSessionToken = useCallback(async (): Promise<{ success: boolean; userData?: User | null; error?: unknown }> => {
     try {
       const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) {
-        throw new Error('No session token to refresh');
+      const authToken = localStorage.getItem('auth_token');
+      
+      if (!sessionToken && !authToken) {
+        throw new Error('No tokens available for refresh');
       }
-  
+
+      // Check if JWT token needs refresh (5 minutes before expiry)
+      if (authToken) {
+        const expirationTime = getTokenExpirationTime(authToken);
+        if (expirationTime) {
+          const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
+          if (expirationTime > fiveMinutesFromNow) {
+            // Token doesn't need refresh yet
+            return { success: true, userData: user };
+          }
+        }
+      }
+
+      // Attempt refresh with session token first, then refresh token
+      const refreshData: Record<string, string> = {};
+      if (sessionToken) {
+        refreshData.session_token = sessionToken;
+      }
+      if (authToken && isTokenExpired(authToken)) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          refreshData.refresh_token = refreshToken;
+        }
+      }
+
       const response = await fetch(`${config.apiBaseUrl}/users/auth/refresh-session/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Session ${sessionToken}`,
+          ...(sessionToken && { 'Authorization': `Session ${sessionToken}` }),
         },
-        body: JSON.stringify({ session_token: sessionToken }),
+        body: JSON.stringify(refreshData),
       });
-  
+
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('session_token', data.session_token);
-        return { success: true, userData: data.user };
+        
+        // Update tokens if provided
+        if (data.access_token) {
+          localStorage.setItem('auth_token', data.access_token);
+        }
+        if (data.session_token) {
+          localStorage.setItem('session_token', data.session_token);
+        }
+        
+        // Type-safe user data handling
+        let updatedUser: User | null = null;
+        if (data.user && typeof data.user === 'object') {
+          updatedUser = {
+            ...data.user,
+            role: data.user.role || 'patient', // Ensure role exists
+          } as User;
+          setUser(updatedUser);
+        } else if (user) {
+          // Keep existing user data if no new user data provided
+          updatedUser = user;
+        }
+        
+        return { success: true, userData: updatedUser };
       } else {
-        console.error('❌ Session refresh failed:', response.status);
-        logout();
-        return { success: false };
+        const errorData = await response.json();
+        console.error('❌ Session refresh failed:', response.status, errorData);
+        
+        // Only logout on authentication errors, not server errors
+        if (response.status === 401 || response.status === 403) {
+          logout();
+        }
+        return { success: false, error: errorData };
       }
     } catch (error) {
       console.error('❌ Session refresh error:', error);
-      logout();
-      return { success: false };
+      return { success: false, error };
     }
-  }, [logout]);
+  }, [logout, user]);
 
   const updateUserProfileImage = useCallback((imageUrl: string | null) => {
     setUser(prevUser =>
@@ -174,33 +245,45 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
 
   const checkSessionHealth = useCallback(async () => {
     const sessionToken = localStorage.getItem('session_token');
+    const authToken = localStorage.getItem('auth_token');
     
-    if (!sessionToken) {
+    if (!sessionToken && !authToken) {
       logout();
       return;
     }
-  
+
+    // Check if auth token is expired and try refresh first
+    if (authToken && isTokenExpired(authToken)) {
+      console.log('🔄 Auth token expired, attempting refresh...');
+      const refreshResult = await refreshSessionTokenRef.current?.();
+      if (!refreshResult?.success) {
+        logout();
+        return;
+      }
+    }
+
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Use session token if available, otherwise use auth token
+      if (sessionToken) {
+        headers['Authorization'] = `Session ${sessionToken}`;
+      } else if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`${config.apiBaseUrl}/users/auth/me/`, {
-        headers: {
-          'Authorization': `Session ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
-  
+
       if (response.ok) {
         const userData = await response.json();
-        
         const userObject = userData.user;
         
-        if (!userObject) {
-          console.error('❌ No user object in response!');
-          logout();
-          return;
-        }
-        
-        if (!userObject.role) {
-          console.error('❌ User object missing role property!');
+        if (!userObject || !userObject.role) {
+          console.error('❌ Invalid user data received');
           logout();
           return;
         }
@@ -212,15 +295,11 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         setUser(userObject);
         setIsTabAuthenticated(true);
       } else if (response.status === 401) {
+        // Try refresh one more time
         if (refreshSessionTokenRef.current) {
           const refreshResult = await refreshSessionTokenRef.current();
-          if (refreshResult.success && refreshResult.userData) {
-            const userData = refreshResult.userData as User;
-            const userWithRole = {
-              ...userData,
-              role: userData.role || 'patient',
-            };
-            setUser(userWithRole);
+          if (refreshResult.success && refreshResult.userData && typeof refreshResult.userData === 'object' && 'id' in refreshResult.userData) {
+            setUser(refreshResult.userData as User);
             setIsTabAuthenticated(true);
           } else {
             logout();
@@ -230,38 +309,51 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         console.error('❌ Session check failed:', response.status);
-        logout();
+        // Don't logout on server errors (5xx), only on auth errors
+        if (response.status >= 400 && response.status < 500) {
+          logout();
+        }
       }
     } catch (error) {
       console.error('❌ Session check error:', error);
-      logout();
+      // Don't logout on network errors, they might be temporary
     }
   }, [logout]);
 
   const setupSessionRefresh = useCallback(() => {
-    if (sessionRefreshInterval.current) {
-      clearInterval(sessionRefreshInterval.current);
+  if (sessionRefreshInterval.current) {
+    clearInterval(sessionRefreshInterval.current);
+  }
+  
+  // Health check every 10 minutes
+  const healthCheckInterval = setInterval(() => {
+    if (checkSessionHealthRef.current) {
+      checkSessionHealthRef.current();
     }
-    
-    const healthCheckInterval = setInterval(() => {
-      if (checkSessionHealthRef.current) {
-        checkSessionHealthRef.current();
+  }, 10 * 60 * 1000);
+  
+  // Smart refresh check every 2 minutes
+  const refreshInterval = setInterval(() => {
+    const authToken = localStorage.getItem('auth_token');
+    if (authToken) {
+      const expirationTime = getTokenExpirationTime(authToken);
+      if (expirationTime) {
+        const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
+        // Only refresh if token expires within 5 minutes
+        if (expirationTime <= fiveMinutesFromNow && refreshSessionTokenRef.current) {
+          refreshSessionTokenRef.current();
+        }
       }
-    }, 10 * 60 * 1000);
-    
-    const refreshInterval = setInterval(() => {
-      if (refreshSessionTokenRef.current) {
-        refreshSessionTokenRef.current();
-      }
-    }, 50 * 60 * 1000);
-    
-    sessionRefreshInterval.current = refreshInterval;
-    
-    return () => {
-      clearInterval(healthCheckInterval);
-      clearInterval(refreshInterval);
-    };
-  }, []);
+    }
+  }, 2 * 60 * 1000); // Check every 2 minutes
+  
+  sessionRefreshInterval.current = refreshInterval;
+  
+  return () => {
+    clearInterval(healthCheckInterval);
+    clearInterval(refreshInterval);
+  };
+}, []);
 
   useEffect(() => {
     if (isTabAuthenticated) {
@@ -621,7 +713,7 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   
-  const disableTwoFactor = useCallback(async (code: string): Promise<{ success: boolean; message: string }> => {
+  const disableTwoFactor = useCallback(async (code: string) => {
     try {
       const sessionToken = localStorage.getItem('session_token');
       const response = await fetch(`${config.apiBaseUrl}/users/auth/disable-2fa/`, {
@@ -630,17 +722,18 @@ export function JWTAuthProvider({ children }: { children: ReactNode }) {
           'Authorization': `Session ${sessionToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ token: code }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to disable two-factor authentication');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to disable two-factor authentication');
       }
       
       const result = await response.json();
       return {
         success: true,
-        message: result.message || 'Two-factor authentication disabled successfully',
+        message: result.detail || 'Two-factor authentication disabled successfully',
       };
     } catch (error) {
       console.error('Failed to disable 2FA:', error);

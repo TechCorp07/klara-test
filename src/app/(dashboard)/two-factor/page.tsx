@@ -28,7 +28,7 @@ interface TwoFactorData {
 }
 
 export default function TwoFactorPage() {
-  const { user, refreshToken } = useAuth();
+  const { user, refreshToken, disableTwoFactor } = useAuth();
   const [twoFactorData, setTwoFactorData] = useState<TwoFactorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -138,26 +138,32 @@ export default function TwoFactorPage() {
       return;
     }
 
+    if (verificationCode.length !== 6) {
+      setErrorMessage('Verification code must be 6 digits');
+      return;
+    }
+
     try {
       setIsProcessing(true);
       setErrorMessage(null);
       
-      await apiClient.post(ENDPOINTS.AUTH.DISABLE_2FA, {
-        code: verificationCode
-      });
+      await disableTwoFactor(verificationCode); // Use the auth provider function
       
       setTwoFactorData({ enabled: false });
       setSuccessMessage('Two-factor authentication disabled successfully');
       setStep('status');
       setVerificationCode('');
       await refreshToken(); // Refresh user data
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to disable 2FA:', error);
-      if (error.response?.data?.error) {
-        setErrorMessage(error.response.data.error);
-      } else {
-        setErrorMessage('Invalid verification code. Please try again.');
+      
+      let errorMessage = 'Invalid verification code. Please try again.';
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as Error).message;
       }
+      
+      setErrorMessage(errorMessage);
     } finally {
       setIsProcessing(false);
     }
