@@ -69,6 +69,7 @@ export default function TwoFactorPage() {
       const response = await apiClient.post(ENDPOINTS.AUTH.SETUP_2FA);
       setTwoFactorData(response.data as TwoFactorData);
       setStep('setup');
+      await refreshToken(); // Refresh user data
     } catch (error) {
       console.error('Failed to start 2FA setup:', error);
       setErrorMessage('Failed to start two-factor authentication setup');
