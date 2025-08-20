@@ -1115,15 +1115,17 @@ async getAppointmentById(id: number): Promise<Appointment> {
     }
   }
 
-    /**
+  /**
    * Log medication as taken or missed
    */
-  async logMedication(medicationId: number, logEntry: MedicationLogEntry): Promise<void> {
+  async logMedication(prescriptionId: number, logEntry: {
+    taken_time: string;
+    scheduled_time: string;
+    taken: boolean;
+    notes?: string;
+  }): Promise<void> {
     try {
-      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(medicationId), {
-        ...logEntry,
-        taken_at: logEntry.taken_at || new Date().toISOString()
-      });
+      await apiClient.post(ENDPOINTS.PATIENT.LOG_MEDICATION(prescriptionId), logEntry);
     } catch (error) {
       console.error('Failed to log medication:', error);
       throw new Error('Failed to record medication. Please try again.');
@@ -1184,17 +1186,23 @@ async getAppointmentById(id: number): Promise<Appointment> {
   }
 
   /**
-   * Log medication as taken (alias for existing logMedication)
+   * Log medication as taken (corrected to match backend)
    */
-  async logMedicationTaken(data: { prescription: number; scheduled_time: string; taken_time: string; taken: boolean; notes?: string }): Promise<void> {
-    const logEntry: MedicationLogEntry = {
-      medication_id: data.prescription,
+  async logMedicationTaken(data: { 
+    prescription: number; 
+    scheduled_time: string; 
+    taken_time: string; 
+    taken: boolean; 
+    notes?: string 
+  }): Promise<void> {
+    // Match the backend's expected payload exactly
+    const logEntry = {
+      taken_time: data.taken_time,      // Backend expects 'taken_time'
+      scheduled_time: data.scheduled_time,
       taken: data.taken,
-      status: data.taken ? 'taken' : 'skipped',
-      taken_at: data.taken_time,
-      notes: data.notes,
-      //data_source?: string,
+      notes: data.notes || ''
     };
+    
     return this.logMedication(data.prescription, logEntry);
   }
 
