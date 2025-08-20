@@ -652,8 +652,8 @@ export default function MedicationsPage() {
                           <p><strong>Prescribed:</strong> {new Date(medication.prescribed_date).toLocaleDateString()}</p>
                         )}
                         
-                        {medication.medication.pharmacy_name && (
-                          <p><strong>Pharmacy:</strong> {medication.medication.pharmacy_name}</p>
+                        {medication.pharmacy && (
+                          <p><strong>Pharmacy:</strong> {medication.pharmacy.name}</p>
                         )}
                       </div>
                     </Card>

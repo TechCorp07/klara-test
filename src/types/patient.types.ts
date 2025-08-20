@@ -94,7 +94,6 @@ export interface PatientProfile {
       generic_name: string;
       drug_class: string;
       form: string; // tablet, capsule, liquid, etc.
-      pharmacy_name: string;
     };
     prescribed_by: {
       id: number;
