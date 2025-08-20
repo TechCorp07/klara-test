@@ -81,12 +81,13 @@ export const ENDPOINTS = {
     DELETE_PROFILE_PHOTO: '/users/patient/delete-photo/',
     
     // Medications
-    MEDICATIONS: '/users/patient/medications/',
-    LOG_MEDICATION: (id: number) => `/users/patient/medications/${id}/log/`,
-    MEDICATION_ANALYTICS: '/users/patient/medications/analytics/',
-    MEDICATION_REMINDERS: '/users/patient/medications/reminders/',
-    MEDICATION_INSIGHTS: '/users/patient/medications/insights/',
-    MEDICATION_INTERACTIONS: '/users/patient/medications/interactions/',
+    MEDICATIONS: '/medication/prescriptions/',
+    LOG_MEDICATION: (id: number) => `/medication/prescriptions/${id}/log/`,
+    MEDICATION_ANALYTICS: '/medication/prescriptions/analytics/',
+    MEDICATION_REMINDERS: '/medication/prescriptions/reminders/',
+    MEDICATION_INSIGHTS: '/medication/prescriptions/insights/',
+    MEDICATION_INTERACTIONS: '/medication/prescriptions/interactions/',
+    MEDICATION_SCHEDULE: '/medication/prescriptions/schedule/',
     
     // Health Records endpoints
     HEALTH_RECORDS: '/healthcare/medical-records/',
