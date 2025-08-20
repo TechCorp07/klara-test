@@ -98,26 +98,35 @@ export default function MedicationsPage() {
 
   // Calculate stats
   useEffect(() => {
-    if ((medications && medications.length > 0) || (todaySchedule && todaySchedule.length > 0)) {
-      const activeMeds = (medications || []).filter(med => med.status === 'active');
-      const dueToday = (todaySchedule || []).length;
-      const overdue = (todaySchedule || []).filter(item => 
-        item.adherence_data && item.adherence_data.some(adherence => 
+    const medsArray = Array.isArray(medications) ? medications : [];
+    const scheduleArray = Array.isArray(todaySchedule) ? todaySchedule : [];
+    
+    if (medsArray.length > 0 || scheduleArray.length > 0) {
+      const activeMeds = medsArray.filter(med => med?.status === 'active');
+      const dueToday = scheduleArray.length;
+      
+      const overdue = scheduleArray.filter(item => {
+        if (!item || !Array.isArray(item.adherence_data)) return false;
+        return item.adherence_data.some(adherence => 
           !adherence.taken && new Date(adherence.scheduled_time) < new Date()
-        )
-      ).length;
+        );
+      }).length;
 
       // Calculate overall adherence rate
-      const totalDoses = (todaySchedule || []).reduce((acc, item) => 
-        acc + (item.adherence_data ? item.adherence_data.length : 0), 0
-      );
-      const takenDoses = (todaySchedule || []).reduce((acc, item) => 
-        acc + (item.adherence_data ? item.adherence_data.filter(adherence => adherence.taken).length : 0), 0
-      );
+      const totalDoses = scheduleArray.reduce((acc, item) => {
+        if (!item || !Array.isArray(item.adherence_data)) return acc;
+        return acc + item.adherence_data.length;
+      }, 0);
+      
+      const takenDoses = scheduleArray.reduce((acc, item) => {
+        if (!item || !Array.isArray(item.adherence_data)) return acc;
+        return acc + item.adherence_data.filter(adherence => adherence.taken).length;
+      }, 0);
+      
       const adherenceRate = totalDoses > 0 ? (takenDoses / totalDoses) * 100 : 0;
 
       setStats({
-        total_medications: (medications || []).length,
+        total_medications: medsArray.length,
         active_medications: activeMeds.length,
         due_today: dueToday,
         overdue,
@@ -138,50 +147,66 @@ export default function MedicationsPage() {
   }, [medications, todaySchedule]);
 
   // Filter medications based on search and filters
-  const filteredMedications = medications.filter(medication => {
-    // Search filter
-    if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
-        medication.medication.name.toLowerCase().includes(searchLower) ||
-        medication.dosage.toLowerCase().includes(searchLower) ||
-        medication.prescribed_by.name.toLowerCase().includes(searchLower);
+  const filteredMedications = React.useMemo(() => {
+    const medsArray = Array.isArray(medications) ? medications : [];
+    
+    return medsArray.filter(medication => {
+      // Safety check for medication structure
+      if (!medication) return false;
       
-      if (!matchesSearch) return false;
-    }
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const name = medication.medication?.name || '';
+        const dosage = medication.dosage || '';
+        const prescriber = medication.prescribed_by?.name || '';
+        
+        const matchesSearch = 
+          name.toLowerCase().includes(searchLower) ||
+          dosage.toLowerCase().includes(searchLower) ||
+          prescriber.toLowerCase().includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
 
-    // Status filter (this is handled by the hook)
-    return true;
-  });
+      return true;
+    });
+  }, [medications, searchQuery]);
 
   // Filter today's schedule based on status
-  const filteredTodaySchedule = (todaySchedule || []).filter(item => {
-    if (statusFilter === 'all') return true;
+  const filteredTodaySchedule = React.useMemo(() => {
+    // Ensure todaySchedule is always an array
+    const scheduleArray = Array.isArray(todaySchedule) ? todaySchedule : [];
     
-    if (!item.adherence_data) return false; // Add this check
+    if (statusFilter === 'all') return scheduleArray;
     
-    const hasOverdue = item.adherence_data.some(adherence => 
-      !adherence.taken && new Date(adherence.scheduled_time) < new Date()
-    );
-    const hasDueNow = item.adherence_data.some(adherence => {
-      const scheduledTime = new Date(adherence.scheduled_time);
-      const now = new Date();
-      const diffMinutes = (now.getTime() - scheduledTime.getTime()) / (1000 * 60);
-      return !adherence.taken && diffMinutes >= -30 && diffMinutes <= 30;
-    });
-    const hasTakenToday = item.adherence_data.some(adherence => adherence.taken);
+    return scheduleArray.filter(item => {
+      // Safety check for item structure
+      if (!item || !Array.isArray(item.adherence_data)) return false;
+      
+      const hasOverdue = item.adherence_data.some(adherence => 
+        !adherence.taken && new Date(adherence.scheduled_time) < new Date()
+      );
+      const hasDueNow = item.adherence_data.some(adherence => {
+        const scheduledTime = new Date(adherence.scheduled_time);
+        const now = new Date();
+        const diffMinutes = (now.getTime() - scheduledTime.getTime()) / (1000 * 60);
+        return !adherence.taken && diffMinutes >= -30 && diffMinutes <= 30;
+      });
+      const hasTakenToday = item.adherence_data.some(adherence => adherence.taken);
 
-    switch (statusFilter) {
-      case 'overdue':
-        return hasOverdue;
-      case 'due_now':
-        return hasDueNow;
-      case 'taken_today':
-        return hasTakenToday;
-      default:
-        return true;
-    }
-  });
+      switch (statusFilter) {
+        case 'overdue':
+          return hasOverdue;
+        case 'due_now':
+          return hasDueNow;
+        case 'taken_today':
+          return hasTakenToday;
+        default:
+          return true;
+      }
+    });
+  }, [todaySchedule, statusFilter]);
 
   const handleMedicationClick = (medicationId: number) => {
     router.push(`/patient/medications/${medicationId}`);
@@ -234,12 +259,13 @@ export default function MedicationsPage() {
     );
   }
 
-  if (loading && !medications.length) {
+  if (loading || todaySchedule === undefined || medications === undefined) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-center items-center h-96">
+          <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">Loading medications...</span>
           </div>
         </div>
       </div>

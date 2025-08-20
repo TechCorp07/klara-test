@@ -66,27 +66,33 @@ export const usePatientMedications = (
       setLoading(true);
       setError(null);
 
-      // Initialize with empty arrays to prevent undefined errors
-      setMedications([]);
-      setTodaySchedule([]);
-
-      // Fetch medications
+      // Fetch medications with proper error handling
       const medicationsParams: Record<string, string | number | undefined> = {};
       if (filters.status) medicationsParams.status = filters.status;
       if (filters.prescribedBy) medicationsParams.prescribed_by = filters.prescribedBy;
 
-      const medicationsResponse = await patientService.getPrescriptions(medicationsParams);
-      setMedications(medicationsResponse.results || []);
+      try {
+        const medicationsResponse = await patientService.getPrescriptions(medicationsParams);
+        setMedications(Array.isArray(medicationsResponse.results) ? medicationsResponse.results : []);
+      } catch (medError) {
+        console.warn('Failed to fetch medications:', medError);
+        setMedications([]);
+      }
 
-      // Fetch today's schedule
-      const today = new Date().toISOString().split('T')[0];
-      const scheduleResponse = await patientService.getMedicationSchedule(today);
-      setTodaySchedule(scheduleResponse || []);
+      // Fetch today's schedule with proper error handling
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const scheduleResponse = await patientService.getMedicationSchedule(today);
+        setTodaySchedule(Array.isArray(scheduleResponse) ? scheduleResponse : []);
+      } catch (schedError) {
+        console.warn('Failed to fetch medication schedule:', schedError);
+        setTodaySchedule([]);
+      }
 
     } catch (err) {
       console.error('Error fetching medications data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load medications');
-      // Ensure state is set to empty arrays on error
+      // Ensure state is always set to arrays
       setMedications([]);
       setTodaySchedule([]);
     } finally {
