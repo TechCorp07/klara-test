@@ -557,6 +557,10 @@ export default function MedicationsPage() {
                     console.warn('Invalid medication data found:', medication);
                     return false;
                   }
+                  if (!medication.id) {
+                    console.warn('Medication missing required fields:', medication);
+                    return false;
+                  }
                   return true;
                 })
                 .map((medication, index) => {
