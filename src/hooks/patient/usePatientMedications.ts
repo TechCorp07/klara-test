@@ -66,21 +66,29 @@ export const usePatientMedications = (
       setLoading(true);
       setError(null);
 
+      // Initialize with empty arrays to prevent undefined errors
+      setMedications([]);
+      setTodaySchedule([]);
+
       // Fetch medications
       const medicationsParams: Record<string, string | number | undefined> = {};
       if (filters.status) medicationsParams.status = filters.status;
       if (filters.prescribedBy) medicationsParams.prescribed_by = filters.prescribedBy;
 
       const medicationsResponse = await patientService.getPrescriptions(medicationsParams);
-      setMedications(medicationsResponse.results);
+      setMedications(medicationsResponse.results || []);
 
       // Fetch today's schedule
       const today = new Date().toISOString().split('T')[0];
       const scheduleResponse = await patientService.getMedicationSchedule(today);
-      setTodaySchedule(scheduleResponse);
+      setTodaySchedule(scheduleResponse || []);
 
     } catch (err) {
+      console.error('Error fetching medications data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load medications');
+      // Ensure state is set to empty arrays on error
+      setMedications([]);
+      setTodaySchedule([]);
     } finally {
       setLoading(false);
     }

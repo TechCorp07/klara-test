@@ -98,29 +98,41 @@ export default function MedicationsPage() {
 
   // Calculate stats
   useEffect(() => {
-    if (medications.length > 0 || todaySchedule.length > 0) {
-      const activeMeds = medications.filter(med => med.status === 'active');
-      const dueToday = todaySchedule.length;
-      const overdue = todaySchedule.filter(item => 
-        item.adherence_data.some(adherence => 
+    if ((medications && medications.length > 0) || (todaySchedule && todaySchedule.length > 0)) {
+      const activeMeds = (medications || []).filter(med => med.status === 'active');
+      const dueToday = (todaySchedule || []).length;
+      const overdue = (todaySchedule || []).filter(item => 
+        item.adherence_data && item.adherence_data.some(adherence => 
           !adherence.taken && new Date(adherence.scheduled_time) < new Date()
         )
       ).length;
 
       // Calculate overall adherence rate
-      const totalDoses = todaySchedule.reduce((acc, item) => acc + item.adherence_data.length, 0);
-      const takenDoses = todaySchedule.reduce((acc, item) => 
-        acc + item.adherence_data.filter(adherence => adherence.taken).length, 0
+      const totalDoses = (todaySchedule || []).reduce((acc, item) => 
+        acc + (item.adherence_data ? item.adherence_data.length : 0), 0
+      );
+      const takenDoses = (todaySchedule || []).reduce((acc, item) => 
+        acc + (item.adherence_data ? item.adherence_data.filter(adherence => adherence.taken).length : 0), 0
       );
       const adherenceRate = totalDoses > 0 ? (takenDoses / totalDoses) * 100 : 0;
 
       setStats({
-        total_medications: medications.length,
+        total_medications: (medications || []).length,
         active_medications: activeMeds.length,
         due_today: dueToday,
         overdue,
         adherence_rate: Math.round(adherenceRate),
-        streak_days: 0 // This would need to be calculated from historical data
+        streak_days: 0
+      });
+    } else {
+      // Set default stats when no data
+      setStats({
+        total_medications: 0,
+        active_medications: 0,
+        due_today: 0,
+        overdue: 0,
+        adherence_rate: 0,
+        streak_days: 0
       });
     }
   }, [medications, todaySchedule]);
@@ -143,8 +155,10 @@ export default function MedicationsPage() {
   });
 
   // Filter today's schedule based on status
-  const filteredTodaySchedule = todaySchedule.filter(item => {
+  const filteredTodaySchedule = (todaySchedule || []).filter(item => {
     if (statusFilter === 'all') return true;
+    
+    if (!item.adherence_data) return false; // Add this check
     
     const hasOverdue = item.adherence_data.some(adherence => 
       !adherence.taken && new Date(adherence.scheduled_time) < new Date()
@@ -153,7 +167,7 @@ export default function MedicationsPage() {
       const scheduledTime = new Date(adherence.scheduled_time);
       const now = new Date();
       const diffMinutes = (now.getTime() - scheduledTime.getTime()) / (1000 * 60);
-      return !adherence.taken && diffMinutes >= -30 && diffMinutes <= 30; // Due within 30 minutes
+      return !adherence.taken && diffMinutes >= -30 && diffMinutes <= 30;
     });
     const hasTakenToday = item.adherence_data.some(adherence => adherence.taken);
 
