@@ -664,24 +664,7 @@ export default function MedicationsPage() {
             </>
           )}
         </div>
-
-        {process.env.NODE_ENV === 'development' && (
-          <Card className="p-4 mb-4 bg-yellow-50 border-yellow-200">
-            <h4 className="font-medium text-yellow-800 mb-2">Debug Info:</h4>
-            <pre className="text-xs text-yellow-700 overflow-auto max-h-40">
-              {JSON.stringify({
-                medications_length: medications?.length || 0,
-                filtered_length: filteredMedications?.length || 0,
-                loading,
-                error,
-                sample_medication: medications?.[0] || 'No medications',
-                medications_type: typeof medications,
-                is_array: Array.isArray(medications)
-              }, null, 2)}
-            </pre>
-          </Card>
-        )}  
-
+        
         {/* Quick Actions */}
         <div className="mt-8 flex flex-wrap gap-4">
           <button
