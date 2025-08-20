@@ -20,6 +20,7 @@ interface UseMedicationsOptions {
 
 interface AdherenceStats {
   rate: number;
+  adherence_rate: number;
   percentage: number;
   totalDoses: number;
   takenDoses: number;
@@ -248,6 +249,7 @@ export const usePatientMedications = (
       rate,
       percentage: Math.round(rate * 100),
       totalDoses,
+      adherence_rate: Math.round(rate * 100),
       takenDoses,
       missedDoses,
       streak,

@@ -28,7 +28,6 @@ import {
   Shield,
   Timer
 } from 'lucide-react';
-import type { Prescription } from '@/types/patient.types';
 
 type MedicationFilter = 'all' | 'active' | 'completed' | 'discontinued' | 'pending';
 type StatusFilter = 'all' | 'due_now' | 'overdue' | 'taken_today';
@@ -55,6 +54,7 @@ export default function MedicationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [stats, setStats] = useState<MedicationStats | null>(null);
+  const [isComponentMounted, setIsComponentMounted] = useState(false);
 
   const {
     medications,
@@ -86,6 +86,10 @@ export default function MedicationsPage() {
   useEffect(() => {
     setHasError(false);
     setErrorMessage('');
+  }, []);
+
+  useEffect(() => {
+    setIsComponentMounted(true);
   }, []);
 
   // Error handling for hook errors
@@ -526,7 +530,14 @@ export default function MedicationsPage() {
 
         {/* Medications List */}
         <div className="space-y-4">
-          {filteredMedications.length === 0 ? (
+          {loading && (
+            <Card className="p-8 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600">Loading medications...</p>
+            </Card>
+          )}
+          
+          {!loading && (!filteredMedications || filteredMedications.length === 0) && (
             <Card className="p-8 text-center">
               <Pill className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No medications found</h3>
@@ -534,106 +545,140 @@ export default function MedicationsPage() {
                 {searchQuery ? 'Try adjusting your search terms or filters.' : 'You don\'t have any medications in this category.'}
               </p>
             </Card>
-          ) : (
-            Array.isArray(filteredMedications) && filteredMedications.map((medication, index) => {
-              const adherenceStats = getMedicationAdherence(medication.id);
-              const isRareCondition = medication.reason_for_prescription?.toLowerCase().includes('rare') || false;
+          )}
+          
+          {!loading && filteredMedications && filteredMedications.length > 0 && (
+            <>
+              {filteredMedications
+                .filter(medication => {
+                  // Filter out any null/undefined items
+                  if (!medication || typeof medication !== 'object') {
+                    console.warn('Invalid medication data found:', medication);
+                    return false;
+                  }
+                  return true;
+                })
+                .map((medication, index) => {
+                  // Get adherence stats safely
+                  const adherenceStats = getMedicationAdherence(medication.id);
+                  const isRareCondition = medication.reason_for_prescription?.toLowerCase().includes('rare') || false;
 
-              if (!medication || typeof medication !== 'object') {
-                console.warn(`Invalid medication data at index ${index}:`, medication);
-                return null;
-              }
-              
-              return (
-                <Card key={medication.id || `medication-${index}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex-1" onClick={() => handleMedicationClick(medication.id)}>
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {medication.medication.name || 'Unknown Medication'}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {medication.dosage || 'No dosage specified'} • {medication.frequency || 'No frequency specified'}
-                        </p>
-                      </div>
-                        
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    medication.status === 'active' 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : medication.status === 'pending'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : medication.status === 'completed'
-                                      ? 'bg-gray-200 text-gray-800'
-                                      : medication.status === 'discontinued'
-                                      ? 'bg-red-100 text-red-800'
-                                      : medication.status === 'on_hold'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {medication.status || 'Unknown'}
-                        </span>
-                        
-                        {isRareCondition && (
-                          <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-                            Rare Condition
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-gray-600">Dosage</p>
-                          <p className="font-medium">{medication.dosage}</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-gray-600">Frequency</p>
-                          <p className="font-medium">{medication.frequency}</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-gray-600">Prescribed by</p>
-                          <p className="font-medium">{medication.prescribed_by.name}</p>
-                        </div>
-                      </div>
-                      
-                      {adherenceStats && (
-                        <div className="flex items-center space-x-6">
-                          <div className="flex items-center space-x-2">
-                            <TrendingUp className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm text-gray-600">Adherence: </span>
-                            <span className={`font-medium ${
-                              adherenceStats.percentage >= 80 ? 'text-green-600' : 
-                              adherenceStats.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
-                              {adherenceStats.percentage}%
-                            </span>
+                  return (
+                    <Card key={medication.id || `medication-${index}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex-1" onClick={() => handleMedicationClick(medication.id)}>
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {/* Handle different possible data structures */}
+                              {medication.medication.name || 
+                              medication.medication?.name || 
+                              medication.medication.name || 
+                              'Unknown Medication'}
+                            </h3>
+                            {isRareCondition && (
+                              <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                                Rare Condition
+                              </span>
+                            )}
                           </div>
                           
-                          {adherenceStats.streak > 0 && (
-                            <div className="flex items-center space-x-2">
-                              <Shield className="w-4 h-4 text-green-600" />
-                              <span className="text-sm text-gray-600">Streak: </span>
-                              <span className="font-medium text-green-600">{adherenceStats.streak} days</span>
-                            </div>
-                          )}
+                          <p className="text-sm text-gray-600 mb-3">
+                            {medication.dosage || 'No dosage specified'} • {medication.frequency || 'No frequency specified'}
+                          </p>
+                            
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              medication.status === 'active' 
+                                ? 'bg-green-100 text-green-800' 
+                                : medication.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : medication.status === 'completed'
+                                ? 'bg-gray-200 text-gray-800'
+                                : medication.status === 'discontinued'
+                                ? 'bg-red-100 text-red-800'
+                                : medication.status === 'on_hold'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {medication.status || 'Unknown'}
+                            </span>
+                            
+                            {adherenceStats && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                adherenceStats.adherence_rate >= 90 
+                                  ? 'bg-green-100 text-green-800'
+                                  : adherenceStats.adherence_rate >= 70
+                                  ? 'bg-yellow-100 text-yellow-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {adherenceStats.adherence_rate}% adherence
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => handleMedicationClick(medication.id)}
-                      className="ml-4 text-blue-600 hover:text-blue-800"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </button>
-                  </div>
-                </Card>
-              );
-            })
+                        
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/patient/medications/${medication.id}`);
+                            }}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="View details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/patient/medications/${medication.id}/log`);
+                            }}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                            title="Log dose"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Additional info */}
+                      <div className="space-y-2 text-sm text-gray-600">
+                        {medication.instructions && (
+                          <p><strong>Instructions:</strong> {medication.instructions}</p>
+                        )}
+                        
+                        {medication.prescribed_date && (
+                          <p><strong>Prescribed:</strong> {new Date(medication.prescribed_date).toLocaleDateString()}</p>
+                        )}
+                        
+                        {medication.medication.pharmacy_name && (
+                          <p><strong>Pharmacy:</strong> {medication.medication.pharmacy_name}</p>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+            </>
           )}
         </div>
+
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="p-4 mb-4 bg-yellow-50 border-yellow-200">
+            <h4 className="font-medium text-yellow-800 mb-2">Debug Info:</h4>
+            <pre className="text-xs text-yellow-700 overflow-auto max-h-40">
+              {JSON.stringify({
+                medications_length: medications?.length || 0,
+                filtered_length: filteredMedications?.length || 0,
+                loading,
+                error,
+                sample_medication: medications?.[0] || 'No medications',
+                medications_type: typeof medications,
+                is_array: Array.isArray(medications)
+              }, null, 2)}
+            </pre>
+          </Card>
+        )}  
 
         {/* Quick Actions */}
         <div className="mt-8 flex flex-wrap gap-4">
