@@ -94,11 +94,11 @@ export default function MedicationsPage() {
 
   // Error handling for hook errors
   useEffect(() => {
-    if (error) {
+    if (error && !hasError) {
       setHasError(true);
       setErrorMessage(error);
     }
-  }, [error]);
+  }, [error, hasError]);
 
   // Calculate stats
   useEffect(() => {
@@ -161,9 +161,9 @@ export default function MedicationsPage() {
       // Search filter
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
-        const name = medication.medication?.name || '';
+        const name = medication.medication_details?.name || '';
         const dosage = medication.dosage || '';
-        const prescriber = medication.prescribed_by?.name || '';
+        const prescriber = medication.prescriber_details?.last_name || '';
         
         const matchesSearch = 
           name.toLowerCase().includes(searchLower) ||
@@ -402,10 +402,11 @@ export default function MedicationsPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h3 className="font-semibold text-gray-900">
-                        {scheduleItem.prescription.medication.name}
+                        {scheduleItem.prescription?.medication_details?.name || 
+                        'Unknown Medication'}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {scheduleItem.prescription.dosage} • {scheduleItem.prescription.frequency}
+                        {scheduleItem.prescription?.dosage || 'No dosage'} • {scheduleItem.prescription?.frequency || 'No frequency'}
                       </p>
                     </div>
                     
@@ -570,10 +571,7 @@ export default function MedicationsPage() {
                           <div className="flex items-center space-x-3 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900">
                               {/* Handle different possible data structures */}
-                              {medication.medication.name || 
-                              medication.medication?.name || 
-                              medication.medication.name || 
-                              'Unknown Medication'}
+                              {medication.medication_details?.name || 'Unknown Medication'}
                             </h3>
                             {isRareCondition && (
                               <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
@@ -583,7 +581,7 @@ export default function MedicationsPage() {
                           </div>
                           
                           <p className="text-sm text-gray-600 mb-3">
-                            {medication.dosage || 'No dosage specified'} • {medication.frequency || 'No frequency specified'}
+                            {medication?.dosage || 'No dosage specified'} • {medication?.frequency || 'No frequency specified'}
                           </p>
                             
                           <div className="flex items-center space-x-2">

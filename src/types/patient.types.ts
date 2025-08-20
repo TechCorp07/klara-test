@@ -86,40 +86,60 @@ export interface PatientProfile {
   }
   
   export interface Prescription {
+  id: number;
+  patient: number;
+  prescriber: number;
+  medication: number;
+  prescribed_date: string;
+  start_date: string;
+  end_date?: string;
+  dosage: string;
+  frequency: string;
+  instructions: string;
+  quantity: number;
+  refills_remaining: number;
+  status: 'active' | 'completed' | 'discontinued' | 'on_hold' | 'pending';
+  reason_for_prescription: string;
+  side_effects_notes?: string;
+  pharmacy?: {
+    name: string;
+    phone: string;
+    address: string;
+  };
+  insurance_covered: boolean;
+  cost_estimate?: number;
+  
+  medication_details?: {
     id: number;
-    patient: number;
-    medication: {
-      id: number;
-      name: string;
-      generic_name: string;
-      drug_class: string;
-      form: string; // tablet, capsule, liquid, etc.
-    };
-    prescribed_by: {
-      id: number;
-      name: string;
-      specialty: string;
-      npi_number: string;
-    };
-    prescribed_date: string;
-    start_date: string;
-    end_date?: string;
-    dosage: string;
-    frequency: string;
-    instructions: string;
-    quantity: number;
-    refills_remaining: number;
-    status: 'active' | 'completed' | 'discontinued' | 'on_hold' | 'pending';
-    reason_for_prescription: string;
-    side_effects_notes?: string;
-    pharmacy?: {
-      name: string;
-      phone: string;
-      address: string;
-    };
-    insurance_covered: boolean;
-    cost_estimate?: number;
-  }
+    name: string;
+    generic_name?: string;
+    drug_class?: string;
+    form?: string;
+    manufacturer?: string;
+    strength?: string;
+  };
+  
+  patient_details?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  
+  prescriber_details?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    specialty?: string;
+    npi_number?: string;
+  };
+  
+  // Display fields from backend
+  status_display?: string;
+  days_until_expiration?: number;
+  is_expired?: boolean;
+}
   
   export interface MedicationAdherence {
     id: number;
