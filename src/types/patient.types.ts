@@ -109,7 +109,7 @@ export interface PatientProfile {
     instructions: string;
     quantity: number;
     refills_remaining: number;
-    status: 'active' | 'completed' | 'discontinued' | 'on_hold';
+    status: 'active' | 'completed' | 'discontinued' | 'on_hold' | 'pending';
     reason_for_prescription: string;
     side_effects_notes?: string;
     pharmacy?: {

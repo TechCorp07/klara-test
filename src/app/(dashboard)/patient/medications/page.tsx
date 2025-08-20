@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import type { Prescription } from '@/types/patient.types';
 
-type MedicationFilter = 'all' | 'active' | 'completed' | 'discontinued';
+type MedicationFilter = 'all' | 'active' | 'completed' | 'discontinued' | 'pending';
 type StatusFilter = 'all' | 'due_now' | 'overdue' | 'taken_today';
 
 interface MedicationStats {
@@ -535,28 +535,44 @@ export default function MedicationsPage() {
               </p>
             </Card>
           ) : (
-            filteredMedications.map((medication) => {
+            Array.isArray(filteredMedications) && filteredMedications.map((medication, index) => {
               const adherenceStats = getMedicationAdherence(medication.id);
               const isRareCondition = medication.reason_for_prescription?.toLowerCase().includes('rare') || false;
+
+              if (!medication || typeof medication !== 'object') {
+                console.warn(`Invalid medication data at index ${index}:`, medication);
+                return null;
+              }
               
               return (
-                <Card key={medication.id} className="p-6 hover:shadow-md transition-shadow cursor-pointer">
-                  <div className="flex items-start justify-between">
+                <Card key={medication.id || `medication-${index}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex-1" onClick={() => handleMedicationClick(medication.id)}>
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {medication.medication.name}
+                          {medication.medication.name || 'Unknown Medication'}
                         </h3>
+                        <p className="text-sm text-gray-600">
+                          {medication.dosage || 'No dosage specified'} • {medication.frequency || 'No frequency specified'}
+                        </p>
+                      </div>
                         
-                        <div className={`px-2 py-1 rounded text-xs font-medium ${
-                          medication.status === 'active' 
-                            ? 'bg-green-100 text-green-800'
-                            : medication.status === 'completed'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {medication.status.charAt(0).toUpperCase() + medication.status.slice(1)}
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    medication.status === 'active' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : medication.status === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : medication.status === 'completed'
+                                      ? 'bg-gray-200 text-gray-800'
+                                      : medication.status === 'discontinued'
+                                      ? 'bg-red-100 text-red-800'
+                                      : medication.status === 'on_hold'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {medication.status || 'Unknown'}
+                        </span>
                         
                         {isRareCondition && (
                           <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
