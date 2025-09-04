@@ -9,6 +9,7 @@ import { NotificationProvider, useNotifications, LiveUpdateIndicator } from '@/c
 import { DashboardErrorBoundary, DashboardLoader, NetworkStatus } from '@/components/dashboard/DashboardErrorBoundary';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import NotificationsPanel from '@/components/ui/NotificationsPanel';
+import { VitalsHistoryList } from '@/components/patient/VitalsHistoryList';
 
 // Import all dashboard widgets
 import { HealthSummaryWidget } from './components/dashboard/HealthSummaryWidget';
@@ -189,6 +190,8 @@ function PatientDashboardContent() {
               vitals={safeVitals}
               onRecordVitals={() => router.push('/patient/vitals/record')}
             />
+            <VitalsHistoryList limit={5} compact={true} showFilters={false} />
+            
             {safePatientInfo?.has_rare_condition && (
               <RareDiseaseMonitoringWidget 
                 rareConditions={safeRareConditions}

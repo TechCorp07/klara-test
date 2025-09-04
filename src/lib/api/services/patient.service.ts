@@ -1439,7 +1439,28 @@ async getAppointmentById(id: number): Promise<Appointment> {
       throw new Error('Failed to save vital signs');
     }
   }
-
+  
+    /**
+   * get vitals History
+   */
+  async getVitalsHistory(params?: {
+    limit?: number;
+    date_range?: string;
+    vital_type?: string;
+  }): Promise<VitalSignsEntry[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.date_range) queryParams.append('date_range', params.date_range);
+      if (params?.vital_type) queryParams.append('vital_type', params.vital_type);
+      
+      const response = await apiClient.get<{results: VitalSignsEntry[]}>(`${ENDPOINTS.PATIENT.VITALS}?${queryParams}`);
+      return extractData(response).results;
+    } catch (error) {
+      console.error('Failed to fetch vitals history:', error);
+      throw new Error('Unable to load vitals history.');
+    }
+  }
   /**
  * Get patient profile
  */
