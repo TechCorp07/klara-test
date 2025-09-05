@@ -112,21 +112,21 @@ export default function RecordVitalsPage() {
   };
 
   const handleInputChange = (name: keyof VitalSignsEntry, value: string) => {
-    // Clear previous error for this field
+    setVitals(prev => ({
+      ...prev,
+      [name]: name === 'notes' ? value : value
+    }));
+
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
 
-    // Validate and update
+  const handleFieldBlur = (name: keyof VitalSignsEntry, value: string) => {
     const error = validateField(name, value);
     if (error) {
       setFieldErrors(prev => ({ ...prev, [name]: error }));
     }
-
-    setVitals(prev => ({
-      ...prev,
-      [name]: name === 'notes' ? value : (value ? parseFloat(value) : undefined)
-    }));
   };
 
   const hasValidData = (): boolean => {
@@ -134,13 +134,12 @@ export default function RecordVitalsPage() {
                           'temperature', 'weight', 'oxygen_saturation', 'pain_level'];
     const hasNumeric = numericFields.some(field => {
       const value = vitals[field as keyof VitalSignsEntry];
-      return value !== undefined && value !== null;
+      return value !== undefined && value !== null && value !== '';
     });
     const hasNotes = !!(vitals.notes && vitals.notes.trim().length > 0);
     return hasNumeric || hasNotes;
   };
 
-  // THIS IS THE ACTUAL API CALL THAT SAVES TO DATABASE
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -162,9 +161,16 @@ export default function RecordVitalsPage() {
     try {
       setLoading(true);
       
-      // Prepare data for API - this gets saved to your database
+      // Prepare data for API - values are already numbers
       const vitalsData: VitalSignsEntry = {
-        ...vitals,
+        blood_pressure_systolic: vitals.blood_pressure_systolic,
+        blood_pressure_diastolic: vitals.blood_pressure_diastolic,
+        heart_rate: vitals.heart_rate,
+        temperature: vitals.temperature,
+        weight: vitals.weight,
+        oxygen_saturation: vitals.oxygen_saturation,
+        pain_level: vitals.pain_level,
+        notes: vitals.notes || '',
         recorded_at: new Date().toISOString()
       };
 
@@ -226,14 +232,15 @@ export default function RecordVitalsPage() {
           type={type}
           step={type === 'number' ? step : undefined}
           placeholder={placeholder}
-          value={vitals[name] as string || ''}
+          value={vitals[name] || ''}
           onChange={(e) => handleInputChange(name, e.target.value)}
+          onBlur={(e) => handleFieldBlur(name, e.target.value)}
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
             fieldErrors[name] ? 'border-red-500 bg-red-50' : 'border-gray-300'
           }`}
         />
         {recentVitals && name !== 'notes' && getComparisonIndicator(
-          vitals[name] as number, 
+          parseFloat(vitals[name] as string) || undefined, 
           recentVitals[name] as number
         )}
       </div>
