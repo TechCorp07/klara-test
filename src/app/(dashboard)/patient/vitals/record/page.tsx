@@ -4,48 +4,51 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { patientService } from '@/lib/api/services/patient.service';
-import { VitalSignsEntry } from '@/lib/api/services/patient.service';
 import { Card } from '@/components/ui/card';
-import {
-  ArrowLeft,
-  Heart,
-  Activity,
-  Thermometer,
-  Scale,
-  Droplets,
-  FileText,
-  Save,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  TrendingUp
-} from 'lucide-react';
+import { ArrowLeft, Save, Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+
+interface FormData {
+  blood_pressure_systolic: string;
+  blood_pressure_diastolic: string;
+  heart_rate: string;
+  temperature: string;
+  weight: string;
+  oxygen_saturation: string;
+  pain_level: string;
+  notes: string;
+}
+
+interface RecentVitals {
+  blood_pressure_systolic?: number;
+  blood_pressure_diastolic?: number;
+  heart_rate?: number;
+  temperature?: number;
+  weight?: number;
+  oxygen_saturation?: number;
+  pain_level?: number;
+  recorded_at?: string;
+}
 
 export default function RecordVitalsPage() {
   const router = useRouter();
   
-  // Form state - matches your current structure but with proper types
-  const [vitals, setVitals] = useState<VitalSignsEntry>({
-    blood_pressure_systolic: undefined,
-    blood_pressure_diastolic: undefined,
-    heart_rate: undefined,
-    temperature: undefined,
-    weight: undefined,
-    oxygen_saturation: undefined,
-    pain_level: undefined,
+  const [formData, setFormData] = useState<FormData>({
+    blood_pressure_systolic: '',
+    blood_pressure_diastolic: '',
+    heart_rate: '',
+    temperature: '',
+    weight: '',
+    oxygen_saturation: '',
+    pain_level: '',
     notes: ''
   });
 
-  // UI states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [recentVitals, setRecentVitals] = useState<VitalSignsEntry | null>(null);
+  const [recentVitals, setRecentVitals] = useState<RecentVitals | null>(null);
   const [loadingRecent, setLoadingRecent] = useState(true);
-
-  // Form validation
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Load recent vitals for comparison
   useEffect(() => {
@@ -64,194 +67,57 @@ export default function RecordVitalsPage() {
     fetchRecentVitals();
   }, []);
 
-  const validateField = (name: string, value: string): string | null => {
-    const numValue = parseFloat(value);
-    
-    if (value && isNaN(numValue)) {
-      return 'Please enter a valid number';
-    }
+  // Update time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
 
-    switch (name) {
-      case 'blood_pressure_systolic':
-        if (numValue && (numValue < 70 || numValue > 250)) {
-          return 'Systolic BP should be between 70-250 mmHg';
-        }
-        break;
-      case 'blood_pressure_diastolic':
-        if (numValue && (numValue < 40 || numValue > 150)) {
-          return 'Diastolic BP should be between 40-150 mmHg';
-        }
-        break;
-      case 'heart_rate':
-        if (numValue && (numValue < 30 || numValue > 250)) {
-          return 'Heart rate should be between 30-250 bpm';
-        }
-        break;
-      case 'temperature':
-        if (numValue && (numValue < 90 || numValue > 115)) {
-          return 'Temperature should be between 90-115°F';
-        }
-        break;
-      case 'weight':
-        if (numValue && (numValue < 50 || numValue > 800)) {
-          return 'Weight should be between 50-800 lbs';
-        }
-        break;
-      case 'oxygen_saturation':
-        if (numValue && (numValue < 70 || numValue > 100)) {
-          return 'Oxygen saturation should be between 70-100%';
-        }
-        break;
-      case 'pain_level':
-        if (numValue && (numValue < 0 || numValue > 10)) {
-          return 'Pain level should be between 0-10';
-        }
-        break;
-    }
-    return null;
-  };
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleInputChange = (name: keyof VitalSignsEntry, value: string) => {
-    setVitals(prev => ({
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
       ...prev,
-      [name]: name === 'notes' ? value : value
+      [name]: value
     }));
-
-    if (fieldErrors[name]) {
-      setFieldErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const handleFieldBlur = (name: keyof VitalSignsEntry, value: string) => {
-    const error = validateField(name, value);
-    if (error) {
-      setFieldErrors(prev => ({ ...prev, [name]: error }));
-    }
-  };
-
-  const hasValidData = (): boolean => {
-    const numericFields = ['blood_pressure_systolic', 'blood_pressure_diastolic', 'heart_rate', 
-                          'temperature', 'weight', 'oxygen_saturation', 'pain_level'];
-    const hasNumeric = numericFields.some(field => {
-      const value = vitals[field as keyof VitalSignsEntry];
-      return value !== undefined && value !== null && value !== '';
-    });
-    const hasNotes = !!(vitals.notes && vitals.notes.trim().length > 0);
-    return hasNumeric || hasNotes;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
-
-    // Validate form has some data
-    if (!hasValidData()) {
-      setError('Please enter at least one vital sign measurement');
-      return;
-    }
-
-    // Check for field errors
-    const hasErrors = Object.values(fieldErrors).some(error => error);
-    if (hasErrors) {
-      setError('Please correct the highlighted errors before submitting');
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
-      
-      // Prepare data for API - values are already numbers
-      const vitalsData: VitalSignsEntry = {
-        blood_pressure_systolic: vitals.blood_pressure_systolic,
-        blood_pressure_diastolic: vitals.blood_pressure_diastolic,
-        heart_rate: vitals.heart_rate,
-        temperature: vitals.temperature,
-        weight: vitals.weight,
-        oxygen_saturation: vitals.oxygen_saturation,
-        pain_level: vitals.pain_level,
-        notes: vitals.notes || '',
+      // Convert to API format
+      const vitalsData = {
+        blood_pressure_systolic: formData.blood_pressure_systolic ? Number(formData.blood_pressure_systolic) : undefined,
+        blood_pressure_diastolic: formData.blood_pressure_diastolic ? Number(formData.blood_pressure_diastolic) : undefined,
+        heart_rate: formData.heart_rate ? Number(formData.heart_rate) : undefined,
+        temperature: formData.temperature ? Number(formData.temperature) : undefined,
+        weight: formData.weight ? Number(formData.weight) : undefined,
+        oxygen_saturation: formData.oxygen_saturation ? Number(formData.oxygen_saturation) : undefined,
+        pain_level: formData.pain_level ? Number(formData.pain_level) : undefined,
+        notes: formData.notes,
         recorded_at: new Date().toISOString()
       };
 
-      // THIS SAVES TO DATABASE AND WILL APPEAR IN VITALS HISTORY
       await patientService.recordVitalSigns(vitalsData);
-      
       setSuccess(true);
       
-      // Auto-redirect after success
+      // Redirect after 2 seconds
       setTimeout(() => {
         router.push('/patient?tab=health');
       }, 2000);
       
     } catch (err) {
-      console.error('Failed to record vitals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save vital signs. Please try again.');
+      setError('Failed to save vital signs. Please try again.');
+      console.error('Error saving vitals:', err);
     } finally {
       setLoading(false);
     }
   };
-
-  const getComparisonIndicator = (currentValue: number | undefined, previousValue: number | undefined) => {
-    if (!currentValue || !previousValue) return null;
-    
-    const diff = currentValue - previousValue;
-    if (Math.abs(diff) < 0.1) return null;
-    
-    return (
-      <span className={`text-xs ml-2 ${diff > 0 ? 'text-red-600' : 'text-green-600'}`}>
-        ({diff > 0 ? '+' : ''}{diff.toFixed(1)})
-      </span>
-    );
-  };
-
-  const VitalInput = ({ 
-    name, 
-    label, 
-    unit, 
-    placeholder, 
-    icon: Icon, 
-    type = 'number',
-    step = '0.1'
-  }: {
-    name: keyof VitalSignsEntry;
-    label: string;
-    unit?: string;
-    placeholder: string;
-    icon: React.ElementType;
-    type?: string;
-    step?: string;
-  }) => (
-    <div>
-      <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-        <Icon className="h-4 w-4 mr-2 text-blue-600" />
-        {label} {unit && <span className="text-gray-500 ml-1">({unit})</span>}
-      </label>
-      <div className="relative">
-        <input
-          type={type}
-          step={type === 'number' ? step : undefined}
-          placeholder={placeholder}
-          value={vitals[name] || ''}
-          onChange={(e) => handleInputChange(name, e.target.value)}
-          onBlur={(e) => handleFieldBlur(name, e.target.value)}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-            fieldErrors[name] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-          }`}
-        />
-        {recentVitals && name !== 'notes' && getComparisonIndicator(
-          parseFloat(vitals[name] as string) || undefined, 
-          recentVitals[name] as number
-        )}
-      </div>
-      {fieldErrors[name] && (
-        <p className="text-red-600 text-xs mt-1 flex items-center">
-          <AlertCircle className="h-3 w-3 mr-1" />
-          {fieldErrors[name]}
-        </p>
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -274,7 +140,7 @@ export default function RecordVitalsPage() {
             </div>
             <div className="flex items-center text-sm text-gray-500">
               <Clock className="h-4 w-4 mr-1" />
-              {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              {currentTime.toLocaleDateString()} at {currentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
             </div>
           </div>
         </div>
@@ -287,7 +153,7 @@ export default function RecordVitalsPage() {
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center">
                   <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
                   <div>
-                    <p className="text-green-800 font-medium">Vital signs recorded successfully!</p>
+                    <p className="text-green-800 font-medium">Vitals recorded successfully!</p>
                     <p className="text-green-700 text-sm">Your vitals have been saved and will appear in your history. Redirecting...</p>
                   </div>
                 </div>
@@ -303,85 +169,131 @@ export default function RecordVitalsPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Blood Pressure */}
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-blue-900 mb-4 flex items-center">
-                    <Heart className="h-5 w-5 mr-2" />
-                    Blood Pressure
-                  </h3>
+                  <h3 className="font-medium text-blue-900 mb-4">Blood Pressure</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <VitalInput
-                      name="blood_pressure_systolic"
-                      label="Systolic"
-                      unit="mmHg"
-                      placeholder="120"
-                      icon={TrendingUp}
-                    />
-                    <VitalInput
-                      name="blood_pressure_diastolic"
-                      label="Diastolic"
-                      unit="mmHg"
-                      placeholder="80"
-                      icon={Activity}
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Systolic (mmHg)
+                      </label>
+                      <input
+                        type="number"
+                        name="blood_pressure_systolic"
+                        value={formData.blood_pressure_systolic}
+                        onChange={handleChange}
+                        placeholder="120"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Diastolic (mmHg)
+                      </label>
+                      <input
+                        type="number"
+                        name="blood_pressure_diastolic"
+                        value={formData.blood_pressure_diastolic}
+                        onChange={handleChange}
+                        placeholder="80"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Other Vitals */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <VitalInput
-                    name="heart_rate"
-                    label="Heart Rate"
-                    unit="bpm"
-                    placeholder="72"
-                    icon={Heart}
-                  />
-                  <VitalInput
-                    name="temperature"
-                    label="Temperature"
-                    unit="°F"
-                    placeholder="98.6"
-                    icon={Thermometer}
-                  />
-                  <VitalInput
-                    name="weight"
-                    label="Weight"
-                    unit="lbs"
-                    placeholder="150"
-                    icon={Scale}
-                  />
-                  <VitalInput
-                    name="oxygen_saturation"
-                    label="Oxygen Saturation"
-                    unit="%"
-                    placeholder="98"
-                    icon={Droplets}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Heart Rate (bpm)
+                    </label>
+                    <input
+                      type="number"
+                      name="heart_rate"
+                      value={formData.heart_rate}
+                      onChange={handleChange}
+                      placeholder="72"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Temperature (°F)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      name="temperature"
+                      value={formData.temperature}
+                      onChange={handleChange}
+                      placeholder="98.6"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Weight (lbs)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      name="weight"
+                      value={formData.weight}
+                      onChange={handleChange}
+                      placeholder="150"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Oxygen Saturation (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="oxygen_saturation"
+                      value={formData.oxygen_saturation}
+                      onChange={handleChange}
+                      placeholder="98"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Pain Level */}
-                <VitalInput
-                  name="pain_level"
-                  label="Pain Level (0-10 scale)"
-                  unit="0=no pain, 10=worst pain"
-                  placeholder="0"
-                  icon={AlertCircle}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Pain Level (0-10)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    name="pain_level"
+                    value={formData.pain_level}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
                 {/* Notes */}
                 <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                    <FileText className="h-4 w-4 mr-2 text-blue-600" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Notes (optional)
                   </label>
                   <textarea
-                    placeholder="Any additional notes about your current condition, symptoms, or context for these measurements..."
-                    value={vitals.notes || ''}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    placeholder="Any additional notes about your condition or these measurements..."
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
-                {/* Submit Button */}
+                {/* Submit Buttons */}
                 <div className="flex items-center justify-between pt-6">
                   <button
                     type="button"
@@ -392,7 +304,7 @@ export default function RecordVitalsPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !hasValidData()}
+                    disabled={loading}
                     className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? (
@@ -400,15 +312,16 @@ export default function RecordVitalsPage() {
                     ) : (
                       <Save className="h-4 w-4 mr-2" />
                     )}
-                    {loading ? 'Saving...' : 'Record Vitals'}
+                    {loading ? 'Saving...' : 'Save Vitals'}
                   </button>
                 </div>
               </form>
             </Card>
           </div>
 
-          {/* Sidebar - Recent Vitals Comparison */}
+          {/* Sidebar - Recent Vitals and Tips */}
           <div className="space-y-6">
+            {/* Recent Vitals */}
             <Card className="p-6">
               <h3 className="font-medium text-gray-900 mb-4 flex items-center">
                 <Clock className="h-5 w-5 mr-2 text-gray-600" />
@@ -465,7 +378,7 @@ export default function RecordVitalsPage() {
               )}
             </Card>
 
-            {/* Quick Tips */}
+            {/* Recording Tips */}
             <Card className="p-6">
               <h3 className="font-medium text-gray-900 mb-4">📋 Recording Tips</h3>
               <ul className="text-sm text-gray-600 space-y-2">
