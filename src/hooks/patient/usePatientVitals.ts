@@ -122,16 +122,24 @@ export const usePatientVitals = (
         patientService.getLatestVitals(),
       ]);
 
-      if (append) {
-        setVitals(prev => [...prev, ...vitalsData.results]);
+      // Add null checks before accessing properties
+      if (vitalsData && vitalsData.results) {
+        if (append) {
+          setVitals(prev => [...prev, ...(vitalsData.results || [])]);
+        } else {
+          setVitals(vitalsData.results || []);
+        }
+        setHasMore(!!vitalsData.next);
       } else {
-        setVitals(vitalsData.results);
+        setVitals([]);
+        setHasMore(false);
       }
       
       setLatestVitals(vitalsData as unknown as VitalSigns);
-      setHasMore(!!vitalsData.next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load vital signs');
+      setVitals([]); // Set empty array on error
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
