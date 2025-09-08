@@ -96,7 +96,7 @@ export const ENDPOINTS = {
     DOWNLOAD_RECORD: (recordId: number) => `/healthcare/medical-records/${recordId}/download/`,
     
     // Vital signs
-    VITALS: '/users/patient/vitals/',
+    VITALS: '/users/patient/vitals_list/',
     VITALS_LATEST: '/users/patient/vitals/latest/',
     CONDITIONS: '/healthcare/conditions/',
     MEDICATIONS_HEALTHCARE: '/healthcare/medications/',
