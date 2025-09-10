@@ -115,24 +115,6 @@ export function QuickActionsWidget({ quickActions }: QuickActionsProps) {
         priority: 'high' as const,
         requires_verification: true
       },
-      {
-        id: 'view-records',
-        title: 'View Records',
-        description: 'Access medical history',
-        icon: 'filetext',
-        href: '/patient/records',
-        priority: 'low' as const,
-        requires_verification: true
-      },
-      {
-        id: 'research-studies',
-        title: 'Research Studies', 
-        description: 'Explore available studies',
-        icon: 'flaskconical',
-        href: '/patient/research',
-        priority: 'medium' as const,
-        requires_verification: false
-      }
     ];
 
     const actionsToShow = sortedActions.length > 0 ? sortedActions : defaultActions;

@@ -17,6 +17,7 @@ export interface PatientProfile {
     zip_code: string;
     emergency_contact_name: string;
     emergency_contact_phone: string;
+    emergency_contact_relationship: string;
     insurance_provider?: string;
     insurance_policy_number?: string;
     primary_care_provider?: string;
@@ -54,6 +55,7 @@ export interface PatientProfile {
     oxygen_saturation?: number;
     respiratory_rate?: number;
     blood_glucose?: number;
+    pain_level?: number; // 0-10 scale
     notes?: string;
     data_source: 'manual' | 'device' | 'wearable';
     device_info?: {
@@ -370,11 +372,13 @@ export interface PatientProfile {
     name: string;
     relationship: string;
     phone_primary: string;
+    is_primary?: boolean;
     phone_secondary?: string;
     email?: string;
     address?: string;
     is_primary_contact: boolean;
     can_make_medical_decisions: boolean;
+    can_make_decisions: boolean;
     power_of_attorney: boolean;
     contact_order: number;
     notes?: string;

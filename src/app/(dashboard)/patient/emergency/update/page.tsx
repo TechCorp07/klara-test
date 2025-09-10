@@ -1,9 +1,10 @@
 // src/app/(dashboard)/patient/emergency/update/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, AlertCircle, Phone } from 'lucide-react';
+import { patientService } from '@/lib/api/services/patient.service';
 
 interface EmergencyInfo {
   medical_id: string;
@@ -60,6 +61,9 @@ export default function UpdateEmergencyInfoPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
   const commonAllergies = [
@@ -120,20 +124,127 @@ export default function UpdateEmergencyInfoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
+    setSuccessMessage(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validate required fields
+      if (!info.blood_type) {
+        throw new Error('Blood type is required');
+      }
+
+      if (info.emergency_contacts.length === 0 || !info.emergency_contacts[0].name || !info.emergency_contacts[0].phone) {
+        throw new Error('At least one emergency contact with name and phone number is required');
+      }
+
+      // Save emergency information to backend
+      const result = await patientService.updateEmergencyInfo({
+        medical_id: info.medical_id,
+        blood_type: info.blood_type,
+        allergies: info.allergies,
+        current_medications: info.current_medications,
+        medical_conditions: info.medical_conditions,
+        emergency_contacts: info.emergency_contacts.filter(contact => contact.name && contact.phone),
+        preferred_hospital: info.preferred_hospital,
+        insurance_provider: info.insurance_provider,
+        insurance_id: info.insurance_id,
+        physician_name: info.physician_name,
+        physician_phone: info.physician_phone,
+        special_instructions: info.special_instructions,
+        advance_directives: info.advance_directives,
+        organ_donor: info.organ_donor,
+        emergency_medications: info.emergency_medications,
+        medical_devices: info.medical_devices
+      });
+
+      setSuccessMessage('Emergency information updated successfully!');
       
-      alert('Emergency information updated successfully!');
-      router.push('/patient?tab=care');
+      // Redirect after a brief delay to show success message
+      setTimeout(() => {
+        router.push('/patient?tab=care');
+      }, 2000);
+      
     } catch (error) {
       console.error('Failed to update emergency info:', error);
-      alert('Failed to update emergency information. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to update emergency information. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const loadExistingEmergencyData = async () => {
+    try {
+      setLoading(true);
+      const emergencyData = await patientService.getEmergencyInfo();
+      
+      // Populate form with existing data
+      if (emergencyData.profile) {
+        const profile = emergencyData.profile as {
+          medical_id?: string;
+          blood_type?: string;
+          allergies?: string;
+          current_medications?: string;
+          medical_conditions?: string;
+          preferred_hospital?: string;
+          insurance_provider?: string;
+          insurance_id?: string;
+          physician_name?: string;
+          physician_phone?: string;
+          special_instructions?: string;
+          advance_directives?: boolean;
+          organ_donor?: boolean;
+          emergency_medications?: string;
+          medical_devices?: string;
+        };
+        setInfo({
+          medical_id: profile.medical_id || '',
+          blood_type: profile.blood_type || '',
+          allergies: profile.allergies ? profile.allergies.split(', ').filter(Boolean) : [],
+          current_medications: profile.current_medications ? profile.current_medications.split(', ').filter(Boolean) : [],
+          medical_conditions: profile.medical_conditions ? profile.medical_conditions.split(', ').filter(Boolean) : [],
+          emergency_contacts: emergencyData.emergency_contacts.length > 0 
+        ? emergencyData.emergency_contacts.map(contact => ({
+            name: contact.name,
+            relationship: contact.relationship,
+            phone: contact.phone_primary,
+            is_primary: contact.is_primary ?? false,
+            can_make_decisions: contact.can_make_decisions ?? false
+          }))
+        : [{ name: '', relationship: '', phone: '', is_primary: true, can_make_decisions: true }],
+          preferred_hospital: profile.preferred_hospital || '',
+          insurance_provider: profile.insurance_provider || '',
+          insurance_id: profile.insurance_id || '',
+          physician_name: profile.physician_name || '',
+          physician_phone: profile.physician_phone || '',
+          special_instructions: profile.special_instructions || '',
+          advance_directives: profile.advance_directives || false,
+          organ_donor: profile.organ_donor || false,
+          emergency_medications: profile.emergency_medications ? profile.emergency_medications.split(', ').filter(Boolean) : [],
+          medical_devices: profile.medical_devices ? profile.medical_devices.split(', ').filter(Boolean) : []
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load emergency data:', error);
+      setError('Failed to load existing emergency information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadExistingEmergencyData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading emergency information...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -165,6 +276,34 @@ export default function UpdateEmergencyInfoPage() {
             </div>
           </div>
 
+          {/* Error Message Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <AlertCircle className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-red-900 mb-1">Error</h3>
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message Display */}
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-green-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h3 className="font-medium text-green-900 mb-1">Success</h3>
+                  <p className="text-sm text-green-800">{successMessage}</p>
+                </div>
+              </div>
+            </div>
+          )}
+      
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Medical Info */}
             <div className="border-b border-gray-200 pb-6">
@@ -496,6 +635,7 @@ export default function UpdateEmergencyInfoPage() {
                 type="button"
                 onClick={() => router.back()}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>

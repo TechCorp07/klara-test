@@ -176,7 +176,7 @@ function PatientDashboardContent() {
     const safeCareTeam = dashboardData?.care_team || [];
     const safePatientInfo = dashboardData?.patient_info || {};
     const safeRareConditions = safePatientInfo?.rare_conditions || [];
-
+    
     switch (selectedView) {
       case 'health':
         return (

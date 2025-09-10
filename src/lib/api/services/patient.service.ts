@@ -1488,6 +1488,116 @@ async getAppointmentById(id: number): Promise<Appointment> {
   }
 
   /**
+ * Update comprehensive emergency information
+ */
+  async updateEmergencyInfo(emergencyData: {
+    medical_id?: string;
+    blood_type?: string;
+    allergies?: string[];
+    current_medications?: string[];
+    medical_conditions?: string[];
+    emergency_contacts?: Array<{
+      name: string;
+      relationship: string;
+      phone: string;
+      email?: string;
+      is_primary: boolean;
+      can_make_decisions: boolean;
+    }>;
+    preferred_hospital?: string;
+    insurance_provider?: string;
+    insurance_id?: string;
+    physician_name?: string;
+    physician_phone?: string;
+    special_instructions?: string;
+    advance_directives?: boolean;
+    organ_donor?: boolean;
+    emergency_medications?: string[];
+    medical_devices?: string[];
+  }): Promise<{ message: string; profile: object }> {
+    try {
+      // Update profile with basic emergency info
+      const profileUpdate = {
+        ...(emergencyData.medical_id && { medical_id: emergencyData.medical_id }),
+        ...(emergencyData.blood_type && { blood_type: emergencyData.blood_type }),
+        ...(emergencyData.allergies && { allergies: emergencyData.allergies.join(', ') }),
+        ...(emergencyData.current_medications && { current_medications: emergencyData.current_medications.join(', ') }),
+        ...(emergencyData.medical_conditions && { medical_conditions: emergencyData.medical_conditions.join(', ') }),
+        ...(emergencyData.preferred_hospital && { preferred_hospital: emergencyData.preferred_hospital }),
+        ...(emergencyData.insurance_provider && { insurance_provider: emergencyData.insurance_provider }),
+        ...(emergencyData.insurance_id && { insurance_id: emergencyData.insurance_id }),
+        ...(emergencyData.physician_name && { physician_name: emergencyData.physician_name }),
+        ...(emergencyData.physician_phone && { physician_phone: emergencyData.physician_phone }),
+        ...(emergencyData.special_instructions && { special_instructions: emergencyData.special_instructions }),
+        ...(emergencyData.advance_directives !== undefined && { advance_directives: emergencyData.advance_directives }),
+        ...(emergencyData.organ_donor !== undefined && { organ_donor: emergencyData.organ_donor }),
+        ...(emergencyData.emergency_medications && { emergency_medications: emergencyData.emergency_medications.join(', ') }),
+        ...(emergencyData.medical_devices && { medical_devices: emergencyData.medical_devices.join(', ') }),
+      };
+
+      const response = await apiClient.patch<{ message: string; profile: object }>(
+        ENDPOINTS.PATIENT.PROFILE, 
+        profileUpdate
+      );
+
+      // Handle emergency contacts separately if provided
+      if (emergencyData.emergency_contacts && emergencyData.emergency_contacts.length > 0) {
+        // Update the primary emergency contact in profile
+        const primaryContact = emergencyData.emergency_contacts.find(c => c.is_primary) || emergencyData.emergency_contacts[0];
+        if (primaryContact) {
+          await apiClient.patch(ENDPOINTS.PATIENT.PROFILE, {
+            emergency_contact_name: primaryContact.name,
+            emergency_contact_phone: primaryContact.phone,
+            emergency_contact_relationship: primaryContact.relationship,
+          });
+        }
+
+        // For additional contacts, use the emergency contacts endpoint
+        for (const contact of emergencyData.emergency_contacts) {
+          if (!contact.is_primary) {
+            try {
+              await this.addEmergencyContact(contact);
+            } catch (error) {
+              console.warn('Failed to add additional emergency contact:', error);
+            }
+          }
+        }
+      }
+
+      return extractData(response);
+    } catch (error) {
+      console.error('Failed to update emergency information:', error);
+      throw new Error('Failed to update emergency information');
+    }
+  }
+  
+  /**
+   * Get comprehensive emergency information
+   */
+  async getEmergencyInfo(): Promise<{
+    profile: object;
+    emergency_contacts: EmergencyContact[];
+    insurance: HealthInsurance[];
+  }> {
+    try {
+      const [profile, contacts, insurance] = await Promise.all([
+        this.getProfile(),
+        this.getEmergencyContacts(),
+        this.getInsuranceInfo()
+      ]);
+
+      return {
+        profile,
+        emergency_contacts: contacts,
+        insurance
+      };
+    } catch (error) {
+      console.error('Failed to fetch emergency information:', error);
+      throw new Error('Failed to load emergency information');
+    }
+  }
+
+  /**
    * Get insurance information
    */
   async getInsuranceInfo(): Promise<HealthInsurance[]> {

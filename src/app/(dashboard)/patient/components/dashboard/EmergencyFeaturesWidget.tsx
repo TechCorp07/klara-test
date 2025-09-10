@@ -112,7 +112,7 @@ export function EmergencyFeaturesWidget({ emergencyInfo, onUpdateEmergencyInfo }
           <Phone className="w-6 h-6 mr-3" />
           Call 911 - Emergency Services
         </button>
-
+        
         {/* Alert Care Team */}
         <div className="grid grid-cols-2 gap-2">
           <button

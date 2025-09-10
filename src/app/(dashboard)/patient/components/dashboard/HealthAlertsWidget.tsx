@@ -89,7 +89,7 @@ export function HealthAlertsWidget({ alerts, onAcknowledgeAlert }: HealthAlertsP
     
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
-
+  
   const unacknowledgedAlerts = sortedAlerts.filter(alert => !alert.acknowledged);
   const criticalAlerts = sortedAlerts.filter(alert => alert.severity === 'critical' && !alert.acknowledged);
 
