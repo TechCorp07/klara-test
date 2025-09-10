@@ -1,3 +1,4 @@
+// src/app/(dashboard)/patient/emergency/contact/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';

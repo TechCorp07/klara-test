@@ -175,42 +175,63 @@ export default function UpdateEmergencyInfoPage() {
   const loadExistingEmergencyData = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const emergencyData = await patientService.getEmergencyInfo();
       
-      // Populate form with existing data
+      // Extract data from profile (main source of truth)
       if (emergencyData.profile) {
-        const profile = emergencyData.profile as {
-          medical_id?: string;
-          blood_type?: string;
-          allergies?: string;
-          current_medications?: string;
-          medical_conditions?: string;
-          preferred_hospital?: string;
-          insurance_provider?: string;
-          insurance_id?: string;
-          physician_name?: string;
-          physician_phone?: string;
-          special_instructions?: string;
-          advance_directives?: boolean;
-          organ_donor?: boolean;
-          emergency_medications?: string;
-          medical_devices?: string;
-        };
+        const profile = emergencyData.profile as any;
+        
+        // Build emergency contacts array from profile data and additional contacts
+        const contacts: any[] = [];
+        
+        // Add primary emergency contact from profile if exists
+        if (profile.emergency_contact_name) {
+          contacts.push({
+            name: profile.emergency_contact_name,
+            relationship: profile.emergency_contact_relationship || '',
+            phone: profile.emergency_contact_phone || '',
+            is_primary: true,
+            can_make_decisions: true
+          });
+        }
+        
+        // Add additional emergency contacts if they exist and are an array
+        if (Array.isArray(emergencyData.emergency_contacts)) {
+          emergencyData.emergency_contacts.forEach(contact => {
+            // Skip if this is the same as the primary contact
+            if (contact.name !== profile.emergency_contact_name) {
+              contacts.push({
+                name: contact.name,
+                relationship: contact.relationship,
+                phone: contact.phone_primary || '',
+                is_primary: contact.is_primary_contact || false,
+                can_make_decisions: contact.can_make_medical_decisions || contact.can_make_decisions || false
+              });
+            }
+          });
+        }
+        
+        // Ensure we have at least one empty contact if none exist
+        if (contacts.length === 0) {
+          contacts.push({
+            name: '',
+            relationship: '',
+            phone: '',
+            is_primary: true,
+            can_make_decisions: true
+          });
+        }
+        
+        // Populate form with existing data
         setInfo({
           medical_id: profile.medical_id || '',
           blood_type: profile.blood_type || '',
           allergies: profile.allergies ? profile.allergies.split(', ').filter(Boolean) : [],
           current_medications: profile.current_medications ? profile.current_medications.split(', ').filter(Boolean) : [],
           medical_conditions: profile.medical_conditions ? profile.medical_conditions.split(', ').filter(Boolean) : [],
-          emergency_contacts: emergencyData.emergency_contacts.length > 0 
-        ? emergencyData.emergency_contacts.map(contact => ({
-            name: contact.name,
-            relationship: contact.relationship,
-            phone: contact.phone_primary,
-            is_primary: contact.is_primary ?? false,
-            can_make_decisions: contact.can_make_decisions ?? false
-          }))
-        : [{ name: '', relationship: '', phone: '', is_primary: true, can_make_decisions: true }],
+          emergency_contacts: contacts,
           preferred_hospital: profile.preferred_hospital || '',
           insurance_provider: profile.insurance_provider || '',
           insurance_id: profile.insurance_id || '',
@@ -225,7 +246,7 @@ export default function UpdateEmergencyInfoPage() {
       }
     } catch (error) {
       console.error('Failed to load emergency data:', error);
-      setError('Failed to load existing emergency information');
+      setError(error instanceof Error ? error.message : 'Failed to load existing emergency information');
     } finally {
       setLoading(false);
     }

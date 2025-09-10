@@ -1479,11 +1479,13 @@ async getAppointmentById(id: number): Promise<Appointment> {
    */
   async getEmergencyContacts(): Promise<EmergencyContact[]> {
     try {
-      const response = await apiClient.get<EmergencyContact[]>(`${ENDPOINTS.PATIENT.PROFILE}/emergency-contacts/`);
+      // Try the separate endpoint first
+      const response = await apiClient.get<EmergencyContact[]>(`${ENDPOINTS.PATIENT.PROFILE}emergency-contacts/`);
       return extractData(response);
     } catch (error) {
-      console.error('Failed to fetch emergency contacts:', error);
-      throw new Error('Failed to load emergency contacts');
+      // If separate endpoint doesn't exist, return empty array
+      console.warn('Emergency contacts endpoint not available:', error);
+      return [];
     }
   }
 
@@ -1575,21 +1577,27 @@ async getAppointmentById(id: number): Promise<Appointment> {
    * Get comprehensive emergency information
    */
   async getEmergencyInfo(): Promise<{
-    profile: object;
+    profile: undefined | PatientProfile;
     emergency_contacts: EmergencyContact[];
     insurance: HealthInsurance[];
   }> {
     try {
-      const [profile, contacts, insurance] = await Promise.all([
-        this.getProfile(),
+      // Load profile first (this is the main data source)
+      const profile = await this.getProfile();
+      
+      // Try to load additional data, but don't fail if endpoints don't exist
+      const [contacts, insurance] = await Promise.allSettled([
         this.getEmergencyContacts(),
         this.getInsuranceInfo()
       ]);
 
+      const emergency_contacts = contacts.status === 'fulfilled' ? contacts.value : [];
+      const insuranceData = insurance.status === 'fulfilled' ? insurance.value : [];
+
       return {
         profile,
-        emergency_contacts: contacts,
-        insurance
+        emergency_contacts,
+        insurance: insuranceData
       };
     } catch (error) {
       console.error('Failed to fetch emergency information:', error);
@@ -1602,11 +1610,13 @@ async getAppointmentById(id: number): Promise<Appointment> {
    */
   async getInsuranceInfo(): Promise<HealthInsurance[]> {
     try {
-      const response = await apiClient.get<HealthInsurance[]>(`${ENDPOINTS.PATIENT.PROFILE}/insurance/`);
+      // Try the separate endpoint first
+      const response = await apiClient.get<HealthInsurance[]>(`${ENDPOINTS.PATIENT.PROFILE}insurance/`);
       return extractData(response);
     } catch (error) {
-      console.error('Failed to fetch insurance info:', error);
-      throw new Error('Failed to load insurance information');
+      // If separate endpoint doesn't exist, return empty array
+      console.warn('Insurance endpoint not available:', error);
+      return [];
     }
   }
 
